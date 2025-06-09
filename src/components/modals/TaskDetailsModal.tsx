@@ -156,7 +156,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline">{task.title}</DialogTitle>
           <DialogDescription>
@@ -164,7 +164,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow pr-6 -mr-6">
+        <ScrollArea className="flex-grow min-h-0 pr-6 -mr-6">
           <div className="grid gap-6 py-4">
             {/* Description Section */}
             <div className="space-y-2">
@@ -192,7 +192,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
               {aiSummary && (
                 <div className="mt-2 p-3 border rounded-md bg-background">
                   <p className="text-sm font-medium text-primary">AI Summary:</p>
-                  <ScrollArea className="h-24"> {/* Added ScrollArea */}
+                  <ScrollArea className="h-24">
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap">{aiSummary.summary}</p>
                   </ScrollArea>
                 </div>
@@ -200,7 +200,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
               {aiSubtaskSuggestions.length > 0 && (
                 <div className="mt-2 p-3 border rounded-md bg-background">
                   <p className="text-sm font-medium text-primary">AI Subtask Suggestions:</p>
-                  <ScrollArea className="h-32"> {/* Added ScrollArea */}
+                  <ScrollArea className="h-32">
                     <ul className="list-disc list-inside space-y-1 mt-1">
                       {aiSubtaskSuggestions.map((suggestion) => (
                         <li key={suggestion.id} className="text-sm text-muted-foreground flex justify-between items-center">
