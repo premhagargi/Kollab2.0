@@ -108,35 +108,47 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
   };
 
   const handleGenerateSummary = async () => {
-    if (!task.description) {
-      toast({ title: "Cannot Summarize", description: "Task description is empty.", variant: "destructive" });
+    if (!task.description && !task.title) {
+      toast({ title: "Cannot Summarize", description: "Task title and description are empty.", variant: "destructive" });
       return;
     }
     setIsSummarizing(true);
     setAiSummary(null);
     try {
-      const result = await summarizeTaskAction({ taskDescription: task.description });
-      setAiSummary(result);
-      toast({ title: "Summary Generated", description: "AI has summarized the task." });
+      const result = await summarizeTaskAction({ taskText: task.title + (task.description ? `\n${task.description}` : '') });
+      if (result.summary.startsWith('Error:')) {
+        toast({ title: "Summarization Failed", description: result.summary, variant: "destructive" });
+        setAiSummary(null);
+      } else {
+        setAiSummary(result);
+        toast({ title: "Summary Generated", description: "AI has summarized the task." });
+      }
     } catch (error) {
       toast({ title: "Summarization Failed", description: (error as Error).message, variant: "destructive" });
+      setAiSummary(null);
     }
     setIsSummarizing(false);
   };
 
   const handleSuggestSubtasks = async () => {
-    if (!task.description) {
-      toast({ title: "Cannot Suggest Subtasks", description: "Task description is empty.", variant: "destructive" });
+    if (!task.description && !task.title) {
+      toast({ title: "Cannot Suggest Subtasks", description: "Task title and description are empty.", variant: "destructive" });
       return;
     }
     setIsSuggestingSubtasks(true);
     setAiSubtaskSuggestions([]);
     try {
-      const result = await suggestSubtasksAction({ taskDescription: task.description });
-      setAiSubtaskSuggestions(result.subtaskSuggestions.map((s,i) => ({ id: `sugg-${i}`, text:s })));
-      toast({ title: "Subtasks Suggested", description: "AI has suggested subtasks." });
+      const result = await suggestSubtasksAction({ taskDescription: task.title + (task.description ? `\n${task.description}` : '') });
+      if (result.subtaskSuggestions.length > 0 && result.subtaskSuggestions[0].startsWith('Error:')) {
+         toast({ title: "Subtask Suggestion Failed", description: result.subtaskSuggestions[0], variant: "destructive" });
+         setAiSubtaskSuggestions([]);
+      } else {
+        setAiSubtaskSuggestions(result.subtaskSuggestions.map((s,i) => ({ id: `sugg-${i}`, text:s })));
+        toast({ title: "Subtasks Suggested", description: "AI has suggested subtasks." });
+      }
     } catch (error) {
       toast({ title: "Subtask Suggestion Failed", description: (error as Error).message, variant: "destructive" });
+      setAiSubtaskSuggestions([]);
     }
     setIsSuggestingSubtasks(false);
   };
@@ -170,32 +182,36 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
             <div className="space-y-4 p-4 border rounded-lg bg-secondary/30">
               <h3 className="text-sm font-semibold flex items-center text-primary"><Brain className="mr-2 h-5 w-5" /> AI Assistant</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button onClick={handleGenerateSummary} disabled={isSummarizing || !task.description} variant="outline">
+                <Button onClick={handleGenerateSummary} disabled={isSummarizing || (!task.description && !task.title)} variant="outline">
                   <Sparkles className="mr-2 h-4 w-4" /> {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
                 </Button>
-                <Button onClick={handleSuggestSubtasks} disabled={isSuggestingSubtasks || !task.description} variant="outline">
+                <Button onClick={handleSuggestSubtasks} disabled={isSuggestingSubtasks || (!task.description && !task.title)} variant="outline">
                   <ListChecks className="mr-2 h-4 w-4" /> {isSuggestingSubtasks ? 'Suggesting...' : 'Suggest Subtasks'}
                 </Button>
               </div>
               {aiSummary && (
                 <div className="mt-2 p-3 border rounded-md bg-background">
                   <p className="text-sm font-medium text-primary">AI Summary:</p>
-                  <p className="text-sm text-muted-foreground">{aiSummary.summary}</p>
+                  <ScrollArea className="h-24"> {/* Added ScrollArea */}
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{aiSummary.summary}</p>
+                  </ScrollArea>
                 </div>
               )}
               {aiSubtaskSuggestions.length > 0 && (
                 <div className="mt-2 p-3 border rounded-md bg-background">
                   <p className="text-sm font-medium text-primary">AI Subtask Suggestions:</p>
-                  <ul className="list-disc list-inside space-y-1 mt-1">
-                    {aiSubtaskSuggestions.map((suggestion) => (
-                      <li key={suggestion.id} className="text-sm text-muted-foreground flex justify-between items-center">
-                        <span>{suggestion.text}</span>
-                        <Button size="sm" variant="ghost" onClick={() => handleAddSubtask(suggestion.text, true)} title="Add this subtask">
-                          <PlusCircle className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
+                  <ScrollArea className="h-32"> {/* Added ScrollArea */}
+                    <ul className="list-disc list-inside space-y-1 mt-1">
+                      {aiSubtaskSuggestions.map((suggestion) => (
+                        <li key={suggestion.id} className="text-sm text-muted-foreground flex justify-between items-center">
+                          <span>{suggestion.text}</span>
+                          <Button size="sm" variant="ghost" onClick={() => handleAddSubtask(suggestion.text, true)} title="Add this subtask">
+                            <PlusCircle className="h-4 w-4" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollArea>
                 </div>
               )}
             </div>
@@ -337,3 +353,5 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
     </Dialog>
   );
 }
+
+    
