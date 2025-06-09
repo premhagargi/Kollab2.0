@@ -9,5 +9,8 @@ export const useAuth = () => {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+  // The login function is now loginWithGoogle
+  // To maintain compatibility with AppHeader's existing login() call, 
+  // we can rename it here or update AppHeader. Let's provide both for clarity.
+  return { ...context, login: context.loginWithGoogle }; 
 };

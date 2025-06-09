@@ -2,7 +2,7 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { Menu, UserCircle, LogIn, LogOut, Settings, Users } from 'lucide-react';
+import { Menu, UserCircle, LogIn, LogOut, Settings, Users, LogInIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ import { InviteTeamMemberModal } from '@/components/modals/InviteTeamMemberModal
 
 export function AppHeader() {
   const { toggleSidebar } = useSidebar();
-  const { user, login, logout, loading } = useAuth();
+  const { user, login, logout, loading } = useAuth(); // login is now loginWithGoogle via useAuth hook
   const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
 
   return (
@@ -48,7 +48,7 @@ export function AppHeader() {
         <div className="flex flex-1 items-center justify-end space-x-4">
           <nav className="flex items-center space-x-1">
             {loading ? (
-              <div className="h-8 w-20 animate-pulse rounded-md bg-muted"></div>
+              <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
             ) : user ? (
               <>
               <Button variant="ghost" onClick={() => setIsInviteModalOpen(true)}>
@@ -86,9 +86,9 @@ export function AppHeader() {
               </DropdownMenu>
               </>
             ) : (
-              <Button onClick={login}>
-                <LogIn className="mr-2 h-4 w-4" />
-                Login
+              <Button onClick={login}> {/* This will call loginWithGoogle */}
+                <LogInIcon className="mr-2 h-4 w-4" /> {/* Changed to LogInIcon for better visual */}
+                Login with Google
               </Button>
             )}
           </nav>
