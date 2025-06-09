@@ -19,7 +19,7 @@ const TaskSummarizationInputSchema = z.object({
 export type TaskSummarizationInput = z.infer<typeof TaskSummarizationInputSchema>;
 
 const TaskSummarizationOutputSchema = z.object({
-  summary: z.string().describe('A 50-word summary of the task.'),
+  summary: z.string().describe('A concise summary of the task, ideally around 50 words. If no summary can be made, this will indicate so.'),
 });
 export type TaskSummarizationOutput = z.infer<typeof TaskSummarizationOutputSchema>;
 
@@ -31,7 +31,19 @@ const taskSummarizationPrompt = ai.definePrompt({
   name: 'taskSummarizationPrompt',
   input: {schema: TaskSummarizationInputSchema},
   output: {schema: TaskSummarizationOutputSchema},
-  prompt: `Summarize the following task in 50 words or less:\n\n{{taskText}}`,
+  prompt: `You are an AI assistant. Your task is to summarize the given task text in 50 words or less.
+You MUST respond in JSON format. The JSON object must have a single key "summary", and its value should be the summary string.
+
+Example of a valid response:
+{"summary": "This is an example summary of the task."}
+
+If the task text is too short, unclear, or insufficient to create a meaningful summary, provide a JSON response like this:
+{"summary": "No summary available due to insufficient content."}
+
+Task text to summarize:
+{{taskText}}
+
+Remember to always provide your response in the specified JSON format.`,
 });
 
 const summarizeTaskFlow = ai.defineFlow(
@@ -41,7 +53,20 @@ const summarizeTaskFlow = ai.defineFlow(
     outputSchema: TaskSummarizationOutputSchema,
   },
   async input => {
-    const {output} = await taskSummarizationPrompt(input);
-    return output!;
+    // Add a bit more context if the input is very short, to help the model.
+    let processedTaskText = input.taskText;
+    if (input.taskText.length < 20) {
+      processedTaskText = `The task is: "${input.taskText}". Please summarize this brief task. If it's too brief, indicate that.`;
+    }
+
+    const response = await taskSummarizationPrompt({ taskText: processedTaskText });
+    
+    if (!response.output) {
+      // This case should ideally be handled by the prompt guiding the LLM to return a specific string for unsummarizable content.
+      // However, if the output structure is missing entirely, we provide a default error.
+      return { summary: "Error: AI did not return a valid summary structure." };
+    }
+    return response.output;
   }
 );
+
