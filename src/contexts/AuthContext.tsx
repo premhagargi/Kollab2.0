@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const initialAuthCheckDone = useRef(false);
+  const activeUserUID = useRef<string | null>(null); // To help manage toast for login
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
@@ -48,9 +49,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
              toast({ title: "Profile Created", description: "Your user profile has been set up." });
           } else {
-            // If profile exists, potentially update it with latest from Auth provider (e.g., new photoURL)
-            // This is a simple update, more sophisticated merging might be needed in complex scenarios.
-             userProfile = await createUserProfile({ // Re-call to ensure latest info is synced & updatedAt is touched
+            // If profile exists, sync with latest from Auth provider & update timestamp
+             userProfile = await createUserProfile({ 
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
@@ -59,18 +59,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
 
           // console.log("User profile from Firestore:", userProfile);
-
-          if (initialAuthCheckDone.current && !user && userProfile) {
-            toast({ title: "Login Successful", description: "Welcome back!" });
+          
+          // Show "Login Successful" only if this is a new login session for this user
+          if (initialAuthCheckDone.current && activeUserUID.current !== firebaseUser.uid) {
+             if (userProfile) { // ensure profile is available before toasting
+                toast({ title: "Login Successful", description: "Welcome back!" });
+             }
           }
+          activeUserUID.current = firebaseUser.uid;
           setUser(userProfile);
 
         } catch (error) {
           console.error("Error fetching/creating user profile:", error);
           toast({ title: "Profile Error", description: "Could not load your user profile.", variant: "destructive"});
-          setUser(null); // Fallback: user is authenticated but profile ops failed.
+          setUser(null); 
         }
       } else {
+        activeUserUID.current = null; // Clear active user on logout
         setUser(null);
       }
       setLoading(false);
@@ -80,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [toast, user]); // Added user to dependency array
+  }, [toast]); // Removed 'user' from dependency array
 
   const loginWithGoogle = async () => {
     setLoading(true);
@@ -134,7 +139,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: firebaseError.message || "An unknown error occurred.",
         variant: "destructive"
       });
-      setLoading(false);
+    } finally {
+        setLoading(false); // Ensure loading is set to false even if logout fails
     }
   };
 
