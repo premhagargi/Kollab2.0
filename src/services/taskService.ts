@@ -13,7 +13,8 @@ import {
   query,
   where,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  deleteField
 } from 'firebase/firestore';
 
 const TASKS_COLLECTION = 'tasks';
@@ -36,18 +37,19 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
   try {
     const newTaskData = {
       ...taskData,
+      isArchived: false, // Initialize isArchived
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
     const docRef = await addDoc(collection(db, TASKS_COLLECTION), newTaskData);
     
-    // For optimistic updates, we create an approximate Task object for immediate UI feedback
     const now = new Date().toISOString();
     return {
       id: docRef.id,
       ...taskData,
-      createdAt: now, // Use client-side timestamp for immediate UI update
-      updatedAt: now, // Use client-side timestamp for immediate UI update
+      isArchived: false,
+      createdAt: now, 
+      updatedAt: now, 
     };
   } catch (error) {
     console.error("Error creating task:", error);
@@ -114,8 +116,45 @@ export const updateTask = async (taskId: string, updates: Partial<Omit<Task, 'id
       ...updates,
       updatedAt: serverTimestamp(),
     });
-  } catch (error) {
+  } catch (error)
+{
     console.error("Error updating task:", error);
+    throw error;
+  }
+};
+
+/**
+ * Archives a task by setting its isArchived flag to true and adding an archivedAt timestamp.
+ * @param taskId The ID of the task to archive.
+ */
+export const archiveTask = async (taskId: string): Promise<void> => {
+  try {
+    const taskDocRef = doc(db, TASKS_COLLECTION, taskId);
+    await updateDoc(taskDocRef, {
+      isArchived: true,
+      archivedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error archiving task:", error);
+    throw error;
+  }
+};
+
+/**
+ * Unarchives a task by setting its isArchived flag to false and removing the archivedAt timestamp.
+ * @param taskId The ID of the task to unarchive.
+ */
+export const unarchiveTask = async (taskId: string): Promise<void> => {
+  try {
+    const taskDocRef = doc(db, TASKS_COLLECTION, taskId);
+    await updateDoc(taskDocRef, {
+      isArchived: false,
+      archivedAt: deleteField(), // Or set to null if you prefer
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error unarchiving task:", error);
     throw error;
   }
 };

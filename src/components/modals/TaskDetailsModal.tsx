@@ -108,8 +108,8 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
   const handleSaveChanges = async () => {
     if (task) {
       await onUpdateTask(task); 
+      onClose(); // Close modal after saving
     }
-    onClose();
   };
 
   const handleGenerateSummary = async () => {
@@ -404,10 +404,10 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
           variant="outline"
           onClick={() => {
             if (task) {
-              onArchiveTask(task);
+              onArchiveTask(task); // Call the prop here
             }
           }}
-          className="mr-auto" // Pushes this button to the left
+          className="mr-auto" 
         >
           <Archive className="mr-2 h-4 w-4" /> Archive Task
         </Button>
@@ -422,5 +422,3 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
   </Dialog>
   );
 }
-
-    

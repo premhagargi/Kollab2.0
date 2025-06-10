@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Loader2 } from 'lucide-react';
 import { getBoardById, updateBoard } from '@/services/boardService';
-import { getTasksByBoard, createTask, updateTask as updateTaskService } from '@/services/taskService';
+import { getTasksByBoard, createTask, updateTask as updateTaskService, archiveTask as archiveTaskService } from '@/services/taskService';
 import { getUsersByIds } from '@/services/userService';
 
 export function KanbanBoardView({ boardId }: { boardId: string | null }) {
@@ -20,13 +20,13 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const [currentBoard, setCurrentBoard] = useState<Board | null>(null);
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
   const [isLoadingBoard, setIsLoadingBoard] = useState(false);
-  const [creatorProfiles, setCreatorProfiles] = useState<Record<string, UserProfile | null>>({});
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile | null>>({});
   const { toast } = useToast();
 
   const fetchBoardData = useCallback(async (id: string) => {
     if (!user) return;
     setIsLoadingBoard(true);
-    setCreatorProfiles({}); // Reset profiles on board change
+    setUserProfiles({}); 
     try {
       const boardData = await getBoardById(id);
       if (boardData && boardData.ownerId === user.id) {
@@ -34,15 +34,16 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         const tasksData = await getTasksByBoard(id);
         setBoardTasks(tasksData);
 
-        // Fetch creator profiles for tasks
-        if (tasksData.length > 0) {
-          const creatorIds = [...new Set(tasksData.map(task => task.creatorId).filter(Boolean))];
-          if (creatorIds.length > 0) {
-            const profiles = await getUsersByIds(creatorIds as string[]);
+        const allUserIds = new Set<string>();
+        tasksData.forEach(task => {
+          if (task.creatorId) allUserIds.add(task.creatorId);
+          // Later, add task.assigneeIds?.forEach(id => allUserIds.add(id));
+        });
+        if (allUserIds.size > 0) {
+            const profiles = await getUsersByIds(Array.from(allUserIds));
             const profilesMap: Record<string, UserProfile | null> = {};
             profiles.forEach(p => profilesMap[p.id] = p);
-            setCreatorProfiles(profilesMap);
-          }
+            setUserProfiles(profilesMap);
         }
 
       } else if (boardData) {
@@ -66,7 +67,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     } else {
       setCurrentBoard(null);
       setBoardTasks([]);
-      setCreatorProfiles({});
+      setUserProfiles({});
     }
   }, [boardId, fetchBoardData]);
 
@@ -85,11 +86,10 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     try {
       await updateTaskService(updatedTask.id, updatedTask);
       setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-      // If creator changed or task added, refetch profiles if needed
-      if (updatedTask.creatorId && !creatorProfiles[updatedTask.creatorId]) {
+      if (updatedTask.creatorId && !userProfiles[updatedTask.creatorId]) {
           const profile = await getUsersByIds([updatedTask.creatorId]);
           if (profile.length > 0) {
-            setCreatorProfiles(prev => ({...prev, [updatedTask.creatorId]: profile[0]}));
+            setUserProfiles(prev => ({...prev, [updatedTask.creatorId]: profile[0]}));
           }
       }
       toast({ title: "Task Updated", description: `"${updatedTask.title}" has been saved.` });
@@ -104,6 +104,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       toast({ title: "Error", description: "Cannot add task without a selected board or user.", variant: "destructive" });
       return;
     }
+    const firstColumnId = currentBoard.columns[0]?.id;
     
     const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
       title: 'New Task',
@@ -112,8 +113,9 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       subtasks: [],
       comments: [],
       boardId: currentBoard.id,
-      columnId: columnId,
+      columnId: columnId || firstColumnId || '',
       creatorId: user.id,
+      isArchived: false,
     };
 
     try {
@@ -121,7 +123,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       setBoardTasks(prevTasks => [...prevTasks, createdTask]);
       
       const updatedColumns = currentBoard.columns.map(col => {
-        if (col.id === columnId) {
+        if (col.id === (columnId || firstColumnId)) {
           return { ...col, taskIds: [...col.taskIds, createdTask.id] };
         }
         return col;
@@ -130,10 +132,10 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       await updateBoard(currentBoard.id, { columns: updatedColumns });
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
       
-      if (createdTask.creatorId && !creatorProfiles[createdTask.creatorId]) {
+      if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
           const profile = await getUsersByIds([createdTask.creatorId]);
           if (profile.length > 0) {
-            setCreatorProfiles(prev => ({...prev, [createdTask.creatorId]: profile[0]}));
+            setUserProfiles(prev => ({...prev, [createdTask.creatorId]: profile[0]}));
           }
       }
 
@@ -176,24 +178,20 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
 
   const handleTaskDrop = async (taskId: string, sourceColumnId: string, destinationColumnId: string) => {
     if (!currentBoard || !user) return;
-    if (sourceColumnId === destinationColumnId) return; // No change
+    if (sourceColumnId === destinationColumnId) return; 
 
-    // Optimistic UI Update
     const taskToMove = boardTasks.find(t => t.id === taskId);
     if (!taskToMove) return;
 
-    // Update local tasks
     setBoardTasks(prevTasks => 
       prevTasks.map(t => t.id === taskId ? { ...t, columnId: destinationColumnId } : t)
     );
 
-    // Update local board columns
     const newBoardColumns = currentBoard.columns.map(col => {
       if (col.id === sourceColumnId) {
         return { ...col, taskIds: col.taskIds.filter(id => id !== taskId) };
       }
       if (col.id === destinationColumnId) {
-        // For now, add to the end. More complex logic needed for specific positioning.
         return { ...col, taskIds: [...col.taskIds, taskId] };
       }
       return col;
@@ -201,19 +199,43 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: newBoardColumns } : null);
     
     try {
-      // Update task in Firestore
       await updateTaskService(taskId, { columnId: destinationColumnId });
-      // Update board columns in Firestore
       await updateBoard(currentBoard.id, { columns: newBoardColumns });
       toast({ title: "Task Moved", description: `Task "${taskToMove.title}" moved to new column.` });
     } catch (error) {
       console.error("Error moving task:", error);
       toast({ title: "Error Moving Task", description: "Could not update task position.", variant: "destructive" });
-      // Revert optimistic updates if Firestore update fails
-      fetchBoardData(currentBoard.id); // Or a more granular revert
+      if (currentBoard) fetchBoardData(currentBoard.id);
     }
   };
 
+  const handleArchiveTask = async (taskToArchive: Task) => {
+    if (!user || !currentBoard) return;
+
+    setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
+    const updatedColumns = currentBoard.columns.map(col => {
+      if (col.taskIds.includes(taskToArchive.id)) {
+        return { ...col, taskIds: col.taskIds.filter(tid => tid !== taskToArchive.id) };
+      }
+      return col;
+    });
+    setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
+    handleCloseModal(); 
+
+    try {
+      await archiveTaskService(taskToArchive.id);
+      await updateBoard(currentBoard.id, { columns: updatedColumns });
+      toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
+    } catch (error) {
+      console.error("Error archiving task:", error);
+      toast({ title: "Error Archiving Task", description: "Could not archive task.", variant: "destructive" });
+      if (currentBoard) {
+        fetchBoardData(currentBoard.id);
+      }
+    }
+  };
+
+  const activeTasks = boardTasks.filter(task => !task.isArchived);
 
   if (isLoadingBoard) {
     return (
@@ -242,30 +264,29 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       <div className="flex items-center justify-between p-4 border-b bg-background">
         <h1 className="text-2xl font-semibold font-headline">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2">
-          <Button size="sm" onClick={() => handleAddTask(currentBoard.columns[0]?.id || '')} disabled={currentBoard.columns.length === 0}>
+          <Button size="sm" onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')} disabled={currentBoard.columns.length === 0}>
             <Plus className="mr-2 h-4 w-4" /> New Task
           </Button>
         </div>
       </div>
       <KanbanBoard 
         boardColumns={currentBoard.columns}
-        allTasksForBoard={boardTasks} 
-        creatorProfiles={creatorProfiles}
+        allTasksForBoard={activeTasks} 
+        creatorProfiles={userProfiles}
         onTaskClick={handleTaskClick} 
         onAddTask={handleAddTask}
         onAddColumn={handleAddColumn}
         onTaskDrop={handleTaskDrop}
       />
-      {selectedTask && (
+      {selectedTask && !selectedTask.isArchived && (
         <TaskDetailsModal
           task={selectedTask}
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onUpdateTask={handleUpdateTask}
+          onArchiveTask={handleArchiveTask}
         />
       )}
     </div>
   );
 }
-
-    
