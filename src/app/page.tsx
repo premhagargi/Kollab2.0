@@ -6,7 +6,8 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { KanbanBoardView } from '@/components/kanban/KanbanBoardView';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'; // useAuth for checking user
+import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth'; // Corrected import path for useAuth
 import { getBoardsByOwner } from '@/services/boardService';
 import type { Board } from '@/types';
 import { Loader2 } from 'lucide-react';
@@ -99,3 +100,4 @@ export default function DashboardPage() {
     </AuthProvider>
   );
 }
+
