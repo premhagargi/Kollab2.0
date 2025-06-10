@@ -6,37 +6,35 @@ export interface UserProfile {
   avatarUrl?: string | null;
   createdAt?: string; // ISO string, from Firestore serverTimestamp
   updatedAt?: string; // ISO string, from Firestore serverTimestamp
-  // Add any other custom fields you want to store for a user
-  // e.g., bio?: string; preferences?: Record<string, any>;
 }
 
 export interface Workspace {
   id: string;
   name: string;
   ownerId: string; // UserProfile.id
-  // teamMemberIds: string[]; // Array of UserProfile.id
 }
 
 export interface Board {
-  id: string;
-  workspaceId: string; // Workspace.id
+  id: string; // Document ID from Firestore
+  workspaceId?: string; // Optional for now
   name: string;
-  columns: Column[];
-  tasks: Task[]; // Tasks are stored within the board object for simplicity in mock data for now
-                // In a real Firestore setup, tasks might be a subcollection or a separate top-level collection.
-  ownerId?: string; // UserProfile.id - who created the board
+  ownerId: string; // UserProfile.id - who created/owns the board
+  columns: Column[]; // Stored directly in the board document
+  createdAt?: string; // ISO string
+  updatedAt?: string; // ISO string
+  // tasks: Task[]; // Tasks will be fetched from a separate collection
 }
 
 export interface Column {
-  id: string;
+  id: string; // e.g., 'col-todo', 'col-progress', 'col-done' - can be generated
   name: string;
-  taskIds: string[]; // Ordered list of task IDs in this column
+  taskIds: string[]; // Ordered list of Task.id in this column
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Task {
-  id:string;
+  id: string; // Document ID from Firestore
   title: string;
   description?: string;
   priority: TaskPriority;
@@ -44,12 +42,12 @@ export interface Task {
   assigneeIds?: string[]; // Array of UserProfile.id
   subtasks: Subtask[];
   comments: Comment[];
-  // attachments: Attachment[]; // Future feature
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
-  boardId?: string; // Board.id - which board this task belongs to
-  columnId?: string; // Column.id - which column this task is in
-  creatorId?: string; // UserProfile.id - who created the task
+  boardId: string; // Board.id - which board this task belongs to
+  columnId: string; // Column.id - which column this task is in
+  creatorId: string; // UserProfile.id - who created the task
+  order?: number; // Optional: for ordering within a column if not relying on taskIds array order
 }
 
 export interface Subtask {

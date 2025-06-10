@@ -1,3 +1,4 @@
+
 // src/components/modals/TaskDetailsModal.tsx
 "use client";
 import React, { useState, useEffect } from 'react';
@@ -22,8 +23,9 @@ import { CalendarIcon, User, MessageSquare, Paperclip, Brain, ListChecks, Sparkl
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
-import type { Task, Subtask, Comment, TaskPriority, AISummary, AISubtaskSuggestion } from '@/types';
-import { mockUser } from '@/lib/mock-data';
+import type { Task, Subtask, Comment, TaskPriority, AISummary, AISubtaskSuggestion, UserProfile } from '@/types';
+// import { mockUser } from '@/lib/mock-data'; // Replaced with auth user
+import { useAuth } from '@/hooks/useAuth';
 import { summarizeTaskAction, suggestSubtasksAction } from '@/actions/ai';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,12 +33,13 @@ interface TaskDetailsModalProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdateTask: (updatedTask: Task) => void; // Placeholder for actual update
+  onUpdateTask: (updatedTask: Task) => Promise<void>; // Now async for service calls
 }
 
 const priorityOptions: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
 export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateTask }: TaskDetailsModalProps) {
+  const { user } = useAuth(); // Get authenticated user
   const [task, setTask] = useState<Task | null>(initialTask);
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
@@ -49,7 +52,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
 
   useEffect(() => {
     setTask(initialTask);
-    setAiSummary(null); // Reset AI states when task changes
+    setAiSummary(null); 
     setAiSubtaskSuggestions([]);
   }, [initialTask]);
 
@@ -86,12 +89,15 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
   };
 
   const handleAddComment = () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !user) {
+      toast({title: "Cannot Add Comment", description: "Comment text is empty or you are not logged in.", variant:"destructive"})
+      return;
+    }
     const comment: Comment = {
       id: `comment-${Date.now()}`,
-      userId: mockUser.id,
-      userName: mockUser.name || 'User',
-      userAvatarUrl: mockUser.avatarUrl,
+      userId: user.id,
+      userName: user.name || 'User',
+      userAvatarUrl: user.avatarUrl,
       text: newComment.trim(),
       createdAt: new Date().toISOString(),
     };
@@ -99,10 +105,10 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
     setNewComment('');
   };
   
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (task) {
-      onUpdateTask(task); // In a real app, this would call an API
-      toast({ title: "Task Updated", description: `"${task.title}" has been saved.` });
+      await onUpdateTask(task); 
+      // Toast is handled by KanbanBoardView after successful service call
     }
     onClose();
   };
@@ -153,12 +159,21 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
     setIsSuggestingSubtasks(false);
   };
 
+  const assignee = user; // Assuming current user is the assignee for now if one exists.
+                        // In a real app, task.assigneeIds would be used to fetch actual assignee profiles.
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
     <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden overflow-x-hidden">
       <DialogHeader>
-        <DialogTitle className="text-2xl font-headline">{task.title}</DialogTitle>
+        <DialogTitle className="text-2xl font-headline">
+           <Input
+            id="title"
+            value={task.title}
+            onChange={(e) => handleInputChange('title', e.target.value)}
+            className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto"
+          />
+        </DialogTitle>
         <DialogDescription>
           Last updated: {format(parseISO(task.updatedAt), 'MMM d, yyyy p')}
         </DialogDescription>
@@ -181,7 +196,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
           </div>
   
           {/* AI Features Section */}
-          <div className="space-y-4 p-4 border rounded-lg bg-secondary/30">
+           <div className="space-y-4 p-4 border rounded-lg bg-secondary/30">
             <h3 className="text-sm font-semibold flex items-center text-primary">
               <Brain className="mr-2 h-5 w-5" /> AI Assistant
             </h3>
@@ -202,13 +217,13 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
               </Button>
             </div>
             {aiSummary && (
-              <div className="mt-2 p-3 border rounded-md bg-background">
+              <ScrollArea className="mt-2 p-3 border rounded-md bg-background max-h-24">
                 <p className="text-sm font-medium text-primary">AI Summary:</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{aiSummary.summary}</p>
-              </div>
+              </ScrollArea>
             )}
             {aiSubtaskSuggestions.length > 0 && (
-              <div className="mt-2 p-3 border rounded-md bg-background">
+             <ScrollArea className="mt-2 p-3 border rounded-md bg-background max-h-32">
                 <p className="text-sm font-medium text-primary">AI Subtask Suggestions:</p>
                 <ul className="list-disc list-inside space-y-1 mt-1">
                   {aiSubtaskSuggestions.map((suggestion) => (
@@ -225,7 +240,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
                     </li>
                   ))}
                 </ul>
-              </div>
+              </ScrollArea>
             )}
           </div>
   
@@ -273,15 +288,16 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
                 <User className="mr-2 h-4 w-4 text-primary" /> Assignees
               </Label>
               <div className="flex items-center space-x-2 p-2 border rounded-md min-h-[40px]">
-                {task.assigneeIds && task.assigneeIds.includes(mockUser.id) ? (
-                  <Avatar className="h-7 w-7" title={mockUser.name || undefined}>
-                    <AvatarImage src={mockUser.avatarUrl || undefined} alt={mockUser.name || 'User'} data-ai-hint="user avatar small" />
-                    <AvatarFallback>{mockUser.name ? mockUser.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                 {/* Placeholder for assignee display and selection */}
+                {assignee && task.assigneeIds?.includes(assignee.id) ? (
+                  <Avatar className="h-7 w-7" title={assignee.name || undefined}>
+                    <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} data-ai-hint="user avatar small" />
+                    <AvatarFallback>{assignee.name ? assignee.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                   </Avatar>
                 ) : (
                   <span className="text-sm text-muted-foreground">No assignees</span>
                 )}
-                <Button variant="outline" size="icon" className="h-7 w-7 ml-auto">
+                <Button variant="outline" size="icon" className="h-7 w-7 ml-auto" onClick={() => toast({title: "Feature Coming Soon", description: "Assignee selection will be implemented."})}>
                   <PlusCircle className="h-4 w-4" />
                 </Button>
               </div>
@@ -306,7 +322,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
                 >
                   {subtask.text}
                 </Label>
-                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100">
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100" onClick={() => toast({title:"Subtask Deletion", description:"To be implemented"})}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -329,7 +345,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
             <Label className="text-base font-medium flex items-center">
               <Paperclip className="mr-2 h-5 w-5 text-primary" /> Attachments
             </Label>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={() => toast({title: "Feature Coming Soon", description: "File attachments will be implemented."})}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Attachment
             </Button>
           </div>
@@ -343,7 +359,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
             </Label>
             <ScrollArea className="max-h-48">
               {task.comments.map((comment) => (
-                <div key={comment.id} className="flex items-start space-x-3 p-3 border rounded-md">
+                <div key={comment.id} className="flex items-start space-x-3 p-3 border rounded-md mb-2">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={comment.userAvatarUrl || undefined} alt={comment.userName} data-ai-hint="user avatar small" />
                     <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
@@ -357,24 +373,29 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
                   </div>
                 </div>
               ))}
+               {task.comments.length === 0 && <p className="text-sm text-muted-foreground p-2">No comments yet.</p>}
             </ScrollArea>
-            <div className="flex items-start space-x-3 pt-2">
-              <Avatar className="h-8 w-8 mt-1">
-                <AvatarImage src={mockUser.avatarUrl || undefined} alt={mockUser.name || 'User'} data-ai-hint="user avatar small" />
-                <AvatarFallback>{mockUser.name ? mockUser.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
-              </Avatar>
-              <Textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Write a comment..."
-                className="flex-grow"
-              />
-            </div>
-            <div className="text-right mt-2">
-              <Button onClick={handleAddComment} size="sm" disabled={!newComment.trim()}>
-                Post Comment
-              </Button>
-            </div>
+            {user && (
+              <>
+              <div className="flex items-start space-x-3 pt-2">
+                <Avatar className="h-8 w-8 mt-1">
+                  <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar small" />
+                  <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                </Avatar>
+                <Textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Write a comment..."
+                  className="flex-grow"
+                />
+              </div>
+              <div className="text-right mt-2">
+                <Button onClick={handleAddComment} size="sm" disabled={!newComment.trim()}>
+                  Post Comment
+                </Button>
+              </div>
+              </>
+            )}
           </div>
         </div>
       </ScrollArea>
@@ -391,5 +412,3 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
   </Dialog>
   );
 }
-
-    

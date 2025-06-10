@@ -1,11 +1,19 @@
+
 import type { UserProfile, Workspace, Board, Column, Task, TaskPriority } from '@/types';
 
+// This mockUser is mainly for fallback or testing when auth is not fully integrated.
+// Actual user data will come from Firebase Auth and Firestore.
 export const mockUser: UserProfile = {
-  id: 'user-1',
-  name: 'Alex Johnson',
-  email: 'alex.johnson@example.com',
+  id: 'user-mock-1',
+  name: 'Mock User',
+  email: 'mock.user@example.com',
   avatarUrl: 'https://placehold.co/100x100.png',
 };
+
+
+// The following mock data (tasks, columns, board) should ideally no longer be directly used
+// by the main application flow once Firestore integration is complete.
+// They can be kept for reference, testing, or as a fallback if needed.
 
 const createTasks = (boardId: string, columnId: string, count: number, prefix: string): Task[] => {
   return Array.from({ length: count }, (_, i) => {
@@ -35,36 +43,42 @@ const createTasks = (boardId: string, columnId: string, count: number, prefix: s
       ] : [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      boardId: boardId, // Added boardId
+      columnId: columnId, // Added columnId
+      creatorId: mockUser.id, // Added creatorId
     };
   });
 };
 
-const todoTasks = createTasks('board-1', 'col-1', 3, 'Todo');
-const inProgressTasks = createTasks('board-1', 'col-2', 2, 'In Progress');
-const doneTasks = createTasks('board-1', 'col-3', 1, 'Done');
+const todoTasks = createTasks('board-mock-1', 'col-mock-1', 3, 'Todo');
+const inProgressTasks = createTasks('board-mock-1', 'col-mock-2', 2, 'In Progress');
+const doneTasks = createTasks('board-mock-1', 'col-mock-3', 1, 'Done');
 
 export const mockTasks: Task[] = [...todoTasks, ...inProgressTasks, ...doneTasks];
 
 export const mockColumns: Column[] = [
-  { id: 'col-1', name: 'To Do', taskIds: todoTasks.map(t => t.id) },
-  { id: 'col-2', name: 'In Progress', taskIds: inProgressTasks.map(t => t.id) },
-  { id: 'col-3', name: 'Done', taskIds: doneTasks.map(t => t.id) },
+  { id: 'col-mock-1', name: 'To Do', taskIds: todoTasks.map(t => t.id) },
+  { id: 'col-mock-2', name: 'In Progress', taskIds: inProgressTasks.map(t => t.id) },
+  { id: 'col-mock-3', name: 'Done', taskIds: doneTasks.map(t => t.id) },
 ];
 
 export const mockBoard: Board = {
-  id: 'board-1',
-  workspaceId: 'ws-1',
-  name: 'Q3 Project Alpha',
+  id: 'board-mock-1',
+  workspaceId: 'ws-mock-1',
+  name: 'Mock Project Alpha',
+  ownerId: mockUser.id,
   columns: mockColumns,
-  tasks: mockTasks,
+  // tasks: mockTasks, // Tasks are no longer part of the board document directly
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
-export const mockBoards: Board[] = [mockBoard];
+export const mockBoards: Board[] = [mockBoard]; // This should not be used for fetching user boards anymore
 
 export const mockWorkspace: Workspace = {
-  id: 'ws-1',
-  name: 'Engineering Team',
+  id: 'ws-mock-1',
+  name: 'Mock Engineering Team',
   ownerId: mockUser.id,
 };
 
-export const mockWorkspaces: Workspace[] = [mockWorkspace];
+export const mockWorkspaces: Workspace[] = [mockWorkspace]; // This should not be used anymore

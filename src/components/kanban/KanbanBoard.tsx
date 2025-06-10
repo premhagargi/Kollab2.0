@@ -1,3 +1,4 @@
+
 // src/components/kanban/KanbanBoard.tsx
 "use client";
 import React from 'react';
@@ -5,30 +6,33 @@ import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { KanbanColumn } from './KanbanColumn';
-import type { Board, Column, Task } from '@/types';
+import type { Column, Task } from '@/types';
 
 interface KanbanBoardProps {
-  board: Board;
+  boardColumns: Column[];
+  allTasksForBoard: Task[];
   onTaskClick: (task: Task) => void;
-  onAddTask: (columnId: string) => void; // Placeholder
-  onAddColumn: () => void; // Placeholder
+  onAddTask: (columnId: string) => void;
+  onAddColumn: () => void;
 }
 
-export function KanbanBoard({ board, onTaskClick, onAddTask, onAddColumn }: KanbanBoardProps) {
-  const getTasksForColumn = (columnId: string): Task[] => {
-    const column = board.columns.find(c => c.id === columnId);
-    if (!column) return [];
-    return column.taskIds.map(taskId => board.tasks.find(t => t.id === taskId)).filter(Boolean) as Task[];
+export function KanbanBoard({ boardColumns, allTasksForBoard, onTaskClick, onAddTask, onAddColumn }: KanbanBoardProps) {
+  
+  const getTasksForColumn = (column: Column): Task[] => {
+    return column.taskIds
+      .map(taskId => allTasksForBoard.find(t => t.id === taskId))
+      .filter(Boolean) as Task[];
+    // Add sorting here if tasks have an 'order' property
   };
   
   return (
     <ScrollArea className="w-full h-full">
-      <div className="flex gap-4 p-4 h-[calc(100vh-var(--header-height)-var(--board-header-height)-2rem)]"> {/* Adjust height based on surrounding elements */}
-        {board.columns.map((column: Column) => (
+      <div className="flex gap-4 p-4 h-[calc(100vh-var(--header-height)-var(--board-header-height)-2rem)]">
+        {boardColumns.map((column: Column) => (
           <KanbanColumn
             key={column.id}
             column={column}
-            tasks={getTasksForColumn(column.id)}
+            tasks={getTasksForColumn(column)}
             onTaskClick={onTaskClick}
             onAddTask={onAddTask}
           />

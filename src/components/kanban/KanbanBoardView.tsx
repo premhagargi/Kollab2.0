@@ -1,39 +1,60 @@
+
 // src/components/kanban/KanbanBoardView.tsx
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { KanbanBoard } from './KanbanBoard';
 import { TaskDetailsModal } from '../modals/TaskDetailsModal';
 import { Button } from '@/components/ui/button';
-import { mockBoard as initialMockBoard, mockTasks as initialMockTasks } from '@/lib/mock-data';
-import type { Board, Task } from '@/types';
+import type { Board, Task, Column as ColumnType } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { Filter, Plus, RefreshCw, Download } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Filter, Plus, RefreshCw, Download, Loader2 } from 'lucide-react';
+import { getBoardById, updateBoard } from '@/services/boardService';
+import { getTasksByBoard, createTask, updateTask as updateTaskService, deleteTask as deleteTaskService } from '@/services/taskService'; // Aliased updateTask to avoid name clash
 
 export function KanbanBoardView({ boardId }: { boardId: string | null }) {
+  const { user } = useAuth();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentBoard, setCurrentBoard] = useState<Board | null>(null);
+  const [boardTasks, setBoardTasks] = useState<Task[]>([]);
+  const [isLoadingBoard, setIsLoadingBoard] = useState(false);
   const { toast } = useToast();
 
-  // Simulate fetching board data
+  const fetchBoardData = useCallback(async (id: string) => {
+    if (!user) return;
+    setIsLoadingBoard(true);
+    try {
+      const boardData = await getBoardById(id);
+      if (boardData && boardData.ownerId === user.id) { // Ensure user owns the board
+        setCurrentBoard(boardData);
+        const tasksData = await getTasksByBoard(id);
+        setBoardTasks(tasksData);
+      } else if (boardData) {
+        toast({ title: "Access Denied", description: "You do not have permission to view this board.", variant: "destructive" });
+        setCurrentBoard(null);
+        setBoardTasks([]);
+      } else {
+        toast({ title: "Board Not Found", description: "The requested board does not exist.", variant: "destructive" });
+        setCurrentBoard(null);
+        setBoardTasks([]);
+      }
+    } catch (error) {
+      console.error("Error fetching board data:", error);
+      toast({ title: "Error", description: "Could not load board data.", variant: "destructive" });
+    } finally {
+      setIsLoadingBoard(false);
+    }
+  }, [user, toast]);
+
   useEffect(() => {
     if (boardId) {
-      // In a real app, fetch board data based on boardId
-      // For now, we always use the initialMockBoard if boardId matches, or clear if not.
-      if (boardId === initialMockBoard.id) {
-         // Deep copy mock data to allow modifications
-        const boardDataCopy = JSON.parse(JSON.stringify(initialMockBoard));
-        setCurrentBoard(boardDataCopy);
-      } else {
-        setCurrentBoard(null); // Or fetch a different board
-      }
+      fetchBoardData(boardId);
     } else {
-       // Default to the first mock board if no ID is provided
-       const boardDataCopy = JSON.parse(JSON.stringify(initialMockBoard));
-       setCurrentBoard(boardDataCopy);
+      setCurrentBoard(null);
+      setBoardTasks([]);
     }
-  }, [boardId]);
-
+  }, [boardId, fetchBoardData]);
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -45,53 +66,95 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     setSelectedTask(null);
   };
 
-  const handleUpdateTask = (updatedTask: Task) => {
-    // This is where you would update the task in your state/backend
-    // For mock data, we'll update it in the currentBoard state
-    if (currentBoard) {
-      const updatedTasks = currentBoard.tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
-      setCurrentBoard({ ...currentBoard, tasks: updatedTasks });
+  const handleUpdateTask = async (updatedTask: Task) => {
+    if (!user || !currentBoard) return;
+    try {
+      await updateTaskService(updatedTask.id, updatedTask);
+      setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+      toast({ title: "Task Updated", description: `"${updatedTask.title}" has been saved.` });
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
     }
-    // console.log('Updated Task:', updatedTask);
-    // In a real app, you might re-fetch board data or update local state more granularly.
   };
   
-  const handleAddTask = (columnId: string) => {
-    // Placeholder: Open a simplified modal or inline form to add a new task
-    toast({
-      title: "Add New Task",
-      description: `(Placeholder) Adding new task to column ${columnId}.`,
-    });
-    // Example: Create a new blank task and open modal for it
-    const newTask: Task = {
-      id: `task-new-${Date.now()}`,
+  const handleAddTask = async (columnId: string) => {
+    if (!user || !currentBoard) {
+      toast({ title: "Error", description: "Cannot add task without a selected board or user.", variant: "destructive" });
+      return;
+    }
+    
+    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
       title: 'New Task',
       description: '',
       priority: 'medium',
       subtasks: [],
       comments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      boardId: currentBoard.id,
+      columnId: columnId,
+      creatorId: user.id,
     };
-    // Add to board tasks and column taskIds
-    if (currentBoard) {
-      const boardTasks = [...currentBoard.tasks, newTask];
+
+    try {
+      const createdTask = await createTask(newTaskData);
+      setBoardTasks(prevTasks => [...prevTasks, createdTask]);
+      
+      // Add task ID to the column in the board
       const updatedColumns = currentBoard.columns.map(col => {
         if (col.id === columnId) {
-          return { ...col, taskIds: [...col.taskIds, newTask.id] };
+          return { ...col, taskIds: [...col.taskIds, createdTask.id] };
         }
         return col;
       });
-      setCurrentBoard({ ...currentBoard, tasks: boardTasks, columns: updatedColumns });
-      handleTaskClick(newTask);
+      
+      await updateBoard(currentBoard.id, { columns: updatedColumns });
+      setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
+
+      handleTaskClick(createdTask); // Open modal for the new task
+      toast({ title: "Task Created", description: "New task added successfully." });
+
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast({ title: "Error", description: "Failed to create new task.", variant: "destructive" });
     }
   };
 
-  const handleAddColumn = () => {
-     toast({
-      title: "Add New Column",
-      description: `(Placeholder) Adding new column.`,
-    });
+  const handleAddColumn = async () => {
+     if (!user || !currentBoard) {
+      toast({ title: "Error", description: "Cannot add column without a selected board or user.", variant: "destructive" });
+      return;
+    }
+    // Simple prompt for column name for now, ideally use a modal
+    const columnName = prompt("Enter new column name:");
+    if (!columnName || !columnName.trim()) {
+        toast({ title: "Cancelled", description: "Column creation cancelled or name empty.", variant: "default" });
+        return;
+    }
+
+    const newColumn: ColumnType = {
+        id: `col-${Date.now()}`,
+        name: columnName.trim(),
+        taskIds: [],
+    };
+
+    const updatedColumns = [...currentBoard.columns, newColumn];
+    try {
+        await updateBoard(currentBoard.id, { columns: updatedColumns });
+        setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
+        toast({ title: "Column Added", description: `Column "${newColumn.name}" added.` });
+    } catch (error) {
+        console.error("Error adding column:", error);
+        toast({ title: "Error", description: "Failed to add column.", variant: "destructive" });
+    }
+  };
+
+  if (isLoadingBoard) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading board...</p>
+      </div>
+    );
   }
 
   if (!currentBoard) {
@@ -99,33 +162,30 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-layout-grid mb-4 text-muted-foreground"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18M12 3v18"/></svg>
         <h2 className="text-2xl font-semibold mb-2">No Board Selected</h2>
-        <p className="text-muted-foreground mb-4">Please select a board from the sidebar to view tasks.</p>
-        <Button onClick={() => { /* Logic to select default board or guide user */ }}>Select a Board</Button>
+        <p className="text-muted-foreground mb-4">Please select a board from the sidebar to view tasks, or create a new one.</p>
       </div>
     );
   }
-
-  // --header-height and --board-header-height are conceptual CSS variables for layout calculation
-  // Actual values would depend on your header and board header component heights.
-  // For this example, let's assume they are defined elsewhere or use fixed pixel values.
-  const headerHeight = '4rem'; // Example: 64px
-  const boardHeaderHeight = '3.5rem'; // Example: 56px
+  
+  const headerHeight = '4rem'; 
+  const boardHeaderHeight = '3.5rem'; 
 
   return (
     <div className="flex flex-col h-full" style={{ ['--header-height' as any]: headerHeight, ['--board-header-height' as any]: boardHeaderHeight }}>
       <div className="flex items-center justify-between p-4 border-b bg-background">
         <h1 className="text-2xl font-semibold font-headline">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm"><Filter className="mr-2 h-4 w-4" /> Filter</Button>
-          <Button variant="outline" size="sm"><RefreshCw className="mr-2 h-4 w-4" /> Sync</Button>
-          <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button>
-          <Button size="sm" onClick={() => handleAddTask(currentBoard.columns[0]?.id || 'col-1')}>
+          {/* <Button variant="outline" size="sm"><Filter className="mr-2 h-4 w-4" /> Filter</Button>
+          <Button variant="outline" size="sm" onClick={() => boardId && fetchBoardData(boardId)}><RefreshCw className="mr-2 h-4 w-4" /> Sync</Button>
+          <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button> */}
+          <Button size="sm" onClick={() => handleAddTask(currentBoard.columns[0]?.id || '')} disabled={currentBoard.columns.length === 0}>
             <Plus className="mr-2 h-4 w-4" /> New Task
           </Button>
         </div>
       </div>
       <KanbanBoard 
-        board={currentBoard} 
+        boardColumns={currentBoard.columns}
+        allTasksForBoard={boardTasks} 
         onTaskClick={handleTaskClick} 
         onAddTask={handleAddTask}
         onAddColumn={handleAddColumn}
