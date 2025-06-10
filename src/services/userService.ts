@@ -2,7 +2,7 @@
 // src/services/userService.ts
 import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/types';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const USERS_COLLECTION = 'users';
 
@@ -17,16 +17,14 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     const userDocSnap = await getDoc(userDocRef);
 
     if (userDocSnap.exists()) {
-      // Combine Firestore data with the essential id
       const data = userDocSnap.data();
       return {
-        id: userId, // Ensure id is always present
+        id: userId,
         name: data.name || null,
         email: data.email || null,
         avatarUrl: data.avatarUrl || null,
-        createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
-        updatedAt: data.updatedAt?.toDate().toISOString() || new Date().toISOString(),
-        ...data, // Spread the rest of the data
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate().toISOString() : new Date().toISOString(),
       } as UserProfile;
     } else {
       // console.log(`No user profile found for ${userId}`);
@@ -41,7 +39,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 /**
  * Creates a new user profile in Firestore or updates an existing one.
  * Uses information from the Firebase Auth user object.
- * @param authUser The Firebase Auth user object.
+ * @param authUser The Firebase Auth user object containing uid, email, displayName, and photoURL.
  * @returns The created or updated user profile.
  */
 export const createUserProfile = async (
@@ -49,50 +47,50 @@ export const createUserProfile = async (
 ): Promise<UserProfile> => {
   const userDocRef = doc(db, USERS_COLLECTION, authUser.uid);
 
-  const userProfileData: Partial<UserProfile> = {
-    id: authUser.uid,
+  // Prepare base profile data from authUser
+  const profileDataFromAuth = {
     email: authUser.email || null,
-    name: authUser.displayName || authUser.email?.split('@')[0] || 'Anonymous User', // Fallback name
-    avatarUrl: authUser.photoURL || `https://placehold.co/100x100.png?text=${(authUser.displayName || authUser.email || 'A').charAt(0)}`, // Fallback avatar
-    // We use serverTimestamp for createdAt and updatedAt on initial creation
+    name: authUser.displayName || authUser.email?.split('@')[0] || 'Anonymous User',
+    avatarUrl: authUser.photoURL || `https://placehold.co/100x100.png?text=${(authUser.displayName || authUser.email || 'A').charAt(0).toUpperCase()}`,
   };
 
   try {
-    // Check if document exists to determine if we should set createdAt
     const docSnap = await getDoc(userDocRef);
+
     if (!docSnap.exists()) {
+      // Document doesn't exist, create it with createdAt and updatedAt
       await setDoc(userDocRef, {
-        ...userProfileData,
+        ...profileDataFromAuth,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
     } else {
-      // If user logs in again and profile exists, just update 'updatedAt' and potentially other info if needed.
-      // For now, let's assume we just ensure the profile exists. We can expand this to merge/update fields if authUser has newer info.
+      // Document exists, update it with updatedAt and potentially sync auth info
       await setDoc(userDocRef, {
+        ...profileDataFromAuth, // Re-sync name, email, avatar from provider
         updatedAt: serverTimestamp(),
-        // Optionally re-sync basic info if it might change from provider
-        email: authUser.email || docSnap.data()?.email || null,
-        name: authUser.displayName || docSnap.data()?.name || authUser.email?.split('@')[0] || 'Anonymous User',
-        avatarUrl: authUser.photoURL || docSnap.data()?.avatarUrl || `https://placehold.co/100x100.png?text=${(authUser.displayName || authUser.email || 'A').charAt(0)}`,
-      }, { merge: true }); // Merge to avoid overwriting other fields
+      }, { merge: true }); // Merge true to preserve createdAt and other existing fields
     }
     
     // Fetch the newly created/updated document to get server-generated timestamps
     const newDocSnap = await getDoc(userDocRef);
+    if (!newDocSnap.exists()) {
+        throw new Error("Failed to retrieve user profile after creation/update.");
+    }
     const newProfileData = newDocSnap.data();
 
     return {
       id: authUser.uid,
-      name: newProfileData?.name || null,
-      email: newProfileData?.email || null,
-      avatarUrl: newProfileData?.avatarUrl || null,
-      createdAt: newProfileData?.createdAt?.toDate().toISOString() || new Date().toISOString(),
-      updatedAt: newProfileData?.updatedAt?.toDate().toISOString() || new Date().toISOString(),
+      name: newProfileData.name,
+      email: newProfileData.email,
+      avatarUrl: newProfileData.avatarUrl,
+      createdAt: newProfileData.createdAt instanceof Timestamp ? newProfileData.createdAt.toDate().toISOString() : new Date().toISOString(),
+      updatedAt: newProfileData.updatedAt instanceof Timestamp ? newProfileData.updatedAt.toDate().toISOString() : new Date().toISOString(),
     };
 
   } catch (error) {
-    console.error("Error creating user profile:", error);
+    console.error("Error creating/updating user profile:", error);
     throw error;
   }
 };
+
