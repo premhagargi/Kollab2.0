@@ -1,4 +1,4 @@
-# **App Name**: TeamFlow
+# **App Name**: Kollab
 
 ## Core Features:
 
