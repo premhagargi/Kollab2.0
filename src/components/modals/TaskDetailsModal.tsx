@@ -19,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { CalendarIcon, User, MessageSquare, Paperclip, Brain, ListChecks, Sparkles, Trash2, Edit3, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, User, MessageSquare, Paperclip, Brain, ListChecks, Sparkles, Trash2, Edit3, PlusCircle, CheckCircle2, Archive } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
@@ -32,12 +32,13 @@ interface TaskDetailsModalProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdateTask: (updatedTask: Task) => Promise<void>; 
+  onUpdateTask: (updatedTask: Task) => Promise<void>;
+  onArchiveTask: (taskToArchive: Task) => Promise<void>;
 }
 
 const priorityOptions: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
-export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateTask }: TaskDetailsModalProps) {
+export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateTask, onArchiveTask }: TaskDetailsModalProps) {
   const { user } = useAuth(); 
   const [task, setTask] = useState<Task | null>(initialTask);
   const [newComment, setNewComment] = useState('');
@@ -176,8 +177,8 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
         </DialogDescription>
       </DialogHeader>
   
-      <div className="flex-grow min-h-0 overflow-y-auto"> {/* This div will handle the scrolling */}
-        <ScrollArea className="h-full pr-6"> {/* ScrollArea takes full height of its parent */}
+      <div className="flex-grow min-h-0 overflow-y-auto"> 
+        <ScrollArea className="h-full pr-6"> 
           <div className="grid gap-6 py-4">
             {/* Description Section */}
             <div className="space-y-2">
@@ -354,7 +355,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
               <Label className="text-base font-medium flex items-center">
                 <MessageSquare className="mr-2 h-5 w-5 text-primary" /> Comments
               </Label>
-              <ScrollArea className="max-h-48"> {/* Inner ScrollArea for comments list */}
+              <ScrollArea className="max-h-48"> 
                 {task.comments.map((comment) => (
                   <div key={comment.id} className="flex items-start space-x-3 p-3 border rounded-md mb-2">
                     <Avatar className="h-8 w-8">
@@ -399,6 +400,17 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
       </div>
   
       <DialogFooter className="pt-4 border-t flex-shrink-0">
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (task) {
+              onArchiveTask(task);
+            }
+          }}
+          className="mr-auto" // Pushes this button to the left
+        >
+          <Archive className="mr-2 h-4 w-4" /> Archive Task
+        </Button>
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
