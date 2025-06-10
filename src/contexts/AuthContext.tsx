@@ -1,3 +1,4 @@
+
 // src/contexts/AuthContext.tsx
 "use client";
 
@@ -12,11 +13,12 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase'; // Import auth from your Firebase config
 import { useToast } from '@/hooks/use-toast';
+import { getUserProfile, createUserProfile } from '@/services/userService'; // Import user service
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  loginWithGoogle: () => void; // Specifically Google login for now
+  loginWithGoogle: () => void;
   logout: () => void;
 }
 
@@ -26,23 +28,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const initialAuthCheckDone = useRef(false); // To prevent welcome message on initial load if already signed in
+  const initialAuthCheckDone = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const userProfile: UserProfile = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName,
-          email: firebaseUser.email,
-          avatarUrl: firebaseUser.photoURL,
-        };
-        // Only show welcome toast if it's a new login, not on initial page load with existing session
-        // and user state actually changed from null to a user object.
-        if (initialAuthCheckDone.current && !user && userProfile) {
-          toast({ title: "Login Successful", description: "Welcome back!" });
+        setLoading(true); // Set loading while we fetch/create profile
+        try {
+          let userProfile = await getUserProfile(firebaseUser.uid);
+          
+          if (!userProfile) {
+            // User exists in Auth, but not in Firestore. Create profile.
+            // console.log(`No Firestore profile for ${firebaseUser.uid}, creating one...`);
+            userProfile = await createUserProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+            });
+             toast({ title: "Profile Created", description: "Your user profile has been set up." });
+          } else {
+            // If profile exists, potentially update it with latest from Auth provider (e.g., new photoURL)
+            // This is a simple update, more sophisticated merging might be needed in complex scenarios.
+             userProfile = await createUserProfile({ // Re-call to ensure latest info is synced & updatedAt is touched
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+            });
+          }
+
+          // console.log("User profile from Firestore:", userProfile);
+
+          if (initialAuthCheckDone.current && !user && userProfile) {
+            toast({ title: "Login Successful", description: "Welcome back!" });
+          }
+          setUser(userProfile);
+
+        } catch (error) {
+          console.error("Error fetching/creating user profile:", error);
+          toast({ title: "Profile Error", description: "Could not load your user profile.", variant: "destructive"});
+          setUser(null); // Fallback: user is authenticated but profile ops failed.
         }
-        setUser(userProfile);
       } else {
         setUser(null);
       }
@@ -52,43 +79,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [toast, user]); // add user to dependencies to correctly detect state change from null to user
+  }, [toast, user]); // Added user to dependency array
 
   const loginWithGoogle = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // onAuthStateChanged will handle setting the user & showing success toast
+      // onAuthStateChanged will handle fetching/creating profile and setting user state
     } catch (error) {
       console.error("Error during Google login:", error);
       const firebaseError = error as { code?: string; message?: string };
       if (firebaseError.code === 'auth/popup-blocked') {
         toast({
           title: "Login Failed: Popup Blocked",
-          description: "Your browser blocked the Google Sign-In popup. Please allow popups for this site and try again.",
+          description: "Your browser blocked the Google Sign-In popup. Please allow popups and try again.",
           variant: "destructive",
-          duration: 9000 // Longer duration for better readability
+          duration: 9000
         });
       } else if (firebaseError.code === 'auth/cancelled-popup-request') {
         toast({
           title: "Login Cancelled",
           description: "The sign-in process was cancelled.",
-          variant: "default", // Or "info" if you add such a variant
+        });
+      } else if (firebaseError.code === 'auth/unauthorized-domain') {
+         toast({
+          title: "Login Failed: Unauthorized Domain",
+          description: "This domain is not authorized for authentication. Please contact support.",
+          variant: "destructive",
         });
       }
       else {
         toast({ 
           title: "Login Failed", 
-          description: firebaseError.message || "An unknown error occurred.",
+          description: firebaseError.message || "An unknown error occurred during login.",
           variant: "destructive"
         });
       }
-      setLoading(false); // Ensure loading is false on error
+      setLoading(false); 
     }
-    // setLoading(false) is handled by onAuthStateChanged or error catch
   };
 
   const logout = async () => {
@@ -96,7 +126,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      // onAuthStateChanged will handle setting user to null and setLoading(false)
     } catch (error) {
       console.error("Error during logout:", error);
       const firebaseError = error as { code?: string; message?: string };
@@ -105,7 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: firebaseError.message || "An unknown error occurred.",
         variant: "destructive"
       });
-      setLoading(false); // Ensure loading is false on error
+      setLoading(false);
     }
   };
 
