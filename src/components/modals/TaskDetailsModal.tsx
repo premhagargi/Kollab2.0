@@ -52,11 +52,19 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
 
   useEffect(() => {
     setTask(initialTask);
-    setAiSummary(null); 
-    setAiSubtaskSuggestions([]);
+    // Reset AI suggestions if the task changes
+    if (initialTask) {
+        setAiSummary(null); 
+        setAiSubtaskSuggestions([]);
+    }
   }, [initialTask]);
 
+  if (!task && isOpen) { // Handle case where task becomes null while modal is open (e.g. deleted)
+    onClose();
+    return null;
+  }
   if (!task) return null;
+
 
   const handleInputChange = (field: keyof Task, value: any) => {
     setTask(prev => prev ? { ...prev, [field]: value, updatedAt: new Date().toISOString() } : null);
@@ -105,12 +113,25 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
     setNewComment('');
   };
   
-  const handleSaveChanges = async () => {
+  const performSave = async () => {
     if (task) {
+      // Check if task actually changed compared to initialTask to avoid unnecessary saves
+      // This requires a deep comparison or a more sophisticated state management
+      // For now, we save if task object exists.
       await onUpdateTask(task); 
-      onClose(); // Close modal after saving
     }
   };
+
+  const handleDialogCloseAttempt = (openState: boolean) => {
+    if (!openState) { // If dialog is attempting to close
+      if (task) { // And there's a task
+        performSave(); // Trigger save
+      }
+      onClose(); // Then call the original onClose to close the modal
+    }
+    // If openState is true, it means the dialog is opening, do nothing extra.
+  };
+
 
   const handleGenerateSummary = async () => {
     if (!task.description && !task.title) {
@@ -161,7 +182,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
   const assignee = user; 
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
     <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col">
       <DialogHeader className="flex-shrink-0">
         <DialogTitle className="text-2xl font-headline">
@@ -289,7 +310,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
                 <div className="flex items-center space-x-2 p-2 border rounded-md min-h-[40px]">
                   {assignee && task.assigneeIds?.includes(assignee.id) ? (
                     <Avatar className="h-7 w-7" title={assignee.name || undefined}>
-                      <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} data-ai-hint="user avatar small" />
+                      <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} data-ai-hint="user avatar small"/>
                       <AvatarFallback>{assignee.name ? assignee.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                     </Avatar>
                   ) : (
@@ -377,7 +398,7 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
                 <>
                 <div className="flex items-start space-x-3 pt-2">
                   <Avatar className="h-8 w-8 mt-1">
-                    <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar small" />
+                    <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar small"/>
                     <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                   </Avatar>
                   <Textarea
@@ -404,21 +425,17 @@ export function TaskDetailsModal({ task: initialTask, isOpen, onClose, onUpdateT
           variant="outline"
           onClick={() => {
             if (task) {
-              onArchiveTask(task); // Call the prop here
+              onArchiveTask(task); 
             }
           }}
           className="mr-auto" 
         >
           <Archive className="mr-2 h-4 w-4" /> Archive Task
         </Button>
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSaveChanges}>
-          <CheckCircle2 className="mr-2 h-4 w-4" /> Save Changes
-        </Button>
+        {/* Save and Cancel buttons are removed for auto-save on close */}
       </DialogFooter>
     </DialogContent>
   </Dialog>
   );
 }
+
