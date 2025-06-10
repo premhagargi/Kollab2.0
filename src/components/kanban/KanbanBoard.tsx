@@ -6,23 +6,38 @@ import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { KanbanColumn } from './KanbanColumn';
-import type { Column, Task } from '@/types';
+import type { Column, Task, UserProfile } from '@/types';
 
 interface KanbanBoardProps {
   boardColumns: Column[];
   allTasksForBoard: Task[];
+  creatorProfiles: Record<string, UserProfile | null>; // Map of userId to UserProfile
   onTaskClick: (task: Task) => void;
   onAddTask: (columnId: string) => void;
   onAddColumn: () => void;
+  onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string) => void;
 }
 
-export function KanbanBoard({ boardColumns, allTasksForBoard, onTaskClick, onAddTask, onAddColumn }: KanbanBoardProps) {
+export function KanbanBoard({ 
+  boardColumns, 
+  allTasksForBoard, 
+  creatorProfiles, 
+  onTaskClick, 
+  onAddTask, 
+  onAddColumn,
+  onTaskDrop
+}: KanbanBoardProps) {
   
   const getTasksForColumn = (column: Column): Task[] => {
     return column.taskIds
       .map(taskId => allTasksForBoard.find(t => t.id === taskId))
       .filter(Boolean) as Task[];
     // Add sorting here if tasks have an 'order' property
+  };
+
+  const handleDragTaskStart = (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => {
+    event.dataTransfer.setData('application/json', JSON.stringify({ taskId, sourceColumnId }));
+    event.dataTransfer.effectAllowed = "move";
   };
   
   return (
@@ -33,8 +48,11 @@ export function KanbanBoard({ boardColumns, allTasksForBoard, onTaskClick, onAdd
             key={column.id}
             column={column}
             tasks={getTasksForColumn(column)}
+            creatorProfiles={creatorProfiles}
             onTaskClick={onTaskClick}
             onAddTask={onAddTask}
+            onTaskDrop={onTaskDrop}
+            onDragTaskStart={handleDragTaskStart}
           />
         ))}
         <div className="w-80 flex-shrink-0">
@@ -48,3 +66,5 @@ export function KanbanBoard({ boardColumns, allTasksForBoard, onTaskClick, onAdd
     </ScrollArea>
   );
 }
+
+    

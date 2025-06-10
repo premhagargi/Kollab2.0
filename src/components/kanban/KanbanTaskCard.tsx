@@ -1,3 +1,4 @@
+
 // src/components/kanban/KanbanTaskCard.tsx
 "use client";
 import React from 'react';
@@ -5,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { Task, UserProfile } from '@/types';
-import { mockUser } from '@/lib/mock-data'; // For assignee display
-import { CalendarDays, MessageSquare, Paperclip, Users } from 'lucide-react';
+import { CalendarDays, MessageSquare, Users } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface KanbanTaskCardProps {
   task: Task;
   onClick: () => void;
+  creatorProfile?: UserProfile | null; // Pass creator profile for avatar
+  onDragStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
 }
 
 const priorityColors: Record<Task['priority'], string> = {
@@ -21,14 +23,19 @@ const priorityColors: Record<Task['priority'], string> = {
   urgent: 'bg-red-500 hover:bg-red-600',
 };
 
-export function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
-  const assignee = mockUser; // In a real app, find assignee from task.assigneeIds
+export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: KanbanTaskCardProps) {
+  
+  const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
+    onDragStart(event, task.id, task.columnId);
+  };
 
   return (
     <Card
-      className="mb-4 cursor-pointer hover:shadow-lg transition-shadow duration-200 bg-card"
+      className="mb-4 cursor-grab hover:shadow-lg transition-shadow duration-200 bg-card active:cursor-grabbing"
       onClick={onClick}
       aria-label={`Task: ${task.title}`}
+      draggable="true"
+      onDragStart={handleDragStart}
     >
       <CardHeader className="p-4">
         <CardTitle className="text-base font-semibold leading-tight">{task.title}</CardTitle>
@@ -55,21 +62,16 @@ export function KanbanTaskCard({ task, onClick }: KanbanTaskCardProps) {
               <span>{task.comments.length}</span>
             </div>
           )}
-          {/* Placeholder for attachments count */}
-          {/* {task.attachments && task.attachments.length > 0 && (
-            <div className="flex items-center text-xs text-muted-foreground" title={`${task.attachments.length} attachments`}>
-              <Paperclip className="h-3.5 w-3.5 mr-1" />
-              <span>{task.attachments.length}</span>
-            </div>
-          )} */}
         </div>
-        {assignee && (
-          <Avatar className="h-6 w-6" title={`Assigned to: ${assignee.name}`}>
-            <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'Assignee'} data-ai-hint="user avatar" />
-            <AvatarFallback>{assignee.name ? assignee.name.charAt(0).toUpperCase() : <Users className="h-3 w-3"/>}</AvatarFallback>
+        {creatorProfile && (
+          <Avatar className="h-6 w-6" title={`Created by: ${creatorProfile.name}`}>
+            <AvatarImage src={creatorProfile.avatarUrl || undefined} alt={creatorProfile.name || 'Creator'} data-ai-hint="user avatar" />
+            <AvatarFallback>{creatorProfile.name ? creatorProfile.name.charAt(0).toUpperCase() : <Users className="h-3 w-3"/>}</AvatarFallback>
           </Avatar>
         )}
       </CardFooter>
     </Card>
   );
 }
+
+    
