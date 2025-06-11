@@ -71,7 +71,8 @@ function DashboardContent() {
   };
   
   return (
-      <div className="flex flex-col flex-1 h-screen overflow-hidden"> {/* Ensures this container takes full height and manages overflow */}
+      // This div ensures AppHeader and main content are stacked vertically and take full screen height
+      <div className="flex flex-col h-screen">
         <AppHeader 
             boards={userBoards}
             currentBoardId={currentBoardId}
@@ -79,13 +80,16 @@ function DashboardContent() {
             onBoardCreated={handleBoardCreated}
             isLoadingBoards={isLoadingBoards}
         />
-        {/* pt-16 offsets content below the fixed AppHeader (h-16) */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-background"> 
+        {/* pt-16 offsets content below the fixed AppHeader (h-16 from AppHeader) */}
+        {/* flex-1 allows this main area to take up remaining vertical space */}
+        {/* min-h-0 is crucial for flex children that need to scroll */}
+        <main className="flex-1 flex flex-col pt-16 overflow-hidden bg-background min-h-0"> 
           {authLoading || (isLoadingBoards && user) ? (
               <div className="flex flex-1 items-center justify-center h-full">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
               </div>
           ) : currentBoardId ? (
+            // KanbanBoardView itself will be h-full of this main area
             <KanbanBoardView boardId={currentBoardId} />
           ) : user ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">

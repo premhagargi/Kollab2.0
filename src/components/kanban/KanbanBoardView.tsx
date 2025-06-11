@@ -14,7 +14,6 @@ import { getTasksByBoard, createTask, updateTask as updateTaskService, deleteTas
 import { getUsersByIds } from '@/services/userService';
 
 const DEFAULT_NEW_TASK_TITLE = 'New Task';
-// Removed BOARD_HEADER_HEIGHT_CLASS constant
 
 export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const { user } = useAuth();
@@ -178,10 +177,12 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       
       handleTaskClick(createdTask); 
 
+      // Update board in background, don't await before opening modal
       updateBoard(currentBoard.id, { columns: updatedBoardColumns })
          .catch(err => {
             console.error("Error updating board in background after task creation:", err);
             toast({title: "Board Update Error", description: "Could not save new task to board structure in background.", variant: "destructive"});
+            // Optionally re-fetch or revert here if critical
          });
 
       if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
@@ -335,49 +336,53 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   }
 
   if (!currentBoard) {
+    // This case is handled by page.tsx (no boards message or login message)
     return null;
   }
 
   return (
-<div className="flex flex-col h-full overflow-hidden bg-background text-foreground">
-  {/* Sticky Board Header: Reduced padding from p-3 to p-2, smaller text */}
-  <div className={`sticky z-30 flex items-center justify-between p-2 border-b bg-background shadow-sm flex-shrink-0`}>
-    <h1 className="text-lg font-medium truncate pr-2">{currentBoard.name}</h1>
-    <div className="flex items-center space-x-2 flex-shrink-0">
-      <Button 
-        size="sm"
-        onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')}
-        disabled={currentBoard.columns.length === 0}
-        variant="default"
-      >
-        <Plus className="mr-1 h-3 w-3" /> New Task
-      </Button>
-    </div>
-  </div>
-         
-  <div className="flex-1 overflow-x-auto overflow-y-hidden">
-    <KanbanBoard
-      boardColumns={currentBoard.columns}
-      allTasksForBoard={activeTasks}
-      creatorProfiles={userProfiles}
-      onTaskClick={handleTaskClick}
-      onAddTask={handleAddTask}
-      onAddColumn={handleAddColumn}
-      onTaskDrop={handleTaskDrop}
-    />
-  </div>
+    // This root div takes h-full from its parent in page.tsx (which is <main>)
+    <div className="flex flex-col h-full overflow-hidden bg-background text-foreground">
+      {/* Sticky Board Header: Stays at the top of KanbanBoardView */}
+      {/* flex-shrink-0 prevents this header from shrinking if content is too large */}
+      <div className={`sticky top-0 z-30 flex items-center justify-between p-2 border-b bg-background shadow-sm flex-shrink-0`}>
+        <h1 className="text-lg font-medium truncate pr-2">{currentBoard.name}</h1>
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          <Button 
+            size="sm"
+            onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')}
+            disabled={currentBoard.columns.length === 0}
+            variant="default" // Changed to default for more prominence
+          >
+            <Plus className="mr-1 h-3 w-3" /> New Task
+          </Button>
+        </div>
+      </div>
+      
+      {/* This div takes remaining space (flex-1) and handles horizontal scroll for KanbanBoard */}
+      {/* min-h-0 is important for flex children that need to scroll */}
+      <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
+        <KanbanBoard
+          boardColumns={currentBoard.columns}
+          allTasksForBoard={activeTasks}
+          creatorProfiles={userProfiles}
+          onTaskClick={handleTaskClick}
+          onAddTask={handleAddTask}
+          onAddColumn={handleAddColumn}
+          onTaskDrop={handleTaskDrop}
+        />
+      </div>
 
-  {selectedTask && (
-    <TaskDetailsModal
-      task={selectedTask}
-      isOpen={isModalOpen}
-      onClose={handleCloseModal}
-      onUpdateTask={handleUpdateTask}
-      onArchiveTask={handleArchiveTask}
-    />
-  )}
-</div>
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onUpdateTask={handleUpdateTask}
+          onArchiveTask={handleArchiveTask}
+        />
+      )}
+    </div>
   );
 }
     
-
