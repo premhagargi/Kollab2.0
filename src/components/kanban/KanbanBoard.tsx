@@ -33,6 +33,7 @@ export function KanbanBoard({
       .map(taskId => allTasksForBoard.find(t => t.id === taskId))
       .filter(Boolean) as Task[];
     
+    // Ensure tasks are sorted by their order in column.taskIds
     return tasksInColumn.sort((a, b) => {
       return column.taskIds.indexOf(a.id) - column.taskIds.indexOf(b.id);
     });
@@ -58,8 +59,8 @@ export function KanbanBoard({
           onDragTaskStart={handleDragTaskStart}
         />
       ))}
-      <div className="w-72 flex-shrink-0"> {/* Matched column width */}
-        <Button variant="outline" className="w-full h-10 border-dashed text-sm" onClick={onAddColumn}>
+      <div className="w-80 flex-shrink-0"> {/* Matched column width */}
+        <Button variant="outline" className="w-full h-12 border-dashed" onClick={onAddColumn}> {/* Reverted text-sm removal, h-10 to h-12 */}
           <PlusCircle className="h-4 w-4 mr-2" />
           Add another column
         </Button>

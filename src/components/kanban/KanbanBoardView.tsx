@@ -120,6 +120,8 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       await updateTaskService(updatedTask.id, updatedTask);
       setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
       
+      // If this was the provisional task and it was successfully saved,
+      // it's no longer provisional.
       if (provisionalNewTaskIdRef.current === updatedTask.id) {
         provisionalNewTaskIdRef.current = null; 
       }
@@ -174,14 +176,15 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       });
       
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
-      handleTaskClick(createdTask);
+      handleTaskClick(createdTask); // Open modal immediately
 
+      // Update board in background
       updateBoard(currentBoard.id, { columns: updatedBoardColumns })
         .catch(boardUpdateError => {
             console.error("Error updating board in background with new task ID:", boardUpdateError);
             toast({ title: "Board Sync Error", description: "Failed to save new task to board structure fully. Please refresh if issues persist.", variant: "destructive" });
             if (currentBoard) {
-                fetchBoardData(currentBoard.id);
+                fetchBoardData(currentBoard.id); // Re-fetch to ensure consistency
             }
         });
 
@@ -226,60 +229,65 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     }
   };
 
-  const handleTaskDrop = async (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => {
+ const handleTaskDrop = async (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => {
     if (!currentBoard || !user) return;
-  
+
     const taskToMove = boardTasks.find(t => t.id === taskId);
     if (!taskToMove) return;
-  
+
     let newBoardColumns = JSON.parse(JSON.stringify(currentBoard.columns)) as ColumnType[];
     const sourceColIndex = newBoardColumns.findIndex(col => col.id === sourceColumnId);
     const destColIndex = newBoardColumns.findIndex(col => col.id === destinationColumnId);
-  
+
     if (sourceColIndex === -1 || destColIndex === -1) {
-      console.error("Source or destination column not found during drag and drop.");
-      if (currentBoard) fetchBoardData(currentBoard.id); 
-      return;
+        console.error("Source or destination column not found during drag and drop.");
+        if (currentBoard) fetchBoardData(currentBoard.id);
+        return;
     }
-  
+
+    // Optimistically update task's columnId if moving between columns
     if (sourceColumnId !== destinationColumnId) {
-      setBoardTasks(prevTasks =>
-        prevTasks.map(t => (t.id === taskId ? { ...t, columnId: destinationColumnId } : t))
-      );
+        setBoardTasks(prevTasks =>
+            prevTasks.map(t => (t.id === taskId ? { ...t, columnId: destinationColumnId } : t))
+        );
     }
-  
+
+    // Remove task from source column's taskIds
     newBoardColumns[sourceColIndex].taskIds = newBoardColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
-  
+
+    // Add task to destination column's taskIds
     let destTaskIds = [...newBoardColumns[destColIndex].taskIds];
-    const currentTaskIndexInDest = destTaskIds.indexOf(taskId);
+    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); // Check if task already slipped in due to rapid UI updates
     if (currentTaskIndexInDest > -1) {
-      destTaskIds.splice(currentTaskIndexInDest, 1); // Remove if already exists (e.g., from a rapid drop)
+        destTaskIds.splice(currentTaskIndexInDest, 1); // Remove it before re-inserting in correct position
     }
-    
+
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
-  
+
     if (targetIndexInDest !== -1) {
-      destTaskIds.splice(targetIndexInDest, 0, taskId); 
+        // If dropping onto a specific task (targetTaskId), insert before it
+        destTaskIds.splice(targetIndexInDest, 0, taskId);
     } else {
-      destTaskIds.push(taskId); 
+        // If dropping into empty space or at the end, or targetTaskId is not found (should not happen if valid)
+        destTaskIds.push(taskId);
     }
     newBoardColumns[destColIndex].taskIds = destTaskIds;
-    
+
+    // Optimistically update the board state
     setCurrentBoard(prevBoard => (prevBoard ? { ...prevBoard, columns: newBoardColumns } : null));
-  
+
     try {
-      if (sourceColumnId !== destinationColumnId) {
-        await updateTaskService(taskId, { columnId: destinationColumnId });
-      }
-      await updateBoard(currentBoard.id, { columns: newBoardColumns });
-      toast({ title: "Task Moved", description: `Task "${taskToMove.title}" position updated.` });
+        if (sourceColumnId !== destinationColumnId) {
+            await updateTaskService(taskId, { columnId: destinationColumnId });
+        }
+        await updateBoard(currentBoard.id, { columns: newBoardColumns });
+        toast({ title: "Task Moved", description: `Task "${taskToMove.title}" position updated.` });
     } catch (error) {
-      console.error("Error moving task:", error);
-      toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching board.", variant: "destructive" });
-      if (currentBoard) fetchBoardData(currentBoard.id); 
+        console.error("Error moving task:", error);
+        toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching board.", variant: "destructive" });
+        if (currentBoard) fetchBoardData(currentBoard.id); // Re-fetch on error
     }
-  };
-  
+};
 
   const handleArchiveTask = async (taskToArchive: Task) => {
     if (!user || !currentBoard) return;
@@ -343,7 +351,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   return (
      <div className="flex flex-col h-full overflow-hidden">
       {/* Board Header - Make this sticky */}
-      <div className="sticky top-0 z-30 flex items-center justify-between p-4 border-b bg-card shadow-sm">
+      <div className="flex items-center justify-between p-4 border-b bg-card">
         <h1 className="text-2xl font-semibold font-headline truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button 
@@ -381,4 +389,3 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
-

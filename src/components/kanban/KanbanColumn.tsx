@@ -36,9 +36,11 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
         let targetTaskId: string | undefined = undefined;
         let targetElement = event.target as HTMLElement;
         
+        // Traverse up to find the draggable task card element (which has data-task-id)
         while (targetElement && !targetElement.dataset.taskId && targetElement.parentElement) {
             targetElement = targetElement.parentElement;
         }
+        // If a task card is the target, get its ID, ensure it's not the one being dragged
         if (targetElement && targetElement.dataset.taskId && targetElement.dataset.taskId !== draggedTaskId) {
             targetTaskId = targetElement.dataset.taskId;
         }
@@ -54,20 +56,20 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
   
   return (
     <Card 
-      className="w-72 flex-shrink-0 h-full flex flex-col bg-muted/60 shadow-md" // Reduced width to w-72, slightly more muted bg
+      className="w-80 flex-shrink-0 h-full flex flex-col bg-muted/50 shadow-md" // Reverted width w-72 to w-80, original bg-muted/50
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       data-column-id={column.id}
     >
-      <CardHeader className="p-3 border-b sticky top-0 bg-muted/80 z-10"> {/* Reduced padding */}
+      <CardHeader className="p-4 border-b"> {/* Reverted p-3 to p-4, removed sticky */}
         <div className="flex justify-between items-center">
-          <CardTitle className="text-base font-semibold truncate pr-2">{column.name}</CardTitle> {/* Truncate title */}
-          <span className="text-xs text-muted-foreground flex-shrink-0">{tasks.length}</span>
+          <CardTitle className="text-lg font-semibold truncate pr-2">{column.name}</CardTitle> {/* Reverted text-base to text-lg */}
+          <span className="text-sm text-muted-foreground flex-shrink-0">{tasks.length}</span> {/* Reverted text-xs to text-sm */}
         </div>
       </CardHeader>
       {/* The ScrollArea needs to fill the remaining height of the column card */}
-      <ScrollArea className="flex-grow"> {/* Removed fixed height, let flexbox handle it */}
-        <CardContent className="p-2 space-y-2 min-h-[60px]"> {/* Reduced padding and min-h */}
+      <ScrollArea className="flex-grow h-[calc(100%-120px)]"> {/* Reverted to fixed height approach for ScrollArea, may need adjustment */}
+        <CardContent className="p-3 space-y-3 min-h-[80px]"> {/* Reverted padding and min-h */}
           {tasks.map((task) => (
             <KanbanTaskCard 
               key={task.id} 
@@ -75,17 +77,18 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
               onClick={() => onTaskClick(task)}
               creatorProfile={creatorProfiles[task.creatorId] || null}
               onDragStart={onDragTaskStart}
+              
             />
           ))}
           {tasks.length === 0 && (
-            <div className="text-center text-xs text-muted-foreground py-3">
+            <div className="text-center text-sm text-muted-foreground py-4"> {/* Reverted text-xs to text-sm, py-3 to py-4 */}
               Drag tasks here or click below to add.
             </div>
           )}
         </CardContent>
       </ScrollArea>
-      <div className="p-2 border-t mt-auto"> {/* Ensure add task button is at the bottom */}
-        <Button variant="ghost" size="sm" className="w-full justify-start text-sm" onClick={() => onAddTask(column.id)}>
+      <div className="p-3 border-t mt-auto"> {/* Reverted p-2 to p-3 */}
+        <Button variant="ghost" className="w-full justify-start" onClick={() => onAddTask(column.id)}> {/* Reverted size="sm" removal, text-sm removal */}
           <PlusCircle className="h-4 w-4 mr-2" />
           Add task
         </Button>

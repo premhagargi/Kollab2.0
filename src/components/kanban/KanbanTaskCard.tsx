@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { Task, UserProfile } from '@/types';
 import { CalendarDays, MessageSquare, Users, GripVertical } from 'lucide-react'; // Added GripVertical
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 interface KanbanTaskCardProps {
   task: Task;
@@ -36,24 +36,15 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
 
   return (
     <Card
-      className="mb-2 cursor-pointer hover:shadow-lg transition-shadow duration-150 bg-card active:shadow-xl"
+      className="mb-3 cursor-pointer hover:shadow-lg transition-shadow duration-150 bg-card active:shadow-xl" // Reverted mb-2 to mb-3
       onClick={onClick}
       aria-label={`Task: ${task.title}`}
-      draggable="true" // Make the whole card draggable initially
+      draggable="true" 
       onDragStart={handleDragStartLocal}
-      data-task-id={task.id} 
+      data-task-id={task.id} // Added data-task-id
     >
-      {/* Optional: Drag handle could be re-introduced if specific handle-only dragging is desired */}
-      {/* <div 
-        className="absolute left-0 top-1/2 -translate-y-1/2 p-1 cursor-grab opacity-50 hover:opacity-100"
-        draggable="true"
-        onDragStart={handleDragStartLocal}
-        onClick={stopPropagation} // Prevent card click
-        onMouseDown={stopPropagation} // Prevent card click
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div> */}
-      <CardHeader className="p-3 pb-2"> {/* Reduced padding */}
+      {/* Removed drag handle for whole card dragging */}
+      <CardHeader className="p-3 pb-2"> 
         <CardTitle className="text-sm font-medium leading-snug">{task.title}</CardTitle>
         {task.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>}
       </CardHeader>
@@ -61,9 +52,9 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
         <CardContent className="p-3 pt-1"> 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             {task.dueDate && (
-              <div className="flex items-center" title={`Due date: ${format(new Date(task.dueDate), 'MMM d, yyyy')}`}>
+              <div className="flex items-center" title={`Due date: ${format(parseISO(task.dueDate), 'MMM d, yyyy')}`}>
                 <CalendarDays className="h-3.5 w-3.5 mr-1" />
-                <span>{format(new Date(task.dueDate), 'MMM d')}</span>
+                <span>{format(parseISO(task.dueDate), 'MMM d')}</span>
               </div>
             )}
             <Badge variant="secondary" className={`capitalize text-xs px-1.5 py-0.5 ${priorityColors[task.priority] || 'bg-gray-400'} text-white`}>
@@ -82,9 +73,9 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
           )}
         </div>
         {creatorProfile && (
-          <Avatar className="h-5 w-5" title={`Created by: ${creatorProfile.name}`}>
+          <Avatar className="h-6 w-6" title={`Created by: ${creatorProfile.name}`}> {/* Reverted h-5 w-5 to h-6 w-6 */}
             <AvatarImage src={creatorProfile.avatarUrl || undefined} alt={creatorProfile.name || 'Creator'} data-ai-hint="user avatar small"/>
-            <AvatarFallback className="text-xs">{creatorProfile.name ? creatorProfile.name.charAt(0).toUpperCase() : <Users className="h-2.5 w-2.5"/>}</AvatarFallback>
+            <AvatarFallback className="text-xs">{creatorProfile.name ? creatorProfile.name.charAt(0).toUpperCase() : <Users className="h-3 w-3"/>}</AvatarFallback> {/* Reverted h-2.5 w-2.5 to h-3 w-3 */}
           </Avatar>
         )}
       </CardFooter>
