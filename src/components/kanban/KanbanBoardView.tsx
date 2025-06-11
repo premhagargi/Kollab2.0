@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Loader2 } from 'lucide-react';
 import { getBoardById, updateBoard } from '@/services/boardService';
-import { getTasksByBoard, createTask, updateTask as updateTaskService, archiveTask as archiveTaskService, deleteTask } from '@/services/taskService';
+import { getTasksByBoard, createTask, updateTask as updateTaskService, deleteTask } from '@/services/taskService';
 import { getUsersByIds } from '@/services/userService';
 
 const DEFAULT_NEW_TASK_TITLE = 'New Task';
@@ -35,7 +35,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       if (boardData && boardData.ownerId === user.id) {
         setCurrentBoard(boardData);
         const tasksData = await getTasksByBoard(id);
-        setBoardTasks(tasksData); // Store all tasks, filtering for active happens before passing to KanbanBoard
+        setBoardTasks(tasksData); 
 
         const allUserIds = new Set<string>();
         tasksData.forEach(task => {
@@ -89,7 +89,9 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
       // Persist the board change (task ID removal from column)
-      await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
+      if (currentBoard) { // Check if currentBoard is not null before accessing id
+        await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
+      }
 
 
       setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskIdToDelete));
@@ -121,7 +123,6 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
       
       if (provisionalNewTaskIdRef.current === updatedTask.id) {
-        // If this was a new task that's now being saved with actual content, clear the ref
         if (updatedTask.title !== DEFAULT_NEW_TASK_TITLE || (updatedTask.description && updatedTask.description.trim() !== '')) {
              provisionalNewTaskIdRef.current = null;
         }
@@ -164,11 +165,9 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     };
 
     try {
-      // 1. Create the task in Firestore; this is awaited to get the task ID.
       const createdTask = await createTask(newTaskData);
       provisionalNewTaskIdRef.current = createdTask.id; 
 
-      // 2. Optimistically update local state for tasks and board structure.
       setBoardTasks(prevTasks => [...prevTasks, createdTask]);
 
       const updatedBoardColumns = currentBoard.columns.map(col => {
@@ -180,16 +179,10 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
 
-      // 3. Open the modal immediately.
-      handleTaskClick(createdTask); 
+      // Revert: Await board update before opening modal
+      await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
 
-      // 4. Asynchronously update the board in Firestore (no await before modal opens).
-      //    Also, fetch user profile if needed in the background.
-      updateBoard(currentBoard.id, { columns: updatedBoardColumns }).catch(error => {
-        console.error("Error updating board after adding task:", error);
-        toast({ title: "Board Update Error", description: "Could not save task to board column. Please refresh.", variant: "destructive" });
-        if (currentBoard) fetchBoardData(currentBoard.id); // Attempt to recover state
-      });
+      handleTaskClick(createdTask); 
 
       if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
         getUsersByIds([createdTask.creatorId]).then(profile => {
@@ -200,8 +193,11 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       }
 
     } catch (error) {
-      console.error("Error creating task:", error);
-      toast({ title: "Error", description: "Failed to create new task.", variant: "destructive" });
+      console.error("Error creating task or updating board:", error); // Updated error message
+      toast({ title: "Error", description: "Failed to create new task or update board.", variant: "destructive" });
+      if (currentBoard) { // Attempt to recover state if board update failed
+        fetchBoardData(currentBoard.id);
+      }
     }
   };
 
@@ -240,26 +236,26 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     if (!taskToMove) return;
   
     let newBoardColumns = JSON.parse(JSON.stringify(currentBoard.columns)) as ColumnType[];
-    let taskUpdatePromise: Promise<void> | null = null;
-  
-    if (sourceColumnId !== destinationColumnId) {
-      setBoardTasks(prevTasks =>
-        prevTasks.map(t => (t.id === taskId ? { ...t, columnId: destinationColumnId } : t))
-      );
-      taskUpdatePromise = updateTaskService(taskId, { columnId: destinationColumnId });
-    }
-  
     const sourceColIndex = newBoardColumns.findIndex(col => col.id === sourceColumnId);
     const destColIndex = newBoardColumns.findIndex(col => col.id === destinationColumnId);
   
     if (sourceColIndex === -1 || destColIndex === -1) {
       console.error("Source or destination column not found during drag and drop.");
-      if (currentBoard) fetchBoardData(currentBoard.id);
+      if (currentBoard) fetchBoardData(currentBoard.id); // Re-fetch to correct potential inconsistencies
       return;
     }
   
+    // Optimistically update task's columnId in local state if moving between columns
+    if (sourceColumnId !== destinationColumnId) {
+      setBoardTasks(prevTasks =>
+        prevTasks.map(t => (t.id === taskId ? { ...t, columnId: destinationColumnId } : t))
+      );
+    }
+  
+    // Remove from source column's taskIds
     newBoardColumns[sourceColIndex].taskIds = newBoardColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
   
+    // Add to destination column's taskIds (at correct position if targetTaskId is provided)
     let destTaskIds = [...newBoardColumns[destColIndex].taskIds];
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
   
@@ -270,10 +266,14 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     }
     newBoardColumns[destColIndex].taskIds = destTaskIds;
     
+    // Optimistically update the board columns in local state
     setCurrentBoard(prevBoard => (prevBoard ? { ...prevBoard, columns: newBoardColumns } : null));
   
+    // Persist changes to Firestore
     try {
-      if (taskUpdatePromise) await taskUpdatePromise;
+      if (sourceColumnId !== destinationColumnId) {
+        await updateTaskService(taskId, { columnId: destinationColumnId });
+      }
       await updateBoard(currentBoard.id, { columns: newBoardColumns });
       toast({ title: "Task Moved", description: `Task "${taskToMove.title}" position updated.` });
     } catch (error) {
@@ -287,6 +287,9 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const handleArchiveTask = async (taskToArchive: Task) => {
     if (!user || !currentBoard) return;
 
+    const originalBoardTasks = [...boardTasks];
+    const originalBoardState = currentBoard ? JSON.parse(JSON.stringify(currentBoard)) : null;
+
     setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
     const updatedColumns = currentBoard.columns.map(col => {
       if (col.taskIds.includes(taskToArchive.id)) {
@@ -295,16 +298,28 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       return col;
     });
     setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
+    
+    // Close modal immediately after optimistic updates
+    const previouslySelectedTask = selectedTask;
     handleCloseModal(); 
+    if (previouslySelectedTask && previouslySelectedTask.id === taskToArchive.id) {
+        setSelectedTask(null); // Ensure modal doesn't try to re-open with archived task
+    }
+
 
     try {
-      await archiveTaskService(taskToArchive.id);
+      // Import and call archiveTask from taskService
+      const { archiveTask: archiveTaskInService } = await import('@/services/taskService');
+      await archiveTaskInService(taskToArchive.id);
       await updateBoard(currentBoard.id, { columns: updatedColumns }); 
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
     } catch (error) {
       console.error("Error archiving task:", error);
-      toast({ title: "Error Archiving Task", description: "Could not archive task. Re-fetching board.", variant: "destructive" });
-      if (currentBoard) fetchBoardData(currentBoard.id);
+      toast({ title: "Error Archiving Task", description: "Could not archive task. Reverting.", variant: "destructive" });
+      // Revert optimistic updates on error
+      setBoardTasks(originalBoardTasks);
+      if (originalBoardState) setCurrentBoard(originalBoardState);
+      // If the modal was closed for this task, it stays closed. User would need to reopen if they want to try again.
     }
   };
 
@@ -361,4 +376,3 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
-
