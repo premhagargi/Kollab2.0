@@ -53,15 +53,17 @@ function DashboardContent() {
   
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex flex-1 min-h-0"> {/* Ensure flex-1 and min-h-0 for proper scrolling */}
-        <AppSidebar
-          currentBoardId={currentBoardId}
-          onSelectBoard={handleSelectBoard}
-          onBoardCreated={handleBoardCreated}
-        />
-        <div className="flex flex-col flex-1 w-full min-w-0"> {/* Ensure min-w-0 here */}
-          <AppHeader /> {/* This is sticky */}
-          <main className="flex-1 overflow-hidden"> {/* This should take remaining space and handle its own overflow */}
+      {/* This div takes care of the overall page structure below the root body */}
+      <div className="flex flex-col flex-1 h-screen overflow-hidden">
+        <AppHeader /> {/* This is sticky top-0 z-50 */}
+        <div className="flex flex-1 min-h-0"> {/* Container for sidebar and main content, allows main content to scroll */}
+          <AppSidebar
+            currentBoardId={currentBoardId}
+            onSelectBoard={handleSelectBoard}
+            onBoardCreated={handleBoardCreated}
+          />
+          {/* Main content area that will contain the fixed board header and scrollable board */}
+          <main className="flex-1 flex flex-col overflow-hidden"> 
             {authLoading || (user && isLoadingInitialBoard && !currentBoardId && !authLoading) ? (
                 <div className="flex flex-1 items-center justify-center h-full">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -96,3 +98,4 @@ export default function DashboardPage() {
     </AuthProvider>
   );
 }
+

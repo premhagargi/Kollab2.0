@@ -2,12 +2,19 @@
 // src/components/kanban/KanbanColumn.tsx
 "use client";
 import React from 'react';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { KanbanTaskCard } from './KanbanTaskCard';
 import type { Column, Task, UserProfile } from '@/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 interface KanbanColumnProps {
   column: Column;
@@ -36,11 +43,9 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
         let targetTaskId: string | undefined = undefined;
         let targetElement = event.target as HTMLElement;
         
-        // Traverse up to find the draggable task card element (which has data-task-id)
         while (targetElement && !targetElement.dataset.taskId && targetElement.parentElement) {
             targetElement = targetElement.parentElement;
         }
-        // If a task card is the target, get its ID, ensure it's not the one being dragged
         if (targetElement && targetElement.dataset.taskId && targetElement.dataset.taskId !== draggedTaskId) {
             targetTaskId = targetElement.dataset.taskId;
         }
@@ -55,21 +60,46 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
   };
   
   return (
-    <Card 
-      className="w-80 flex-shrink-0 h-full flex flex-col bg-muted/50 shadow-md" // Reverted width w-72 to w-80, original bg-muted/50
+    <div // Changed Card to div for more control over styling to match Trello
+      className="w-72 flex-shrink-0 h-full flex flex-col bg-neutral-800 rounded-lg shadow-md" 
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       data-column-id={column.id}
     >
-      <CardHeader className="p-4 border-b"> {/* Reverted p-3 to p-4, removed sticky */}
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-semibold truncate pr-2">{column.name}</CardTitle> {/* Reverted text-base to text-lg */}
-          <span className="text-sm text-muted-foreground flex-shrink-0">{tasks.length}</span> {/* Reverted text-xs to text-sm */}
+      {/* Column Header - sticky within the column's flex container */}
+      <div className="sticky top-0 z-10 p-3 border-b border-neutral-700 bg-neutral-800 rounded-t-lg">
+        <div className="flex justify-between items-center ">
+          <h3 className="text-sm font-semibold text-neutral-200 truncate pr-2">{column.name}</h3>
+          <div className="flex items-center">
+            <span className="text-xs text-neutral-400 mr-2">{tasks.length}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-neutral-700 border-neutral-600 text-neutral-200">
+                <DropdownMenuItem 
+                  className="hover:!bg-neutral-600 focus:!bg-neutral-600"
+                  // onClick={() => {/* Handle edit column name */}}
+                >
+                  Edit column name
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="hover:!bg-neutral-600 focus:!bg-neutral-600 text-red-400 hover:!text-red-300 focus:!text-red-300"
+                  // onClick={() => {/* Handle delete column */}}
+                >
+                  Delete column
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </CardHeader>
-      {/* The ScrollArea needs to fill the remaining height of the column card */}
-      <ScrollArea className="flex-grow h-[calc(100%-120px)]"> {/* Reverted to fixed height approach for ScrollArea, may need adjustment */}
-        <CardContent className="p-3 space-y-3 min-h-[80px]"> {/* Reverted padding and min-h */}
+      </div>
+      
+      {/* Scrollable Task List */}
+      <ScrollArea className="flex-grow min-h-0"> {/* Use min-h-0 to ensure ScrollArea takes proper height */}
+        <div className="p-2 space-y-2"> {/* Content padding for tasks */}
           {tasks.map((task) => (
             <KanbanTaskCard 
               key={task.id} 
@@ -77,22 +107,28 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
               onClick={() => onTaskClick(task)}
               creatorProfile={creatorProfiles[task.creatorId] || null}
               onDragStart={onDragTaskStart}
-              
             />
           ))}
           {tasks.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground py-4"> {/* Reverted text-xs to text-sm, py-3 to py-4 */}
-              Drag tasks here or click below to add.
+            <div className="text-center text-xs text-neutral-500 py-4">
+              Drag tasks here or add new.
             </div>
           )}
-        </CardContent>
+        </div>
       </ScrollArea>
-      <div className="p-3 border-t mt-auto"> {/* Reverted p-2 to p-3 */}
-        <Button variant="ghost" className="w-full justify-start" onClick={() => onAddTask(column.id)}> {/* Reverted size="sm" removal, text-sm removal */}
+
+      {/* Add Task Button Area */}
+      <div className="p-2 border-t border-neutral-700 mt-auto rounded-b-lg">
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start text-neutral-400 hover:bg-neutral-750 hover:text-neutral-300 text-sm" 
+          onClick={() => onAddTask(column.id)}
+        >
           <PlusCircle className="h-4 w-4 mr-2" />
-          Add task
+          Add a card
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
+

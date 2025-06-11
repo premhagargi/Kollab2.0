@@ -48,15 +48,15 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-16 flex-shrink-0">
+      <div className="container mx-auto flex h-full items-center px-4">
         {/* Left Section: Sidebar Toggle (mobile) & Logo/Brand */}
         <div className="flex items-center">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="md:hidden mr-2" // Only show on mobile, add margin
+            className="md:hidden mr-2" 
             aria-label="Toggle sidebar"
           >
             <Menu className="h-6 w-6" />
@@ -72,9 +72,8 @@ export function AppHeader() {
         {/* Spacer to push right content */}
         <div className="flex-grow" />
 
-        {/* Right Section: Actions & User Menu */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Navigation items will be placed here */}
+        {/* Right Section: Actions & User Menu - Ensure this section does not cause overflow */}
+        <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
           {loading && !user ? ( 
             <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
           ) : user ? (
@@ -146,7 +145,7 @@ export function AppHeader() {
                           <span className="w-full border-t" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-popover px-2 text-muted-foreground"> {/* Changed bg-background to bg-popover */}
+                          <span className="bg-popover px-2 text-muted-foreground">
                             Or continue with
                           </span>
                         </div>
@@ -193,3 +192,4 @@ export function AppHeader() {
     </header>
   );
 }
+

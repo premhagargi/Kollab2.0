@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -25,11 +26,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col">
         {/* The main content area should be able to grow and allow AppHeader to be sticky */}
-        <div className="flex flex-col flex-1">
-          {children}
-        </div>
+        {/* Removed flex flex-col flex-1 from here, will be handled by page.tsx */}
+        {children}
         <Toaster />
       </body>
     </html>
   );
 }
+

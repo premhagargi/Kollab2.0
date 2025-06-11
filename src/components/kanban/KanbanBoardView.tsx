@@ -120,8 +120,6 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       await updateTaskService(updatedTask.id, updatedTask);
       setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
       
-      // If this was the provisional task and it was successfully saved,
-      // it's no longer provisional.
       if (provisionalNewTaskIdRef.current === updatedTask.id) {
         provisionalNewTaskIdRef.current = null; 
       }
@@ -176,17 +174,11 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       });
       
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
-      handleTaskClick(createdTask); // Open modal immediately
+      
+      // Await board update before opening modal for consistency
+      await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
 
-      // Update board in background
-      updateBoard(currentBoard.id, { columns: updatedBoardColumns })
-        .catch(boardUpdateError => {
-            console.error("Error updating board in background with new task ID:", boardUpdateError);
-            toast({ title: "Board Sync Error", description: "Failed to save new task to board structure fully. Please refresh if issues persist.", variant: "destructive" });
-            if (currentBoard) {
-                fetchBoardData(currentBoard.id); // Re-fetch to ensure consistency
-            }
-        });
+      handleTaskClick(createdTask); // Open modal
 
       if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
         getUsersByIds([createdTask.creatorId]).then(profile => {
@@ -245,35 +237,37 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         return;
     }
 
-    // Optimistically update task's columnId if moving between columns
     if (sourceColumnId !== destinationColumnId) {
         setBoardTasks(prevTasks =>
             prevTasks.map(t => (t.id === taskId ? { ...t, columnId: destinationColumnId } : t))
         );
     }
 
-    // Remove task from source column's taskIds
     newBoardColumns[sourceColIndex].taskIds = newBoardColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
 
-    // Add task to destination column's taskIds
     let destTaskIds = [...newBoardColumns[destColIndex].taskIds];
-    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); // Check if task already slipped in due to rapid UI updates
+    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); 
     if (currentTaskIndexInDest > -1) {
-        destTaskIds.splice(currentTaskIndexInDest, 1); // Remove it before re-inserting in correct position
+        destTaskIds.splice(currentTaskIndexInDest, 1); 
     }
 
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
 
-    if (targetIndexInDest !== -1) {
-        // If dropping onto a specific task (targetTaskId), insert before it
-        destTaskIds.splice(targetIndexInDest, 0, taskId);
-    } else {
-        // If dropping into empty space or at the end, or targetTaskId is not found (should not happen if valid)
-        destTaskIds.push(taskId);
+    if (sourceColumnId === destinationColumnId) { // Reordering within the same column
+        if (targetIndexInDest !== -1) {
+            destTaskIds.splice(targetIndexInDest, 0, taskId);
+        } else {
+            destTaskIds.push(taskId); // Dropped at the end or into empty space
+        }
+    } else { // Moving to a different column
+        if (targetIndexInDest !== -1) {
+            destTaskIds.splice(targetIndexInDest, 0, taskId);
+        } else {
+            destTaskIds.push(taskId);
+        }
     }
     newBoardColumns[destColIndex].taskIds = destTaskIds;
 
-    // Optimistically update the board state
     setCurrentBoard(prevBoard => (prevBoard ? { ...prevBoard, columns: newBoardColumns } : null));
 
     try {
@@ -281,11 +275,11 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
             await updateTaskService(taskId, { columnId: destinationColumnId });
         }
         await updateBoard(currentBoard.id, { columns: newBoardColumns });
-        toast({ title: "Task Moved", description: `Task "${taskToMove.title}" position updated.` });
+        // toast({ title: "Task Moved", description: `Task "${taskToMove.title}" position updated.` });
     } catch (error) {
         console.error("Error moving task:", error);
         toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching board.", variant: "destructive" });
-        if (currentBoard) fetchBoardData(currentBoard.id); // Re-fetch on error
+        if (currentBoard) fetchBoardData(currentBoard.id); 
     }
 };
 
@@ -341,30 +335,29 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     return null;
   }
 
-  // The AppHeader height (h-16 from AppHeader.tsx, typically 4rem)
-  // The board header height defined here (p-4 border-b -> roughly 2.5rem + 1px border, so ~2.5rem)
-  // Calculation for KanbanBoard height: 100vh - AppHeader height - KanbanBoardView header height
-  // This should be set on the KanbanBoard's direct parent or the ScrollArea inside KanbanBoard
-  const appHeaderHeight = 'h-16'; // From AppHeader
-  const boardViewHeaderHeight = 'h-[calc(2.5rem+1px)]'; // p-4 and border-b
+  // AppHeader height is h-16 (4rem or 64px)
+  const boardHeaderHeight = "h-[60px]"; // Approximate height for the board header (p-4, text-2xl)
 
   return (
-     <div className="flex flex-col h-full overflow-hidden">
-      {/* Board Header - Make this sticky */}
-      <div className="flex items-center justify-between p-4 border-b bg-card">
-        <h1 className="text-2xl font-semibold font-headline truncate pr-2">{currentBoard.name}</h1>
+     <div className="flex flex-col h-full overflow-hidden bg-neutral-900 text-neutral-100"> {/* Main container for board view dark theme */}
+      {/* Board Header - Sticky below AppHeader */}
+      <div className={`sticky top-16 z-30 flex items-center justify-between p-4 border-b border-neutral-700 bg-neutral-850 shadow-md ${boardHeaderHeight} flex-shrink-0`}>
+        <h1 className="text-xl font-semibold truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button 
             size="sm" 
             onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')} 
             disabled={currentBoard.columns.length === 0}
+            variant="secondary" // Use a less prominent variant for dark theme
+            className="bg-neutral-700 hover:bg-neutral-600 text-neutral-100"
           >
             <Plus className="mr-2 h-4 w-4" /> New Task
           </Button>
         </div>
       </div>
       
-      {/* Kanban Board - This section should scroll */}
+      {/* Kanban Board - Scrollable area */}
+      {/* Adjust top padding to account for the AppHeader and BoardHeader heights */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden"> 
         <KanbanBoard
           boardColumns={currentBoard.columns}
@@ -389,3 +382,4 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
+

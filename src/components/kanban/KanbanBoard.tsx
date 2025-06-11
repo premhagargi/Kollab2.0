@@ -33,7 +33,6 @@ export function KanbanBoard({
       .map(taskId => allTasksForBoard.find(t => t.id === taskId))
       .filter(Boolean) as Task[];
     
-    // Ensure tasks are sorted by their order in column.taskIds
     return tasksInColumn.sort((a, b) => {
       return column.taskIds.indexOf(a.id) - column.taskIds.indexOf(b.id);
     });
@@ -45,8 +44,9 @@ export function KanbanBoard({
   };
   
   return (
-    // The parent div of KanbanBoard (in KanbanBoardView) will handle overflow and height
-    <div className="flex gap-4 p-4 h-full"> {/* Use h-full to take available height */}
+    // Use h-full to take available height from parent in KanbanBoardView
+    // Parent (in KanbanBoardView) handles overflow-x and overflow-y
+    <div className="flex gap-4 p-4 h-full"> 
       {boardColumns.map((column: Column) => (
         <KanbanColumn
           key={column.id}
@@ -59,8 +59,12 @@ export function KanbanBoard({
           onDragTaskStart={handleDragTaskStart}
         />
       ))}
-      <div className="w-80 flex-shrink-0"> {/* Matched column width */}
-        <Button variant="outline" className="w-full h-12 border-dashed" onClick={onAddColumn}> {/* Reverted text-sm removal, h-10 to h-12 */}
+      <div className="w-72 flex-shrink-0 pt-1"> {/* Adjusted width and added pt-1 for alignment with column headers */}
+        <Button 
+          variant="ghost" 
+          className="w-full h-10 border-dashed border-neutral-600 text-neutral-400 hover:bg-neutral-750 hover:text-neutral-300" 
+          onClick={onAddColumn}
+        >
           <PlusCircle className="h-4 w-4 mr-2" />
           Add another column
         </Button>
@@ -68,3 +72,4 @@ export function KanbanBoard({
     </div>
   );
 }
+
