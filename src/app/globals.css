@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: 207 89% 94%; /* Light, desaturated sky blue */
-    --foreground: 215 29% 17%; /* Dark grayish blue for text */
+    --background: 207 89% 94%; /* Light, desaturated sky blue (#E3F2FD) */
+    --foreground: 215 30% 25%; /* Dark grayish blue for text, ensuring good contrast */
 
-    --card: 0 0% 100%; /* White cards */
-    --card-foreground: 215 29% 17%; /* Dark grayish blue for card text */
+    --card: 0 0% 100%; /* White cards for Trello-like feel */
+    --card-foreground: 215 30% 25%; /* Dark grayish blue for card text */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 29% 17%;
+    --popover-foreground: 215 30% 25%;
 
-    --primary: 207 90% 61%; /* Saturated sky blue */
-    --primary-foreground: 210 100% 98%; /* A very light blue/white */
+    --primary: 207 90% 61%; /* Saturated sky blue (#42A5F5) */
+    --primary-foreground: 210 100% 98%; /* A very light blue/white for text on primary */
 
     --secondary: 207 80% 88%; /* Lighter sky blue for secondary elements */
     --secondary-foreground: 207 80% 30%; /* Darker blue for text on secondary */
@@ -26,8 +26,8 @@ body {
     --muted: 207 60% 90%; /* Very light blue for muted elements */
     --muted-foreground: 207 30% 45%; /* Muted blue text */
 
-    --accent: 260 40% 55%; /* Muted violet */
-    --accent-foreground: 240 100% 98%; /* A very light violet/white */
+    --accent: 260 40% 55%; /* Muted violet (#7E57C2) */
+    --accent-foreground: 260 100% 98%; /* A very light violet/white for text on accent */
 
     --destructive: 0 84.2% 60.2%; /* Default destructive */
     --destructive-foreground: 0 0% 98%; /* Default destructive-foreground */
@@ -41,38 +41,40 @@ body {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 0.5rem; /* Consistent border radius */
 
-    /* Sidebar specific colors */
-    --sidebar-background: 207 85% 92%; /* Slightly different shade of light blue for sidebar */
-    --sidebar-foreground: 215 29% 17%; /* Dark grayish blue for sidebar text */
-    --sidebar-primary: 207 90% 55%; /* Slightly darker primary for active/highlighted sidebar links */
-    --sidebar-primary-foreground: 210 100% 98%; /* Very light blue/white for text on sidebar primary */
-    --sidebar-accent: 207 80% 85%; /* Hover/active state accent for sidebar items */
-    --sidebar-accent-foreground: 207 80% 30%; /* Darker blue text for sidebar accent states */
-    --sidebar-border: 207 50% 75%; /* Lighter blue for sidebar borders */
-    --sidebar-ring: 207 90% 61%; /* Primary color for sidebar focus rings */
+    /* Sidebar specific colors - can be same as main theme or slightly tweaked */
+    --sidebar-background: 207 85% 92%; 
+    --sidebar-foreground: 215 29% 17%;
+    --sidebar-primary: 207 90% 55%;
+    --sidebar-primary-foreground: 210 100% 98%;
+    --sidebar-accent: 207 80% 85%; 
+    --sidebar-accent-foreground: 207 80% 30%; 
+    --sidebar-border: 207 50% 75%;
+    --sidebar-ring: 207 90% 61%;
   }
+
   .dark {
+    /* Define dark theme variables if needed, or remove if dark mode is not a priority */
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
     --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 207 90% 61%; /* Keep primary vibrant */
+    --primary-foreground: 215 30% 25%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
+    --accent: 260 40% 55%; /* Keep accent vibrant */
     --accent-foreground: 210 40% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 210 40% 98%;
+    --ring: 207 90% 61%;
     
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -82,12 +84,12 @@ body {
 
     --sidebar-background: 222 47% 10%;
     --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 210 40% 98%;
+    --sidebar-primary: 207 90% 61%;
     --sidebar-primary-foreground: 222 47% 10%;
     --sidebar-accent: 217 33% 15%;
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 217 33% 15%;
-    --sidebar-ring: 210 40% 98%;
+    --sidebar-ring: 207 90% 61%;
   }
 }
 

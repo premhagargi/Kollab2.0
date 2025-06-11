@@ -33,31 +33,18 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
       try {
         const { taskId: draggedTaskId, sourceColumnId } = JSON.parse(taskDataString);
         
-        // Determine if the drop target is another task card
         let targetTaskId: string | undefined = undefined;
         let targetElement = event.target as HTMLElement;
         
-        // Traverse up to find the task card if dropped on an inner element
         while (targetElement && !targetElement.dataset.taskId && targetElement.parentElement) {
             targetElement = targetElement.parentElement;
         }
-        if (targetElement && targetElement.dataset.taskId) {
+        if (targetElement && targetElement.dataset.taskId && targetElement.dataset.taskId !== draggedTaskId) {
             targetTaskId = targetElement.dataset.taskId;
         }
 
         if (draggedTaskId && sourceColumnId) {
-          if (column.id === sourceColumnId) { // Dropped in the same column (reordering)
-            if (targetTaskId && targetTaskId !== draggedTaskId) {
-              onTaskDrop(draggedTaskId, sourceColumnId, column.id, targetTaskId);
-            } else if (!targetTaskId) { 
-              // Dropped in empty space of same column, append to end (or handle as no-op for now)
-              // For simplicity, we can treat dropping in empty space of the same column as a move to the end.
-              // Or, if targetTaskId is undefined, pass it and let parent decide.
-              onTaskDrop(draggedTaskId, sourceColumnId, column.id, undefined); // Drop at the end if no specific target task
-            }
-          } else { // Dropped in a different column
-            onTaskDrop(draggedTaskId, sourceColumnId, column.id, targetTaskId); // targetTaskId helps place it if dropped on a specific task
-          }
+          onTaskDrop(draggedTaskId, sourceColumnId, column.id, targetTaskId);
         }
       } catch (error) {
         console.error("Error parsing dragged task data:", error);
@@ -67,19 +54,20 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
   
   return (
     <Card 
-      className="w-80 flex-shrink-0 h-full flex flex-col bg-muted/50 shadow-md"
+      className="w-72 flex-shrink-0 h-full flex flex-col bg-muted/60 shadow-md" // Reduced width to w-72, slightly more muted bg
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      data-column-id={column.id} // For easier identification if needed
+      data-column-id={column.id}
     >
-      <CardHeader className="p-4 border-b">
+      <CardHeader className="p-3 border-b sticky top-0 bg-muted/80 z-10"> {/* Reduced padding */}
         <div className="flex justify-between items-center">
-          <CardTitle className="text-md font-semibold">{column.name}</CardTitle>
-          <span className="text-sm text-muted-foreground">{tasks.length}</span>
+          <CardTitle className="text-base font-semibold truncate pr-2">{column.name}</CardTitle> {/* Truncate title */}
+          <span className="text-xs text-muted-foreground flex-shrink-0">{tasks.length}</span>
         </div>
       </CardHeader>
-      <ScrollArea className="flex-grow">
-        <CardContent className="p-4 space-y-1 min-h-[100px]"> {/* Ensure min-h for drop area visibility */}
+      {/* The ScrollArea needs to fill the remaining height of the column card */}
+      <ScrollArea className="flex-grow"> {/* Removed fixed height, let flexbox handle it */}
+        <CardContent className="p-2 space-y-2 min-h-[60px]"> {/* Reduced padding and min-h */}
           {tasks.map((task) => (
             <KanbanTaskCard 
               key={task.id} 
@@ -90,14 +78,14 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
             />
           ))}
           {tasks.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground py-4">
+            <div className="text-center text-xs text-muted-foreground py-3">
               Drag tasks here or click below to add.
             </div>
           )}
         </CardContent>
       </ScrollArea>
-      <div className="p-2 border-t">
-        <Button variant="ghost" className="w-full justify-start" onClick={() => onAddTask(column.id)}>
+      <div className="p-2 border-t mt-auto"> {/* Ensure add task button is at the bottom */}
+        <Button variant="ghost" size="sm" className="w-full justify-start text-sm" onClick={() => onAddTask(column.id)}>
           <PlusCircle className="h-4 w-4 mr-2" />
           Add task
         </Button>

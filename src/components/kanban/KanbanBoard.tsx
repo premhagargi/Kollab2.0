@@ -33,7 +33,6 @@ export function KanbanBoard({
       .map(taskId => allTasksForBoard.find(t => t.id === taskId))
       .filter(Boolean) as Task[];
     
-    // Ensure the order of tasks matches the order in column.taskIds
     return tasksInColumn.sort((a, b) => {
       return column.taskIds.indexOf(a.id) - column.taskIds.indexOf(b.id);
     });
@@ -45,28 +44,26 @@ export function KanbanBoard({
   };
   
   return (
-    <ScrollArea className="w-full h-full">
-      <div className="flex gap-4 p-4 h-[calc(100vh-var(--header-height)-var(--board-header-height)-2rem)]">
-        {boardColumns.map((column: Column) => (
-          <KanbanColumn
-            key={column.id}
-            column={column}
-            tasks={getTasksForColumn(column)}
-            creatorProfiles={creatorProfiles}
-            onTaskClick={onTaskClick}
-            onAddTask={onAddTask}
-            onTaskDrop={onTaskDrop}
-            onDragTaskStart={handleDragTaskStart}
-          />
-        ))}
-        <div className="w-80 flex-shrink-0">
-          <Button variant="outline" className="w-full h-12 border-dashed" onClick={onAddColumn}>
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Add another column
-          </Button>
-        </div>
+    // The parent div of KanbanBoard (in KanbanBoardView) will handle overflow and height
+    <div className="flex gap-4 p-4 h-full"> {/* Use h-full to take available height */}
+      {boardColumns.map((column: Column) => (
+        <KanbanColumn
+          key={column.id}
+          column={column}
+          tasks={getTasksForColumn(column)}
+          creatorProfiles={creatorProfiles}
+          onTaskClick={onTaskClick}
+          onAddTask={onAddTask}
+          onTaskDrop={onTaskDrop}
+          onDragTaskStart={handleDragTaskStart}
+        />
+      ))}
+      <div className="w-72 flex-shrink-0"> {/* Matched column width */}
+        <Button variant="outline" className="w-full h-10 border-dashed text-sm" onClick={onAddColumn}>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add another column
+        </Button>
       </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+    </div>
   );
 }

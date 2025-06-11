@@ -19,7 +19,6 @@ import { siteConfig } from '@/config/site';
 import { InviteTeamMemberModal } from '@/components/modals/InviteTeamMemberModal';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { Separator } from '@/components/ui/separator';
 import { EmailPasswordLoginForm } from '@/components/auth/EmailPasswordLoginForm';
 import { EmailPasswordSignupForm } from '@/components/auth/EmailPasswordSignupForm';
 
@@ -44,19 +43,20 @@ export function AppHeader() {
 
 
   const handleLoginSuccess = () => {
-    setIsLoginModalOpen(false); // Close modal on successful login/signup
-    setAuthView('google'); // Reset view
+    setIsLoginModalOpen(false); 
+    setAuthView('google'); 
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
-        <div className="flex gap-6 md:gap-10">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center">
+        {/* Left Section: Sidebar Toggle (mobile) & Logo/Brand */}
+        <div className="flex items-center">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="md:hidden"
+            className="md:hidden mr-2" // Only show on mobile, add margin
             aria-label="Toggle sidebar"
           >
             <Menu className="h-6 w-6" />
@@ -69,121 +69,124 @@ export function AppHeader() {
           </Link>
         </div>
 
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          <nav className="flex items-center space-x-1">
-            {loading && !user ? ( // Show simpler loading state only when initially loading and no user
-              <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
-            ) : user ? (
-              <>
-              <Button variant="ghost" onClick={() => setIsInviteModalOpen(true)} disabled={loading}>
-                <Users className="mr-2 h-4 w-4" /> Invite Team
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled={loading}>
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar" />
-                      <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : <UserCircle />}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled> {/* Add functionality later */}
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              </>
-            ) : ( // User is not logged in
-              <Dialog open={isLoginModalOpen} onOpenChange={(open) => { setIsLoginModalOpen(open); if (!open) setAuthView('google'); }}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => { setIsLoginModalOpen(true); setAuthView('google'); }} disabled={loading}>
-                    <LogInIcon className="mr-2 h-4 w-4" />
-                    Login
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="text-center text-2xl font-semibold">
-                      {authView === 'emailLogin' && 'Login to Kollab'}
-                      {authView === 'emailSignup' && 'Create your Kollab Account'}
-                      {authView === 'google' && `Welcome to ${siteConfig.name}`}
-                    </DialogTitle>
-                    <DialogDescription className="text-center">
-                      {authView === 'emailLogin' && 'Enter your email and password to access your account.'}
-                      {authView === 'emailSignup' && 'Get started by creating a new account.'}
-                      {authView === 'google' && 'Choose your preferred sign-in method.'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-6 px-2 space-y-6">
-                    {authView === 'google' && (
-                      <>
-                        <Button onClick={async () => { await loginWithGoogle(); handleLoginSuccess();}} className="w-full" disabled={loading}>
-                          <GoogleIcon /> Sign in with Google
-                        </Button>
-                        <div className="relative my-4">
-                          <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                          </div>
-                          <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">
-                              Or continue with
-                            </span>
-                          </div>
-                        </div>
-                        <Button variant="outline" onClick={() => setAuthView('emailLogin')} className="w-full" disabled={loading}>
-                          <Mail className="mr-2 h-4 w-4" /> Sign in with Email
-                        </Button>
-                         <p className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{' '}
-                            <Button variant="link" type="button" onClick={() => setAuthView('emailSignup')} className="p-0 h-auto font-semibold text-primary" disabled={loading}>
-                              Sign Up
-                            </Button>
-                          </p>
-                      </>
-                    )}
+        {/* Spacer to push right content */}
+        <div className="flex-grow" />
 
-                    {authView === 'emailLogin' && (
-                      <EmailPasswordLoginForm 
-                        onSuccess={handleLoginSuccess} 
-                        onSwitchToSignup={() => setAuthView('emailSignup')} 
-                      />
-                    )}
-
-                    {authView === 'emailSignup' && (
-                      <EmailPasswordSignupForm 
-                        onSuccess={handleLoginSuccess} 
-                        onSwitchToLogin={() => setAuthView('emailLogin')}
-                      />
-                    )}
+        {/* Right Section: Actions & User Menu */}
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Navigation items will be placed here */}
+          {loading && !user ? ( 
+            <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
+          ) : user ? (
+            <>
+            <Button variant="ghost" onClick={() => setIsInviteModalOpen(true)} disabled={loading} size="sm">
+              <Users className="mr-2 h-4 w-4" /> Invite Team
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled={loading}>
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar" />
+                    <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : <UserCircle />}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
                   </div>
-                  { (authView === 'emailLogin' || authView === 'emailSignup') &&
-                    <DialogFooter className="pt-4 border-t">
-                       <Button variant="ghost" onClick={() => setAuthView('google')} className="w-full text-sm" disabled={loading}>
-                        &larr; Back to all login options
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled> 
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            </>
+          ) : ( 
+            <Dialog open={isLoginModalOpen} onOpenChange={(open) => { setIsLoginModalOpen(open); if (!open) setAuthView('google'); }}>
+              <DialogTrigger asChild>
+                <Button onClick={() => { setIsLoginModalOpen(true); setAuthView('google'); }} disabled={loading} size="sm">
+                  <LogInIcon className="mr-2 h-4 w-4" />
+                  Login
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-center text-2xl font-semibold">
+                    {authView === 'emailLogin' && 'Login to Kollab'}
+                    {authView === 'emailSignup' && 'Create your Kollab Account'}
+                    {authView === 'google' && `Welcome to ${siteConfig.name}`}
+                  </DialogTitle>
+                  <DialogDescription className="text-center">
+                    {authView === 'emailLogin' && 'Enter your email and password to access your account.'}
+                    {authView === 'emailSignup' && 'Get started by creating a new account.'}
+                    {authView === 'google' && 'Choose your preferred sign-in method.'}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="py-6 px-2 space-y-6">
+                  {authView === 'google' && (
+                    <>
+                      <Button onClick={async () => { await loginWithGoogle(); handleLoginSuccess();}} className="w-full" disabled={loading}>
+                        <GoogleIcon /> Sign in with Google
                       </Button>
-                    </DialogFooter>
-                  }
-                </DialogContent>
-              </Dialog>
-            )}
-          </nav>
+                      <div className="relative my-4">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-popover px-2 text-muted-foreground"> {/* Changed bg-background to bg-popover */}
+                            Or continue with
+                          </span>
+                        </div>
+                      </div>
+                      <Button variant="outline" onClick={() => setAuthView('emailLogin')} className="w-full" disabled={loading}>
+                        <Mail className="mr-2 h-4 w-4" /> Sign in with Email
+                      </Button>
+                       <p className="text-center text-sm text-muted-foreground">
+                          Don't have an account?{' '}
+                          <Button variant="link" type="button" onClick={() => setAuthView('emailSignup')} className="p-0 h-auto font-semibold text-primary" disabled={loading}>
+                            Sign Up
+                          </Button>
+                        </p>
+                    </>
+                  )}
+
+                  {authView === 'emailLogin' && (
+                    <EmailPasswordLoginForm 
+                      onSuccess={handleLoginSuccess} 
+                      onSwitchToSignup={() => setAuthView('emailSignup')} 
+                    />
+                  )}
+
+                  {authView === 'emailSignup' && (
+                    <EmailPasswordSignupForm 
+                      onSuccess={handleLoginSuccess} 
+                      onSwitchToLogin={() => setAuthView('emailLogin')}
+                    />
+                  )}
+                </div>
+                { (authView === 'emailLogin' || authView === 'emailSignup') &&
+                  <DialogFooter className="pt-4 border-t">
+                     <Button variant="ghost" onClick={() => setAuthView('google')} className="w-full text-sm" disabled={loading}>
+                      &larr; Back to all login options
+                    </Button>
+                  </DialogFooter>
+                }
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
       {isInviteModalOpen && user && <InviteTeamMemberModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} />}

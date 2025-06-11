@@ -7,7 +7,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { KanbanBoardView } from '@/components/kanban/KanbanBoardView';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { useAuth } from '@/hooks/useAuth'; // Corrected import path for useAuth
+import { useAuth } from '@/hooks/useAuth';
 import { getBoardsByOwner } from '@/services/boardService';
 import type { Board } from '@/types';
 import { Loader2 } from 'lucide-react';
@@ -19,14 +19,14 @@ function DashboardContent() {
   const [isLoadingInitialBoard, setIsLoadingInitialBoard] = useState(true);
 
   useEffect(() => {
-    if (user && !currentBoardId) { // Fetch boards only if user is loaded and no board is selected
+    if (user && !currentBoardId) { 
       setIsLoadingInitialBoard(true);
       getBoardsByOwner(user.id)
         .then(boards => {
           if (boards.length > 0) {
-            setCurrentBoardId(boards[0].id); // Select the first board by default
+            setCurrentBoardId(boards[0].id); 
           } else {
-            setCurrentBoardId(null); // No boards found for user
+            setCurrentBoardId(null); 
           }
         })
         .catch(error => {
@@ -36,7 +36,7 @@ function DashboardContent() {
         .finally(() => {
           setIsLoadingInitialBoard(false);
         });
-    } else if (!user && !authLoading) { // User logged out or not yet logged in
+    } else if (!user && !authLoading) { 
         setCurrentBoardId(null);
         setIsLoadingInitialBoard(false);
     }
@@ -48,29 +48,25 @@ function DashboardContent() {
   };
 
   const handleBoardCreated = (newBoardId: string) => {
-    setCurrentBoardId(newBoardId); // Automatically select the newly created board
+    setCurrentBoardId(newBoardId); 
   };
   
-  if (authLoading || (user && isLoadingInitialBoard && !currentBoardId)) {
-    return (
-      <div className="flex flex-1 items-center justify-center h-full">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen">
+      <div className="flex flex-1 min-h-0"> {/* Ensure flex-1 and min-h-0 for proper scrolling */}
         <AppSidebar
           currentBoardId={currentBoardId}
           onSelectBoard={handleSelectBoard}
           onBoardCreated={handleBoardCreated}
         />
-        <div className="flex flex-col flex-1 w-full">
-          <AppHeader />
-          <main className="flex-1 overflow-hidden">
-            {currentBoardId ? (
+        <div className="flex flex-col flex-1 w-full min-w-0"> {/* Ensure min-w-0 here */}
+          <AppHeader /> {/* This is sticky */}
+          <main className="flex-1 overflow-hidden"> {/* This should take remaining space and handle its own overflow */}
+            {authLoading || (user && isLoadingInitialBoard && !currentBoardId && !authLoading) ? (
+                <div className="flex flex-1 items-center justify-center h-full">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+            ) : currentBoardId ? (
               <KanbanBoardView boardId={currentBoardId} />
             ) : user ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
