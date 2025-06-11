@@ -24,7 +24,7 @@ interface KanbanColumnProps {
   onAddTask: (columnId: string) => void;
   onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
   onDragTaskStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
-  onUpdateColumnName: (columnId: string, newName: string) => void; // New prop
+  onUpdateColumnName: (columnId: string, newName: string) => void;
 }
 
 export function KanbanColumn({
@@ -49,7 +49,7 @@ export function KanbanColumn({
   }, [isEditingName]);
 
   const handleNameDisplayClick = () => {
-    setCurrentEditingName(column.name); // Reset to current name in case of previous aborted edit
+    setCurrentEditingName(column.name);
     setIsEditingName(true);
   };
 
@@ -59,8 +59,6 @@ export function KanbanColumn({
       onUpdateColumnName(column.id, trimmedName);
     }
     setIsEditingName(false);
-    // If trimmedName is empty, it effectively cancels the edit or keeps the old name
-    // The parent component (KanbanBoardView) will handle the actual data update and re-render
   };
 
   const handleNameInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +69,7 @@ export function KanbanColumn({
     if (event.key === 'Enter') {
       handleNameChangeCommit();
     } else if (event.key === 'Escape') {
-      setCurrentEditingName(column.name); // Revert to original name
+      setCurrentEditingName(column.name); 
       setIsEditingName(false);
     }
   };
@@ -123,12 +121,12 @@ export function KanbanColumn({
               onChange={handleNameInputChange}
               onBlur={handleNameChangeCommit}
               onKeyDown={handleNameInputKeyDown}
-              className="text-sm font-semibold h-8 flex-grow mr-2 border-primary focus:border-primary focus:ring-primary"
+              className="text-sm font-semibold h-8 flex-grow mr-2 border-transparent focus-visible:border-input bg-background shadow-none px-1"
               placeholder="Column name"
             />
           ) : (
             <h3
-              className="text-sm font-semibold truncate pr-2 text-foreground cursor-pointer hover:bg-accent/10 p-1 -ml-1 rounded"
+              className="text-sm font-semibold truncate pr-2 text-foreground cursor-pointer hover:bg-accent/10 p-1 -ml-1 rounded min-h-[32px] flex items-center" // Ensure min-height matches input
               onClick={handleNameDisplayClick}
               title="Click to edit column name"
             >
@@ -145,13 +143,13 @@ export function KanbanColumn({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem 
-                  onClick={handleNameDisplayClick} // Also allow editing from dropdown
+                  onClick={handleNameDisplayClick}
                 >
                   Rename column
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="text-destructive hover:!text-destructive-foreground focus:!text-destructive-foreground"
-                  disabled // Placeholder for delete column
+                  disabled 
                 >
                   Delete column
                 </DropdownMenuItem>
