@@ -83,7 +83,7 @@ function DashboardContent() {
         {/* pt-16 offsets content below the fixed AppHeader (h-16 from AppHeader) */}
         {/* flex-1 allows this main area to take up remaining vertical space */}
         {/* min-h-0 is crucial for flex children that need to scroll */}
-        <main className="flex-1 flex flex-col pt-16 overflow-hidden bg-background min-h-0"> 
+        <main className="flex-1 flex flex-col overflow-hidden bg-background min-h-0"> 
           {authLoading || (isLoadingBoards && user) ? (
               <div className="flex flex-1 items-center justify-center h-full">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
