@@ -1,4 +1,3 @@
-
 // src/components/modals/InviteTeamMemberModal.tsx
 "use client";
 import React, { useState } from 'react';
@@ -24,7 +23,6 @@ import { sendTeamInvitationEmailAction } from '@/actions/emailActions';
 interface InviteTeamMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // onInvite: (inviteDetails: TeamMemberInvite) => void; // This can be removed if server action handles it
 }
 
 export function InviteTeamMemberModal({ isOpen, onClose }: InviteTeamMemberModalProps) {
@@ -49,6 +47,8 @@ export function InviteTeamMemberModal({ isOpen, onClose }: InviteTeamMemberModal
     }
 
     setIsInviting(true);
+    console.log(`[InviteModal] User '${user.name || user.email}' is attempting to invite '${email}' with role '${role}'.`);
+
     try {
       const result = await sendTeamInvitationEmailAction({
         toEmail: email,
@@ -66,8 +66,8 @@ export function InviteTeamMemberModal({ isOpen, onClose }: InviteTeamMemberModal
         toast({ title: "Invite Failed", description: result.message, variant: "destructive" });
       }
     } catch (error) {
-      console.error("Error sending invite:", error);
-      toast({ title: "Invite Error", description: "An unexpected error occurred.", variant: "destructive" });
+      console.error("Error sending invite from modal:", error);
+      toast({ title: "Invite Error", description: "An unexpected error occurred while trying to send the invite.", variant: "destructive" });
     } finally {
       setIsInviting(false);
     }
