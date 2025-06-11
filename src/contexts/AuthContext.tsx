@@ -8,18 +8,23 @@ import {
   onAuthStateChanged, 
   GoogleAuthProvider, 
   signInWithPopup, 
+  signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
+  createUserWithEmailAndPassword as firebaseCreateUserWithEmailAndPassword,
   signOut,
-  type User as FirebaseUser
+  type User as FirebaseUser,
+  type AuthError
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase'; // Import auth from your Firebase config
+import { auth } from '@/lib/firebase'; 
 import { useToast } from '@/hooks/use-toast';
-import { getUserProfile, createUserProfile } from '@/services/userService'; // Import user service
+import { getUserProfile, createUserProfile } from '@/services/userService'; 
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  loginWithGoogle: () => void;
-  logout: () => void;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+  loginWithEmailAndPassword: (email: string, password: string) => Promise<void>; 
+  signupWithEmailAndPassword: (email: string, password: string) => Promise<void>; 
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,27 +34,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const initialAuthCheckDone = useRef(false);
-  const activeUserUID = useRef<string | null>(null); // To help manage toast for login
+  const activeUserUID = useRef<string | null>(null); 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        setLoading(true); // Set loading while we fetch/create profile
+        setLoading(true); 
         try {
           let userProfile = await getUserProfile(firebaseUser.uid);
           
           if (!userProfile) {
-            // User exists in Auth, but not in Firestore. Create profile.
-            // console.log(`No Firestore profile for ${firebaseUser.uid}, creating one...`);
             userProfile = await createUserProfile({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
             });
-             toast({ title: "Profile Created", description: "Your user profile has been set up." });
+            // Toast for profile creation can be shown here if desired, or handled by signup function
           } else {
-            // If profile exists, sync with latest from Auth provider & update timestamp
+            // Optionally sync if provider data is newer (e.g. display name changed in Google)
              userProfile = await createUserProfile({ 
               uid: firebaseUser.uid,
               email: firebaseUser.email,
@@ -57,12 +60,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               photoURL: firebaseUser.photoURL,
             });
           }
-
-          // console.log("User profile from Firestore:", userProfile);
           
-          // Show "Login Successful" only if this is a new login session for this user
           if (initialAuthCheckDone.current && activeUserUID.current !== firebaseUser.uid) {
-             if (userProfile) { // ensure profile is available before toasting
+             if (userProfile) { 
                 toast({ title: "Login Successful", description: "Welcome back!" });
              }
           }
@@ -75,7 +75,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null); 
         }
       } else {
-        activeUserUID.current = null; // Clear active user on logout
+        if (activeUserUID.current && initialAuthCheckDone.current) { // User was logged in and is now logged out
+           toast({ title: "Logged Out", description: "You have been successfully logged out." });
+        }
+        activeUserUID.current = null; 
         setUser(null);
       }
       setLoading(false);
@@ -85,67 +88,126 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [toast]); // Removed 'user' from dependency array
+  }, [toast]);
 
   const loginWithGoogle = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // onAuthStateChanged will handle fetching/creating profile and setting user state
+      // onAuthStateChanged handles success
     } catch (error) {
       console.error("Error during Google login:", error);
-      const firebaseError = error as { code?: string; message?: string };
+      const firebaseError = error as AuthError;
+      let description = "An unknown error occurred during Google login.";
       if (firebaseError.code === 'auth/popup-blocked') {
-        toast({
-          title: "Login Failed: Popup Blocked",
-          description: "Your browser blocked the Google Sign-In popup. Please allow popups and try again.",
-          variant: "destructive",
-          duration: 9000
-        });
-      } else if (firebaseError.code === 'auth/cancelled-popup-request') {
-        toast({
-          title: "Login Cancelled",
-          description: "The sign-in process was cancelled.",
-        });
+        description = "Your browser blocked the Google Sign-In popup. Please allow popups and try again.";
+      } else if (firebaseError.code === 'auth/cancelled-popup-request' || firebaseError.code === 'auth/popup-closed-by-user') {
+        description = "The sign-in process was cancelled.";
       } else if (firebaseError.code === 'auth/unauthorized-domain') {
-         toast({
-          title: "Login Failed: Unauthorized Domain",
-          description: "This domain is not authorized for authentication. Please contact support.",
-          variant: "destructive",
-        });
+        description = "This domain is not authorized for authentication. Please contact support.";
+      } else if (firebaseError.message) {
+        description = firebaseError.message;
       }
-      else {
-        toast({ 
-          title: "Login Failed", 
-          description: firebaseError.message || "An unknown error occurred during login.",
-          variant: "destructive"
-        });
-      }
-      setLoading(false); 
+      toast({ title: "Google Login Failed", description, variant: "destructive" });
+      setLoading(false); // Ensure loading is false on error
+      throw error; // Re-throw to allow form to handle its own state if needed
     }
+    // setLoading(false) is handled by onAuthStateChanged
   };
-
+  
   const logout = async () => {
-    setLoading(true);
+    // setLoading(true); // setLoading is handled by onAuthStateChanged
     try {
       await signOut(auth);
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      // Toast for logout is handled by onAuthStateChanged when user becomes null
     } catch (error) {
       console.error("Error during logout:", error);
-      const firebaseError = error as { code?: string; message?: string };
+      const firebaseError = error as AuthError;
       toast({ 
         title: "Logout Failed", 
         description: firebaseError.message || "An unknown error occurred.",
         variant: "destructive"
       });
-    } finally {
-        setLoading(false); // Ensure loading is set to false even if logout fails
+      // setLoading(false); // Not strictly needed here as onAuthStateChanged will trigger
     }
   };
 
+  const loginWithEmailAndPassword = async (email: string, password: string): Promise<void> => {
+    setLoading(true);
+    try {
+      await firebaseSignInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged handles success and toast
+    } catch (error) {
+      console.error("Error during email/password login:", error);
+      const firebaseError = error as AuthError;
+      let description = "An unknown error occurred.";
+      switch (firebaseError.code) {
+        case 'auth/user-not-found':
+        case 'auth/invalid-credential': // Covers wrong password and user not found for newer SDKs
+          description = "Invalid email or password. Please try again.";
+          break;
+        case 'auth/wrong-password': // Older SDKs might still use this
+          description = "Incorrect password. Please try again.";
+          break;
+        case 'auth/invalid-email':
+          description = "The email address is not valid.";
+          break;
+        case 'auth/user-disabled':
+          description = "This user account has been disabled.";
+          break;
+        default:
+          description = firebaseError.message || description;
+      }
+      toast({ title: "Login Failed", description, variant: "destructive" });
+      setLoading(false);
+      throw error; // Re-throw to allow form to handle its own state
+    }
+    // setLoading(false) handled by onAuthStateChanged
+  };
+
+  const signupWithEmailAndPassword = async (email: string, password: string): Promise<void> => {
+    setLoading(true);
+    try {
+      const userCredential = await firebaseCreateUserWithEmailAndPassword(auth, email, password);
+      // Create user profile immediately after Firebase Auth user creation
+      // onAuthStateChanged will also fire, but this ensures profile exists before first "Login Successful" toast from onAuthStateChanged
+      if (userCredential.user) {
+         await createUserProfile({
+            uid: userCredential.user.uid,
+            email: userCredential.user.email,
+            displayName: userCredential.user.displayName, // Will be null for email/pass signup initially
+            photoURL: userCredential.user.photoURL,
+          });
+        toast({ title: "Signup Successful", description: "Your account has been created. Welcome!" });
+      }
+      // onAuthStateChanged will then set the user and potentially show a "Login Successful"
+    } catch (error) {
+      console.error("Error during email/password signup:", error);
+      const firebaseError = error as AuthError;
+      let description = "An unknown error occurred during signup.";
+      switch (firebaseError.code) {
+        case 'auth/email-already-in-use':
+          description = "This email address is already in use. Please try logging in.";
+          break;
+        case 'auth/invalid-email':
+          description = "The email address is not valid.";
+          break;
+        case 'auth/weak-password':
+          description = "The password is too weak. Please choose a stronger password.";
+          break;
+        default:
+          description = firebaseError.message || description;
+      }
+      toast({ title: "Signup Failed", description, variant: "destructive" });
+      setLoading(false);
+      throw error; // Re-throw to allow form to handle its own state
+    }
+     // setLoading(false) handled by onAuthStateChanged
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, loginWithEmailAndPassword, signupWithEmailAndPassword }}>
       {children}
     </AuthContext.Provider>
   );
