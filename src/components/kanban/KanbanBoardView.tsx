@@ -1,3 +1,4 @@
+
 // src/components/kanban/KanbanBoardView.tsx
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -79,7 +80,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     setSelectedTask(task);
     setIsModalOpen(true);
   };
-  
+
   const deleteProvisionalTask = async (taskIdToDelete: string) => {
     if (!currentBoard || !user) return;
     try {
@@ -89,7 +90,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         taskIds: col.taskIds.filter(id => id !== taskIdToDelete)
       }));
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
-      if (currentBoard) { 
+      if (currentBoard) {
         await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
       }
       setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskIdToDelete));
@@ -108,7 +109,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
             deleteProvisionalTask(selectedTask.id);
         }
     }
-    provisionalNewTaskIdRef.current = null; 
+    provisionalNewTaskIdRef.current = null;
     setIsModalOpen(false);
     setSelectedTask(null);
   };
@@ -118,9 +119,9 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     try {
       await updateTaskService(updatedTask.id, updatedTask);
       setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-      
+
       if (provisionalNewTaskIdRef.current === updatedTask.id) {
-        provisionalNewTaskIdRef.current = null; 
+        provisionalNewTaskIdRef.current = null;
       }
 
       if (updatedTask.creatorId && !userProfiles[updatedTask.creatorId]) {
@@ -131,10 +132,10 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       }
     } catch (error) {
       console.error("Error updating task:", error);
-      throw error; 
+      throw error;
     }
   };
-  
+
   const handleAddTask = async (columnId: string) => {
     if (!user || !currentBoard) {
       toast({ title: "Error", description: "Cannot add task without a selected board or user.", variant: "destructive" });
@@ -161,7 +162,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
 
     try {
       const createdTask = await createTask(newTaskData);
-      provisionalNewTaskIdRef.current = createdTask.id; 
+      provisionalNewTaskIdRef.current = createdTask.id;
       setBoardTasks(prevTasks => [...prevTasks, createdTask]);
       const updatedBoardColumns = currentBoard.columns.map(col => {
         if (col.id === targetColumn.id) {
@@ -170,8 +171,8 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         return col;
       });
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
-      
-      handleTaskClick(createdTask); 
+
+      handleTaskClick(createdTask);
 
       updateBoard(currentBoard.id, { columns: updatedBoardColumns })
          .catch(err => {
@@ -188,7 +189,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       }
 
     } catch (error) {
-      console.error("Error creating task:", error); 
+      console.error("Error creating task:", error);
       toast({ title: "Error Creating Task", description: "Failed to create new task.", variant: "destructive" });
     }
   };
@@ -196,17 +197,15 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const handleAddColumn = async (columnName: string) => {
     if (!user || !currentBoard) {
       toast({ title: "Authentication Error", description: "Cannot add column without a selected board or user.", variant: "destructive" });
-      setIsAddingColumn(false); // Close form if fundamental issue
+      setIsAddingColumn(false); 
       return;
     }
 
     const trimmedColumnName = columnName.trim();
     if (!trimmedColumnName) {
       toast({ title: "Invalid Column Name", description: "Column name cannot be empty.", variant: "destructive"});
-      // Do NOT close the form (setIsAddingColumn(false)) here.
-      // Let the user correct the input. The button in KanbanBoard.tsx should be disabled for empty input,
-      // so this path is mostly a safeguard or if called programmatically.
-      return; 
+      // Do NOT close the form (setIsAddingColumn(false)) here. Let the user correct the input.
+      return;
     }
 
     const newColumn: ColumnType = {
@@ -244,56 +243,48 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         return;
     }
 
-    // Optimistically update task's columnId if moved to a different column
     if (sourceColumnId !== destinationColumnId) {
         setBoardTasks(prevTasks =>
             prevTasks.map(t => (t.id === taskId ? { ...t, columnId: destinationColumnId } : t))
         );
     }
 
-    // Remove task from source column's taskIds
     newBoardColumns[sourceColIndex].taskIds = newBoardColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
 
-    // Add task to destination column's taskIds at the correct position
     let destTaskIds = [...newBoardColumns[destColIndex].taskIds];
-    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); // In case it was already there (e.g., reordering in same column)
+    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); 
     if (currentTaskIndexInDest > -1) {
-        destTaskIds.splice(currentTaskIndexInDest, 1); // Remove if reordering within same column
+        destTaskIds.splice(currentTaskIndexInDest, 1); 
     }
 
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
 
-    if (sourceColumnId === destinationColumnId) { // Reordering within the same column
-        if (targetIndexInDest !== -1) { // Dropped onto another task
+    if (sourceColumnId === destinationColumnId) { 
+        if (targetIndexInDest !== -1) { 
             destTaskIds.splice(targetIndexInDest, 0, taskId);
-        } else { // Dropped at the end of the column
-            destTaskIds.push(taskId); 
+        } else { 
+            destTaskIds.push(taskId);
         }
-    } else { // Moving to a different column
-        if (targetIndexInDest !== -1) { // Dropped onto another task in the new column
+    } else { 
+        if (targetIndexInDest !== -1) { 
             destTaskIds.splice(targetIndexInDest, 0, taskId);
-        } else { // Dropped at the end of the new column
+        } else { 
             destTaskIds.push(taskId);
         }
     }
     newBoardColumns[destColIndex].taskIds = destTaskIds;
 
-    // Update local board state
     setCurrentBoard(prevBoard => (prevBoard ? { ...prevBoard, columns: newBoardColumns } : null));
 
-    // Persist changes to Firestore
     try {
-        // Update task document if column changed
         if (sourceColumnId !== destinationColumnId) {
             await updateTaskService(taskId, { columnId: destinationColumnId });
         }
-        // Update board document with new column taskIds order
         await updateBoard(currentBoard.id, { columns: newBoardColumns });
     } catch (error) {
         console.error("Error moving task:", error);
         toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching board.", variant: "destructive" });
-        // Revert optimistic UI changes or re-fetch data
-        if (currentBoard) fetchBoardData(currentBoard.id); 
+        if (currentBoard) fetchBoardData(currentBoard.id);
     }
 };
 
@@ -311,16 +302,16 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       return col;
     });
     setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
-    
+
     const previouslySelectedTask = selectedTask;
     if (isModalOpen && previouslySelectedTask && previouslySelectedTask.id === taskToArchive.id) {
-        setIsModalOpen(false); 
-        setSelectedTask(null); 
+        setIsModalOpen(false);
+        setSelectedTask(null);
     }
 
     try {
       await updateTaskService(taskToArchive.id, { isArchived: true, archivedAt: new Date().toISOString() });
-      await updateBoard(currentBoard.id, { columns: updatedColumns }); 
+      await updateBoard(currentBoard.id, { columns: updatedColumns });
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
     } catch (error) {
       console.error("Error archiving task:", error);
@@ -328,7 +319,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       setBoardTasks(originalBoardTasks);
       if (originalBoardState) setCurrentBoard(originalBoardState);
        if (previouslySelectedTask && previouslySelectedTask.id === taskToArchive.id) {
-         setSelectedTask(previouslySelectedTask); 
+         setSelectedTask(previouslySelectedTask);
          setIsModalOpen(true);
        }
     }
@@ -350,13 +341,11 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   }
 
   return (
-    // This root div takes h-full from its parent in page.tsx (which is <main>)
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Sticky Board Header: Stays at the top of KanbanBoardView */}
-      <div className={`sticky top-0 z-30 flex items-center justify-between p-3 border-b bg-background shadow-sm flex-shrink-0`}>
+      <div className="sticky top-0 z-30 flex items-center justify-between p-3 border-b bg-background shadow-sm flex-shrink-0">
         <h1 className="text-lg font-medium truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
-          <Button 
+          <Button
             size="sm"
             onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')}
             disabled={currentBoard.columns.length === 0}
@@ -366,7 +355,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
           </Button>
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
         <KanbanBoard
           boardColumns={currentBoard.columns}
@@ -393,4 +382,3 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
-    

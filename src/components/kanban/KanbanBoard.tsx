@@ -1,38 +1,44 @@
 
 // src/components/kanban/KanbanBoard.tsx
 "use client";
-import React from 'react';
-import { PlusCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { PlusCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import { KanbanColumn } from './KanbanColumn';
 import type { Column, Task, UserProfile } from '@/types';
+import { Card } from '@/components/ui/card'; // Added for the input form container
 
 interface KanbanBoardProps {
   boardColumns: Column[];
   allTasksForBoard: Task[];
-  creatorProfiles: Record<string, UserProfile | null>; 
+  creatorProfiles: Record<string, UserProfile | null>;
   onTaskClick: (task: Task) => void;
   onAddTask: (columnId: string) => void;
-  onAddColumn: () => void;
+  onAddColumn: (columnName: string) => void; // Changed from () => void
   onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
+  isAddingColumn: boolean;
+  setIsAddingColumn: (isAdding: boolean) => void;
 }
 
-export function KanbanBoard({ 
-  boardColumns, 
-  allTasksForBoard, 
-  creatorProfiles, 
-  onTaskClick, 
-  onAddTask, 
+export function KanbanBoard({
+  boardColumns,
+  allTasksForBoard,
+  creatorProfiles,
+  onTaskClick,
+  onAddTask,
   onAddColumn,
-  onTaskDrop
+  onTaskDrop,
+  isAddingColumn,
+  setIsAddingColumn
 }: KanbanBoardProps) {
-  
+  const [newColumnNameInput, setNewColumnNameInput] = useState('');
+
   const getTasksForColumn = (column: Column): Task[] => {
     const tasksInColumn = column.taskIds
       .map(taskId => allTasksForBoard.find(t => t.id === taskId))
       .filter(Boolean) as Task[];
-    
+
     return tasksInColumn.sort((a, b) => {
       return column.taskIds.indexOf(a.id) - column.taskIds.indexOf(b.id);
     });
@@ -42,11 +48,22 @@ export function KanbanBoard({
     event.dataTransfer.setData('application/json', JSON.stringify({ taskId, sourceColumnId }));
     event.dataTransfer.effectAllowed = "move";
   };
-  
+
+  const handleConfirmAddColumn = () => {
+    if (newColumnNameInput.trim()) {
+      onAddColumn(newColumnNameInput.trim());
+      setNewColumnNameInput('');
+      // setIsAddingColumn(false); // Let parent (KanbanBoardView) handle this
+    }
+  };
+
+  const handleCancelAddColumn = () => {
+    setNewColumnNameInput('');
+    setIsAddingColumn(false);
+  };
+
   return (
-    // Use h-full to take available height from parent in KanbanBoardView
-    // Parent (in KanbanBoardView) handles overflow-x and overflow-y
-    <div className="flex gap-4 p-4 h-full"> 
+    <div className="flex gap-4 p-4 h-full">
       {boardColumns.map((column: Column) => (
         <KanbanColumn
           key={column.id}
@@ -59,17 +76,52 @@ export function KanbanBoard({
           onDragTaskStart={handleDragTaskStart}
         />
       ))}
-      <div className="w-72 flex-shrink-0 pt-1"> {/* Adjusted width and added pt-1 for alignment with column headers */}
-        <Button 
-          variant="ghost" 
-          className="w-full h-10 border-dashed border-neutral-600 text-neutral-400 hover:bg-neutral-750 hover:text-neutral-300" 
-          onClick={onAddColumn}
-        >
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Add another column
-        </Button>
+      <div className="w-72 flex-shrink-0">
+        {isAddingColumn ? (
+          <Card className="p-3 bg-card rounded-lg shadow-sm">
+            <Input
+              autoFocus
+              placeholder="Enter column name..."
+              value={newColumnNameInput}
+              onChange={(e) => setNewColumnNameInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleConfirmAddColumn();
+                }
+              }}
+              className="mb-2 text-sm"
+            />
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={handleConfirmAddColumn}
+                disabled={!newColumnNameInput.trim()}
+                size="sm"
+              >
+                Add Column
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelAddColumn}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <div className="pt-1"> {/* Added pt-1 for alignment with column headers if needed */}
+            <Button
+              variant="ghost"
+              className="w-full h-10 border-2 border-dashed border-border hover:border-primary/70 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors duration-150 ease-in-out"
+              onClick={() => setIsAddingColumn(true)} // Correctly sets state to show form
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add another column
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
