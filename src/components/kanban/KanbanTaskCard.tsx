@@ -55,10 +55,13 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
     >
       <CardContent className="p-2.5 space-y-1.5"> 
         <div className="flex items-start space-x-2">
-          {/* Checkbox container - becomes visible on parent hover */}
+          {/* Checkbox container - becomes visible on parent hover OR if task is completed */}
           <div 
             onClick={handleCheckboxClick} 
-            className="flex-shrink-0 pt-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+            className={cn(
+              "flex-shrink-0 pt-0.5 transition-opacity duration-150",
+              task.isCompleted ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}
           > 
             <Checkbox
               id={`task-complete-${task.id}`}
