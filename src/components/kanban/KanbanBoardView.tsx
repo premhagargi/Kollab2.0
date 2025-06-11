@@ -339,44 +339,44 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   }
 
   return (
-     <div className="flex flex-col h-full overflow-hidden bg-background text-foreground">
-      {/* Sticky Board Header: Removed explicit height class, reduced padding from p-4 to p-3 */}
-      <div className={`sticky top-16 z-30 flex items-center justify-between p-3 border-b bg-background shadow-sm flex-shrink-0`}>
-        <h1 className="text-xl font-semibold truncate pr-2">{currentBoard.name}</h1>
-        <div className="flex items-center space-x-2 flex-shrink-0">
-          <Button 
-            size="sm" 
-            onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')} 
-            disabled={currentBoard.columns.length === 0}
-            variant="default"
-          >
-            <Plus className="mr-2 h-4 w-4" /> New Task
-          </Button>
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-x-auto overflow-y-hidden"> 
-        <KanbanBoard
-          boardColumns={currentBoard.columns}
-          allTasksForBoard={activeTasks}
-          creatorProfiles={userProfiles}
-          onTaskClick={handleTaskClick}
-          onAddTask={handleAddTask}
-          onAddColumn={handleAddColumn}
-          onTaskDrop={handleTaskDrop}
-        />
-      </div>
-
-      {selectedTask && (
-        <TaskDetailsModal
-          task={selectedTask}
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onUpdateTask={handleUpdateTask}
-          onArchiveTask={handleArchiveTask}
-        />
-      )}
+<div className="flex flex-col h-full overflow-hidden bg-background text-foreground">
+  {/* Sticky Board Header: Reduced padding from p-3 to p-2, smaller text */}
+  <div className={`sticky z-30 flex items-center justify-between p-2 border-b bg-background shadow-sm flex-shrink-0`}>
+    <h1 className="text-lg font-medium truncate pr-2">{currentBoard.name}</h1>
+    <div className="flex items-center space-x-2 flex-shrink-0">
+      <Button 
+        size="sm"
+        onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')}
+        disabled={currentBoard.columns.length === 0}
+        variant="default"
+      >
+        <Plus className="mr-1 h-3 w-3" /> New Task
+      </Button>
     </div>
+  </div>
+         
+  <div className="flex-1 overflow-x-auto overflow-y-hidden">
+    <KanbanBoard
+      boardColumns={currentBoard.columns}
+      allTasksForBoard={activeTasks}
+      creatorProfiles={userProfiles}
+      onTaskClick={handleTaskClick}
+      onAddTask={handleAddTask}
+      onAddColumn={handleAddColumn}
+      onTaskDrop={handleTaskDrop}
+    />
+  </div>
+
+  {selectedTask && (
+    <TaskDetailsModal
+      task={selectedTask}
+      isOpen={isModalOpen}
+      onClose={handleCloseModal}
+      onUpdateTask={handleUpdateTask}
+      onArchiveTask={handleArchiveTask}
+    />
+  )}
+</div>
   );
 }
     

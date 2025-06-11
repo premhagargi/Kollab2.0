@@ -80,7 +80,7 @@ function DashboardContent() {
             isLoadingBoards={isLoadingBoards}
         />
         {/* pt-16 offsets content below the fixed AppHeader (h-16) */}
-        <main className="flex-1 flex flex-col overflow-hidden pt-16 bg-background"> 
+        <main className="flex-1 flex flex-col overflow-hidden bg-background"> 
           {authLoading || (isLoadingBoards && user) ? (
               <div className="flex flex-1 items-center justify-center h-full">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
