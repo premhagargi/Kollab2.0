@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { CalendarIcon, User, MessageSquare, Paperclip, Brain, ListChecks, Sparkles, Trash2, Edit3, PlusCircle, Archive } from 'lucide-react';
+import { CalendarIcon, User, MessageSquare, Paperclip, Brain, ListChecks, Sparkles, Trash2, Edit3, PlusCircle, Archive, Loader2, CheckCircle2 } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isEqual } from 'date-fns';
@@ -31,7 +31,7 @@ interface TaskDetailsModalProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdateTask: (updatedTask: Task) => Promise<void>;
+  onUpdateTask: (updatedTask: Task) => Promise<void>; // Returns promise to indicate save completion
   onArchiveTask: (taskToArchive: Task) => Promise<void>;
 }
 
@@ -40,8 +40,8 @@ const priorityOptions: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpdateTask, onArchiveTask }: TaskDetailsModalProps) {
   const { user } = useAuth();
   const [task, setTask] = useState<Task | null>(initialTaskProp);
-  // Store the initial state of the task when the modal opens to allow for 'Cancel'
-  const initialTaskStateOnOpenRef = useRef<Task | null>(null);
+  const initialTaskStateOnOpenRef = useRef<Task | null>(null); // For "Cancel" functionality
+  const [isSaving, setIsSaving] = useState(false); // For "Save Changes" button loading state
 
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
@@ -53,26 +53,25 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   const { toast } = useToast();
 
   useEffect(() => {
-    // When the modal opens or the initialTaskProp changes, update local state
-    // and store a deep copy of the initial task for cancellation purposes.
-    if (initialTaskProp) {
+    if (isOpen && initialTaskProp) {
       const deepClonedTask = JSON.parse(JSON.stringify(initialTaskProp)) as Task;
       setTask(deepClonedTask);
-      initialTaskStateOnOpenRef.current = deepClonedTask;
-    } else {
-      setTask(null);
+      initialTaskStateOnOpenRef.current = deepClonedTask; // Store initial state for cancel
+    } else if (!isOpen) {
+      setTask(null); // Clear local task state when modal is not open
       initialTaskStateOnOpenRef.current = null;
+      // Reset AI features if modal is closed
+      setAiSummary(null);
+      setAiSubtaskSuggestions([]);
+      setIsSaving(false);
     }
-    // Reset AI features when task changes
-    setAiSummary(null);
-    setAiSubtaskSuggestions([]);
-  }, [initialTaskProp, isOpen]); // Depend on isOpen to reset when modal re-opens with same task
+  }, [initialTaskProp, isOpen]);
 
-  if (!task && isOpen) {
+  if (!task && isOpen) { // Should ideally not happen if useEffect handles it
     onClose();
     return null;
   }
-  if (!task) return null;
+  if (!task) return null; // If task becomes null for any reason (e.g. prop changes to null)
 
   const handleInputChange = (field: keyof Task, value: any) => {
     setTask(prev => prev ? { ...prev, [field]: value, updatedAt: new Date().toISOString() } : null);
@@ -106,7 +105,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
 
   const handleAddComment = () => {
     if (!newComment.trim() || !user) {
-      toast({title: "Cannot Add Comment", description: "Comment text is empty or you are not logged in.", variant:"destructive"})
+      toast({ title: "Cannot Add Comment", description: "Comment text is empty or you are not logged in.", variant: "destructive" })
       return;
     }
     const comment: Comment = {
@@ -123,36 +122,35 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
 
   const handleSaveChanges = async () => {
     if (task) {
+      setIsSaving(true);
       try {
         await onUpdateTask(task);
-        toast({ title: "Task Saved", description: "Your changes have been saved."});
-        onClose(); // Close modal after successful save
+        toast({ title: "Task Saved", description: "Your changes have been saved." });
+        onClose(); 
       } catch (error) {
-        toast({ title: "Save Error", description: "Could not save task changes.", variant: "destructive"});
-        // Optionally, you might want to keep the modal open on error, or offer to retry
+        // Error toast is likely handled by onUpdateTask caller or here if specific
+        toast({ title: "Save Error", description: "Could not save task changes.", variant: "destructive" });
+      } finally {
+        setIsSaving(false);
       }
     }
   };
 
   const handleCancel = () => {
-    // Revert task state to what it was when modal opened
     if (initialTaskStateOnOpenRef.current) {
-      setTask(JSON.parse(JSON.stringify(initialTaskStateOnOpenRef.current)));
+      setTask(JSON.parse(JSON.stringify(initialTaskStateOnOpenRef.current))); // Revert to state when modal opened
     }
     onClose();
   };
-  
+
   const handleDialogCloseAttempt = (openState: boolean) => {
     if (!openState) { // If dialog is attempting to close (e.g. X button, Esc)
-      // No automatic save, changes are discarded unless "Save Changes" was hit
-      // Reset task to initial state on open if there were changes
-      if (initialTaskStateOnOpenRef.current && !isEqual(task, initialTaskStateOnOpenRef.current)) {
-         // console.log("Modal closing with unsaved changes, reverting.");
-         // setTask(JSON.parse(JSON.stringify(initialTaskStateOnOpenRef.current)));
-         // This direct reset might be too late if onClose has already been called
-         // The primary mechanism for discard is the Cancel button or user choosing not to save.
-      }
-      onClose(); 
+        // Revert unsaved changes if any (similar to cancel)
+        if (initialTaskStateOnOpenRef.current && task && !isEqual(task, initialTaskStateOnOpenRef.current)) {
+            // Check if this is a new task that was never really modified from default
+            // This logic is now primarily handled by KanbanBoardView.tsx for new tasks
+        }
+      onClose();
     }
   };
 
@@ -189,10 +187,10 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     try {
       const result = await suggestSubtasksAction({ taskDescription: task.title + (task.description ? `\n${task.description}` : '') });
       if (result.subtaskSuggestions.length > 0 && result.subtaskSuggestions[0].startsWith('Error:')) {
-         toast({ title: "Subtask Suggestion Failed", description: result.subtaskSuggestions[0], variant: "destructive" });
-         setAiSubtaskSuggestions([]);
+        toast({ title: "Subtask Suggestion Failed", description: result.subtaskSuggestions[0], variant: "destructive" });
+        setAiSubtaskSuggestions([]);
       } else {
-        setAiSubtaskSuggestions(result.subtaskSuggestions.map((s,i) => ({ id: `sugg-${i}`, text:s })));
+        setAiSubtaskSuggestions(result.subtaskSuggestions.map((s, i) => ({ id: `sugg-${i}`, text: s })));
         toast({ title: "Subtasks Suggested", description: "AI has suggested subtasks." });
       }
     } catch (error) {
@@ -202,7 +200,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     setIsSuggestingSubtasks(false);
   };
 
-  const assignee = user;
+  const assignee = user; // Placeholder, real assignee logic to be implemented
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
@@ -214,6 +212,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
               value={task.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
               className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto"
+              disabled={isSaving}
             />
           </DialogTitle>
           <DialogDescription>
@@ -224,7 +223,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
         <div className="flex-grow min-h-0 overflow-y-auto">
           <ScrollArea className="h-full pr-6">
             <div className="grid gap-6 py-4">
-              {/* Description Section */}
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-base font-medium flex items-center">
                   <Edit3 className="mr-2 h-5 w-5 text-primary" /> Description
@@ -235,10 +233,10 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Add a more detailed description..."
                   className="min-h-[100px]"
+                  disabled={isSaving}
                 />
               </div>
 
-              {/* AI Features Section */}
               <div className="space-y-4 p-4 border rounded-lg bg-secondary/30">
                 <h3 className="text-sm font-semibold flex items-center text-primary">
                   <Brain className="mr-2 h-5 w-5" /> AI Assistant
@@ -246,14 +244,14 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button
                     onClick={handleGenerateSummary}
-                    disabled={isSummarizing || (!task.description && !task.title)}
+                    disabled={isSummarizing || (!task.description && !task.title) || isSaving}
                     variant="outline"
                   >
                     <Sparkles className="mr-2 h-4 w-4" /> {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
                   </Button>
                   <Button
                     onClick={handleSuggestSubtasks}
-                    disabled={isSuggestingSubtasks || (!task.description && !task.title)}
+                    disabled={isSuggestingSubtasks || (!task.description && !task.title) || isSaving}
                     variant="outline"
                   >
                     <ListChecks className="mr-2 h-4 w-4" /> {isSuggestingSubtasks ? 'Suggesting...' : 'Suggest Subtasks'}
@@ -277,6 +275,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                             variant="ghost"
                             onClick={() => handleAddSubtask(suggestion.text, true)}
                             title="Add this subtask"
+                            disabled={isSaving}
                           >
                             <PlusCircle className="h-4 w-4" />
                           </Button>
@@ -287,7 +286,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 )}
               </div>
 
-              {/* Details: Due Date, Priority, Assignees */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="dueDate" className="flex items-center">
@@ -295,7 +293,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button id="dueDate" variant="outline" className="w-full justify-start text-left font-normal">
+                      <Button id="dueDate" variant="outline" className="w-full justify-start text-left font-normal" disabled={isSaving}>
                         {task.dueDate ? format(parseISO(task.dueDate), 'PPP') : <span>Pick a date</span>}
                       </Button>
                     </PopoverTrigger>
@@ -318,6 +316,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     value={task.priority}
                     onChange={(e) => handleInputChange('priority', e.target.value as TaskPriority)}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    disabled={isSaving}
                   >
                     {priorityOptions.map((p) => (
                       <option key={p} value={p} className="capitalize">
@@ -333,20 +332,19 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   <div className="flex items-center space-x-2 p-2 border rounded-md min-h-[40px]">
                     {assignee && task.assigneeIds?.includes(assignee.id) ? (
                       <Avatar className="h-7 w-7" title={assignee.name || undefined}>
-                        <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} data-ai-hint="user avatar small" />
+                        <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} data-ai-hint="user avatar small"/>
                         <AvatarFallback>{assignee.name ? assignee.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                       </Avatar>
                     ) : (
                       <span className="text-sm text-muted-foreground">No assignees</span>
                     )}
-                    <Button variant="outline" size="icon" className="h-7 w-7 ml-auto" onClick={() => toast({title: "Feature Coming Soon", description: "Assignee selection will be implemented."})}>
+                    <Button variant="outline" size="icon" className="h-7 w-7 ml-auto" onClick={() => toast({ title: "Feature Coming Soon", description: "Assignee selection will be implemented." })} disabled={isSaving}>
                       <PlusCircle className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Subtasks Section */}
               <div className="space-y-2">
                 <Label className="text-base font-medium flex items-center">
                   <ListChecks className="mr-2 h-5 w-5 text-primary" /> Subtasks
@@ -357,6 +355,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                       id={`subtask-${subtask.id}`}
                       checked={subtask.completed}
                       onCheckedChange={(checked) => handleSubtaskChange(subtask.id, !!checked)}
+                      disabled={isSaving}
                     />
                     <Label
                       htmlFor={`subtask-${subtask.id}`}
@@ -364,7 +363,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     >
                       {subtask.text}
                     </Label>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100" onClick={() => toast({title:"Subtask Deletion", description:"To be implemented"})}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100" onClick={() => toast({ title: "Subtask Deletion", description: "To be implemented" })} disabled={isSaving}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -375,26 +374,25 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     onChange={(e) => setNewSubtask(e.target.value)}
                     placeholder="Add new subtask..."
                     onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask(newSubtask)}
+                    disabled={isSaving}
                   />
-                  <Button onClick={() => handleAddSubtask(newSubtask)} size="sm" disabled={!newSubtask.trim()}>
+                  <Button onClick={() => handleAddSubtask(newSubtask)} size="sm" disabled={!newSubtask.trim() || isSaving}>
                     <PlusCircle className="mr-1 h-4 w-4" /> Add
                   </Button>
                 </div>
               </div>
 
-              {/* Attachments Section (Placeholder) */}
               <div className="space-y-2">
                 <Label className="text-base font-medium flex items-center">
                   <Paperclip className="mr-2 h-5 w-5 text-primary" /> Attachments
                 </Label>
-                <Button variant="outline" className="w-full" onClick={() => toast({title: "Feature Coming Soon", description: "File attachments will be implemented."})}>
+                <Button variant="outline" className="w-full" onClick={() => toast({ title: "Feature Coming Soon", description: "File attachments will be implemented." })} disabled={isSaving}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Attachment
                 </Button>
               </div>
 
               <Separator />
 
-              {/* Comments Section */}
               <div className="space-y-2">
                 <Label className="text-base font-medium flex items-center">
                   <MessageSquare className="mr-2 h-5 w-5 text-primary" /> Comments
@@ -419,23 +417,24 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 </ScrollArea>
                 {user && (
                   <>
-                  <div className="flex items-start space-x-3 pt-2">
-                    <Avatar className="h-8 w-8 mt-1">
-                      <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar small"/>
-                      <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
-                    </Avatar>
-                    <Textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Write a comment..."
-                      className="flex-grow"
-                    />
-                  </div>
-                  <div className="text-right mt-2">
-                    <Button onClick={handleAddComment} size="sm" disabled={!newComment.trim()}>
-                      Post Comment
-                    </Button>
-                  </div>
+                    <div className="flex items-start space-x-3 pt-2">
+                      <Avatar className="h-8 w-8 mt-1">
+                        <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar small"/>
+                        <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                      </Avatar>
+                      <Textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Write a comment..."
+                        className="flex-grow"
+                        disabled={isSaving}
+                      />
+                    </div>
+                    <div className="text-right mt-2">
+                      <Button onClick={handleAddComment} size="sm" disabled={!newComment.trim() || isSaving}>
+                        Post Comment
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>
@@ -447,18 +446,24 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
           <Button
             variant="outline"
             onClick={() => {
-              if (task) {
+              if (task && !isSaving) { // Prevent archiving if already saving something else
                 onArchiveTask(task);
               }
             }}
             className="mr-auto"
+            disabled={isSaving || task.isArchived} // Disable if saving or already archived
           >
-            <Archive className="mr-2 h-4 w-4" /> Archive Task
+            <Archive className="mr-2 h-4 w-4" /> {task.isArchived ? 'Archived' : 'Archive Task'}
           </Button>
-          <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-          <Button onClick={handleSaveChanges}>Save Changes</Button>
+          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>Cancel</Button>
+          <Button onClick={handleSaveChanges} disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+    

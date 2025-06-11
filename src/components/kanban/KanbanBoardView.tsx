@@ -1,7 +1,7 @@
 
 // src/components/kanban/KanbanBoardView.tsx
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { KanbanBoard } from './KanbanBoard';
 import { TaskDetailsModal } from '../modals/TaskDetailsModal';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Loader2 } from 'lucide-react';
 import { getBoardById, updateBoard } from '@/services/boardService';
-import { getTasksByBoard, createTask, updateTask as updateTaskService, archiveTask as archiveTaskService } from '@/services/taskService';
+import { getTasksByBoard, createTask, updateTask as updateTaskService, archiveTask as archiveTaskService, deleteTask } from '@/services/taskService';
 import { getUsersByIds } from '@/services/userService';
+
+const DEFAULT_NEW_TASK_TITLE = 'New Task';
 
 export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const { user } = useAuth();
@@ -21,30 +23,30 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
   const [isLoadingBoard, setIsLoadingBoard] = useState(false);
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile | null>>({});
+  const provisionalNewTaskIdRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   const fetchBoardData = useCallback(async (id: string) => {
     if (!user) return;
     setIsLoadingBoard(true);
-    setUserProfiles({}); 
+    setUserProfiles({});
     try {
       const boardData = await getBoardById(id);
       if (boardData && boardData.ownerId === user.id) {
         setCurrentBoard(boardData);
         const tasksData = await getTasksByBoard(id);
-        setBoardTasks(tasksData.filter(task => !task.isArchived)); // Filter archived tasks here
+        setBoardTasks(tasksData); // Store all tasks, filtering for active happens before passing to KanbanBoard
 
         const allUserIds = new Set<string>();
         tasksData.forEach(task => {
           if (task.creatorId) allUserIds.add(task.creatorId);
         });
         if (allUserIds.size > 0) {
-            const profiles = await getUsersByIds(Array.from(allUserIds));
-            const profilesMap: Record<string, UserProfile | null> = {};
-            profiles.forEach(p => profilesMap[p.id] = p);
-            setUserProfiles(profilesMap);
+          const profiles = await getUsersByIds(Array.from(allUserIds));
+          const profilesMap: Record<string, UserProfile | null> = {};
+          profiles.forEach(p => profilesMap[p.id] = p);
+          setUserProfiles(profilesMap);
         }
-
       } else if (boardData) {
         toast({ title: "Access Denied", description: "You do not have permission to view this board.", variant: "destructive" });
         setCurrentBoard(null); setBoardTasks([]);
@@ -75,78 +77,120 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     setIsModalOpen(true);
   };
 
+  const deleteProvisionalTask = async (taskIdToDelete: string) => {
+    if (!currentBoard || !user) return;
+    try {
+      await deleteTask(taskIdToDelete);
+
+      const updatedBoardColumns = currentBoard.columns.map(col => ({
+        ...col,
+        taskIds: col.taskIds.filter(id => id !== taskIdToDelete)
+      }));
+
+      await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
+
+      setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskIdToDelete));
+      setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
+      toast({ title: "New Task Discarded", description: "The empty new task was removed." });
+    } catch (error) {
+      console.error("Error deleting provisional task:", error);
+      toast({ title: "Error", description: "Could not remove the provisional task.", variant: "destructive" });
+      // Re-fetch data to ensure consistency if deletion failed partially
+      if (currentBoard) fetchBoardData(currentBoard.id);
+    }
+  };
+
   const handleCloseModal = () => {
+    if (provisionalNewTaskIdRef.current && selectedTask && selectedTask.id === provisionalNewTaskIdRef.current) {
+      // This was a provisionally created task. Check if it's still in its default state.
+      // The `selectedTask` here is the state from before the modal made *committed* changes.
+      // If the modal was just closed (X, Esc) without save, its state is unchanged.
+      // If "Cancel" was clicked in modal, modal reverted its internal state to initial, then closed.
+      const taskInBoardTasks = boardTasks.find(t => t.id === selectedTask.id);
+      if (taskInBoardTasks && taskInBoardTasks.title === DEFAULT_NEW_TASK_TITLE && (!taskInBoardTasks.description || taskInBoardTasks.description.trim() === '')) {
+        deleteProvisionalTask(selectedTask.id);
+      }
+    }
+    provisionalNewTaskIdRef.current = null; // Reset the ref
     setIsModalOpen(false);
     setSelectedTask(null);
-    // Optionally re-fetch if optimistic updates are not perfect
-    // if (currentBoard) fetchBoardData(currentBoard.id); 
   };
+
 
   const handleUpdateTask = async (updatedTask: Task) => {
     if (!user || !currentBoard) return;
     try {
       await updateTaskService(updatedTask.id, updatedTask);
       setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-      if (updatedTask.creatorId && !userProfiles[updatedTask.creatorId]) {
-          const profile = await getUsersByIds([updatedTask.creatorId]);
-          if (profile.length > 0) {
-            setUserProfiles(prev => ({...prev, [updatedTask.creatorId]: profile[0]}));
-          }
+      
+      // If this was a provisional task, its successful update means it's no longer provisional
+      if (provisionalNewTaskIdRef.current === updatedTask.id) {
+        provisionalNewTaskIdRef.current = null;
       }
-      // Toast for manual save is now handled in TaskDetailsModal
+
+      if (updatedTask.creatorId && !userProfiles[updatedTask.creatorId]) {
+        const profile = await getUsersByIds([updatedTask.creatorId]);
+        if (profile.length > 0) {
+          setUserProfiles(prev => ({ ...prev, [updatedTask.creatorId]: profile[0] }));
+        }
+      }
     } catch (error) {
       console.error("Error updating task:", error);
       toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
+      throw error; // Re-throw to allow modal to handle its saving state
     }
   };
-  
+
   const handleAddTask = async (columnId: string) => {
     if (!user || !currentBoard) {
       toast({ title: "Error", description: "Cannot add task without a selected board or user.", variant: "destructive" });
       return;
     }
     const firstColumnId = currentBoard.columns[0]?.id;
-    
+
     const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
-      title: 'New Task',
+      title: DEFAULT_NEW_TASK_TITLE,
       description: '',
       priority: 'medium',
       subtasks: [],
       comments: [],
       boardId: currentBoard.id,
-      columnId: columnId || firstColumnId || '', // Ensure this is always a valid column
+      columnId: columnId || firstColumnId || '',
       creatorId: user.id,
       isArchived: false,
     };
 
     if (!newTaskData.columnId) {
-       toast({ title: "Error", description: "Cannot add task: No columns available on the board.", variant: "destructive" });
-       return;
+      toast({ title: "Error", description: "Cannot add task: No columns available on the board.", variant: "destructive" });
+      return;
     }
 
     try {
       const createdTask = await createTask(newTaskData);
+      provisionalNewTaskIdRef.current = createdTask.id; // Mark as provisional
+
       setBoardTasks(prevTasks => [...prevTasks, createdTask]);
-      
+
       const updatedBoardColumns = currentBoard.columns.map(col => {
         if (col.id === (columnId || firstColumnId)) {
           return { ...col, taskIds: [...col.taskIds, createdTask.id] };
         }
         return col;
       });
-      
+
       await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
-      
+
       if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
-          const profile = await getUsersByIds([createdTask.creatorId]);
-          if (profile.length > 0) {
-            setUserProfiles(prev => ({...prev, [createdTask.creatorId]: profile[0]}));
-          }
+        const profile = await getUsersByIds([createdTask.creatorId]);
+        if (profile.length > 0) {
+          setUserProfiles(prev => ({ ...prev, [createdTask.creatorId]: profile[0] }));
+        }
       }
 
-      handleTaskClick(createdTask);
-      toast({ title: "Task Created", description: "New task added successfully." });
+      handleTaskClick(createdTask); // This opens the modal
+      // Toast for successful creation is removed, as it might be discarded.
+      // A toast can be added in handleUpdateTask upon first *successful* save of a new task if desired.
 
     } catch (error) {
       console.error("Error creating task:", error);
@@ -155,30 +199,30 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   };
 
   const handleAddColumn = async () => {
-     if (!user || !currentBoard) {
+    if (!user || !currentBoard) {
       toast({ title: "Error", description: "Cannot add column without a selected board or user.", variant: "destructive" });
       return;
     }
     const columnName = prompt("Enter new column name:");
     if (!columnName || !columnName.trim()) {
-        toast({ title: "Cancelled", description: "Column creation cancelled or name empty.", variant: "default" });
-        return;
+      toast({ title: "Cancelled", description: "Column creation cancelled or name empty.", variant: "default" });
+      return;
     }
 
     const newColumn: ColumnType = {
-        id: `col-${Date.now()}`,
-        name: columnName.trim(),
-        taskIds: [],
+      id: `col-${Date.now()}`,
+      name: columnName.trim(),
+      taskIds: [],
     };
 
     const updatedColumns = [...currentBoard.columns, newColumn];
     try {
-        await updateBoard(currentBoard.id, { columns: updatedColumns });
-        setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
-        toast({ title: "Column Added", description: `Column "${newColumn.name}" added.` });
+      await updateBoard(currentBoard.id, { columns: updatedColumns });
+      setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
+      toast({ title: "Column Added", description: `Column "${newColumn.name}" added.` });
     } catch (error) {
-        console.error("Error adding column:", error);
-        toast({ title: "Error", description: "Failed to add column.", variant: "destructive" });
+      console.error("Error adding column:", error);
+      toast({ title: "Error", description: "Failed to add column.", variant: "destructive" });
     }
   };
 
@@ -188,80 +232,53 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     const taskToMove = boardTasks.find(t => t.id === taskId);
     if (!taskToMove) return;
 
-    let newBoardColumns = [...currentBoard.columns];
+    let newBoardColumns = JSON.parse(JSON.stringify(currentBoard.columns)) as ColumnType[]; // Deep copy
     let taskUpdatePromise: Promise<void> | null = null;
 
-    // Optimistic UI Update
-    if (sourceColumnId === destinationColumnId) { // Reordering within the same column
-      const columnIndex = newBoardColumns.findIndex(col => col.id === sourceColumnId);
-      if (columnIndex === -1) return;
-
-      const column = newBoardColumns[columnIndex];
-      let newTaskIds = [...column.taskIds];
-      const oldIndex = newTaskIds.indexOf(taskId);
-      if (oldIndex === -1) return;
-
-      newTaskIds.splice(oldIndex, 1); // Remove task from old position
-
-      if (targetTaskId) {
-        const newIndex = newTaskIds.indexOf(targetTaskId);
-        if (newIndex !== -1) {
-          newTaskIds.splice(newIndex, 0, taskId); // Insert before target task
-        } else {
-          newTaskIds.push(taskId); // Fallback: append if target task not found (should not happen)
-        }
-      } else {
-        newTaskIds.push(taskId); // Dropped in empty space, append to end
-      }
-      
-      newBoardColumns[columnIndex] = { ...column, taskIds: newTaskIds };
-
-    } else { // Moving to a different column
-      setBoardTasks(prevTasks => 
+    // Optimistic UI Update for boardTasks (task's columnId)
+    if (sourceColumnId !== destinationColumnId) {
+      setBoardTasks(prevTasks =>
         prevTasks.map(t => t.id === taskId ? { ...t, columnId: destinationColumnId } : t)
       );
       taskUpdatePromise = updateTaskService(taskId, { columnId: destinationColumnId });
-
-      newBoardColumns = newBoardColumns.map(col => {
-        if (col.id === sourceColumnId) {
-          return { ...col, taskIds: col.taskIds.filter(id => id !== taskId) };
-        }
-        if (col.id === destinationColumnId) {
-          let newTaskIds = [...col.taskIds];
-          if (targetTaskId) {
-            const targetIndex = newTaskIds.indexOf(targetTaskId);
-            if (targetIndex !== -1) {
-              newTaskIds.splice(targetIndex, 0, taskId);
-            } else {
-              newTaskIds.push(taskId); // Fallback if target not found in new column
-            }
-          } else {
-             newTaskIds.push(taskId); // Append to the end if no specific target
-          }
-          return { ...col, taskIds: newTaskIds };
-        }
-        return col;
-      });
     }
     
-    setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: newBoardColumns } : null);
+    // Update column taskIds
+    const sourceColIndex = newBoardColumns.findIndex(col => col.id === sourceColumnId);
+    const destColIndex = newBoardColumns.findIndex(col => col.id === destinationColumnId);
+
+    if (sourceColIndex === -1 || destColIndex === -1) return; // Should not happen
+
+    // Remove from source column
+    newBoardColumns[sourceColIndex].taskIds = newBoardColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
+
+    // Add to destination column
+    let destTaskIds = [...newBoardColumns[destColIndex].taskIds];
+    const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
+
+    if (targetIndexInDest !== -1) {
+      destTaskIds.splice(targetIndexInDest, 0, taskId); // Insert before target
+    } else {
+      destTaskIds.push(taskId); // Append to end
+    }
+    newBoardColumns[destColIndex].taskIds = destTaskIds;
     
+    setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: newBoardColumns } : null);
+
     try {
-      if (taskUpdatePromise) await taskUpdatePromise; // Wait for task document update if it's an inter-column move
+      if (taskUpdatePromise) await taskUpdatePromise;
       await updateBoard(currentBoard.id, { columns: newBoardColumns });
       toast({ title: "Task Moved", description: `Task "${taskToMove.title}" updated.` });
     } catch (error) {
       console.error("Error moving task:", error);
       toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching board.", variant: "destructive" });
-      // Revert optimistic update by re-fetching data
-      if (currentBoard) fetchBoardData(currentBoard.id); 
+      if (currentBoard) fetchBoardData(currentBoard.id);
     }
   };
 
   const handleArchiveTask = async (taskToArchive: Task) => {
     if (!user || !currentBoard) return;
 
-    // Optimistic UI update
     setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
     const updatedColumns = currentBoard.columns.map(col => {
       if (col.taskIds.includes(taskToArchive.id)) {
@@ -270,18 +287,16 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       return col;
     });
     setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
-    handleCloseModal(); 
+    handleCloseModal();
 
     try {
       await archiveTaskService(taskToArchive.id);
-      await updateBoard(currentBoard.id, { columns: updatedColumns }); // Persist column changes
+      await updateBoard(currentBoard.id, { columns: updatedColumns });
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
     } catch (error) {
       console.error("Error archiving task:", error);
       toast({ title: "Error Archiving Task", description: "Could not archive task. Re-fetching board.", variant: "destructive" });
-      if (currentBoard) { // Revert optimistic update
-        fetchBoardData(currentBoard.id);
-      }
+      if (currentBoard) fetchBoardData(currentBoard.id);
     }
   };
 
@@ -297,12 +312,11 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   }
 
   if (!currentBoard) {
-    // Message for no board selected or user not logged in is handled by the main page.tsx
-    return null; 
+    return null;
   }
-  
-  const headerHeight = '4rem'; 
-  const boardHeaderHeight = '3.5rem'; 
+
+  const headerHeight = '4rem';
+  const boardHeaderHeight = '3.5rem';
 
   return (
     <div className="flex flex-col h-full" style={{ ['--header-height' as any]: headerHeight, ['--board-header-height' as any]: boardHeaderHeight }}>
@@ -314,16 +328,16 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
           </Button>
         </div>
       </div>
-      <KanbanBoard 
+      <KanbanBoard
         boardColumns={currentBoard.columns}
-        allTasksForBoard={activeTasks} 
+        allTasksForBoard={activeTasks}
         creatorProfiles={userProfiles}
-        onTaskClick={handleTaskClick} 
-        onAddTask={handleAddTask}
+        onTaskClick={handleTaskClick}
+        onAddTask={onAddTask}
         onAddColumn={handleAddColumn}
         onTaskDrop={handleTaskDrop}
       />
-      {selectedTask && !selectedTask.isArchived && (
+      {selectedTask && ( // Do not filter by isArchived here, modal might be for an archived task if we add "view archive"
         <TaskDetailsModal
           task={selectedTask}
           isOpen={isModalOpen}
@@ -335,3 +349,5 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
+
+    
