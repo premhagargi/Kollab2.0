@@ -22,7 +22,6 @@ export interface Board {
   columns: Column[]; // Stored directly in the board document
   createdAt?: string; // ISO string
   updatedAt?: string; // ISO string
-  // tasks: Task[]; // Tasks will be fetched from a separate collection
 }
 
 export interface Column {
@@ -48,6 +47,8 @@ export interface Task {
   columnId: string; // Column.id - which column this task is in
   creatorId: string; // UserProfile.id - who created the task
   order?: number; // Optional: for ordering within a column if not relying on taskIds array order
+  isArchived?: boolean;
+  archivedAt?: string; // ISO string, when the task was archived
 }
 
 export interface Subtask {
@@ -68,6 +69,10 @@ export interface Comment {
 export interface TeamMemberInvite {
   email: string;
   role: 'editor' | 'viewer';
+  workspaceId?: string; // To associate invite with a specific workspace/board
+  boardId?: string;
+  token?: string; // For verification, to be implemented
+  status?: 'pending' | 'accepted' | 'declined' | 'expired';
 }
 
 export interface AISummary {
@@ -75,6 +80,6 @@ export interface AISummary {
 }
 
 export interface AISubtaskSuggestion {
-  id: string; 
+  id: string;
   text: string;
 }
