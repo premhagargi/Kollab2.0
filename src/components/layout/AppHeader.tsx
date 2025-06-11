@@ -30,6 +30,7 @@ import { EmailPasswordLoginForm } from '@/components/auth/EmailPasswordLoginForm
 import { EmailPasswordSignupForm } from '@/components/auth/EmailPasswordSignupForm';
 import type { Board } from '@/types';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from "@/components/ui/scroll-area"; // Added missing import
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18px" height="18px" className="mr-2">
