@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 interface KanbanTaskCardProps {
   task: Task;
   onClick: () => void;
-  creatorProfile?: UserProfile | null; // Pass creator profile for avatar
+  creatorProfile?: UserProfile | null; 
   onDragStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
 }
 
@@ -26,6 +26,8 @@ const priorityColors: Record<Task['priority'], string> = {
 export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: KanbanTaskCardProps) {
   
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
+    // Set data-task-id attribute on the draggable element itself
+    // event.currentTarget.setAttribute('data-task-id', task.id); // Not strictly needed for onDragStart data, but good for drop target identification
     onDragStart(event, task.id, task.columnId);
   };
 
@@ -36,6 +38,7 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
       aria-label={`Task: ${task.title}`}
       draggable="true"
       onDragStart={handleDragStart}
+      data-task-id={task.id} // Add data-task-id for drop target identification
     >
       <CardHeader className="p-4">
         <CardTitle className="text-base font-semibold leading-tight">{task.title}</CardTitle>
@@ -65,7 +68,7 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
         </div>
         {creatorProfile && (
           <Avatar className="h-6 w-6" title={`Created by: ${creatorProfile.name}`}>
-            <AvatarImage src={creatorProfile.avatarUrl || undefined} alt={creatorProfile.name || 'Creator'} data-ai-hint="user avatar" />
+            <AvatarImage src={creatorProfile.avatarUrl || undefined} alt={creatorProfile.name || 'Creator'} data-ai-hint="user avatar"/>
             <AvatarFallback>{creatorProfile.name ? creatorProfile.name.charAt(0).toUpperCase() : <Users className="h-3 w-3"/>}</AvatarFallback>
           </Avatar>
         )}
@@ -73,5 +76,3 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
     </Card>
   );
 }
-
-    

@@ -63,6 +63,7 @@ export function InviteTeamMemberModal({ isOpen, onClose }: InviteTeamMemberModal
         setRole('editor');
         onClose();
       } else {
+        console.log(result)
         toast({ title: "Invite Failed", description: result.message, variant: "destructive" });
       }
     } catch (error) {

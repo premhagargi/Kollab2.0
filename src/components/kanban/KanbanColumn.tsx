@@ -12,17 +12,18 @@ import type { Column, Task, UserProfile } from '@/types';
 interface KanbanColumnProps {
   column: Column;
   tasks: Task[];
-  creatorProfiles: Record<string, UserProfile | null>; // Map of userId to UserProfile
+  creatorProfiles: Record<string, UserProfile | null>;
   onTaskClick: (task: Task) => void;
   onAddTask: (columnId: string) => void;
-  onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string) => void;
+  onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
   onDragTaskStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
 }
 
 export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAddTask, onTaskDrop, onDragTaskStart }: KanbanColumnProps) {
   
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault(); // Necessary to allow dropping
+    event.preventDefault(); 
+    event.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -30,9 +31,33 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
     const taskDataString = event.dataTransfer.getData('application/json');
     if (taskDataString) {
       try {
-        const { taskId, sourceColumnId } = JSON.parse(taskDataString);
-        if (taskId && sourceColumnId && column.id !== sourceColumnId) { // Prevent dropping in the same column for now
-          onTaskDrop(taskId, sourceColumnId, column.id);
+        const { taskId: draggedTaskId, sourceColumnId } = JSON.parse(taskDataString);
+        
+        // Determine if the drop target is another task card
+        let targetTaskId: string | undefined = undefined;
+        let targetElement = event.target as HTMLElement;
+        
+        // Traverse up to find the task card if dropped on an inner element
+        while (targetElement && !targetElement.dataset.taskId && targetElement.parentElement) {
+            targetElement = targetElement.parentElement;
+        }
+        if (targetElement && targetElement.dataset.taskId) {
+            targetTaskId = targetElement.dataset.taskId;
+        }
+
+        if (draggedTaskId && sourceColumnId) {
+          if (column.id === sourceColumnId) { // Dropped in the same column (reordering)
+            if (targetTaskId && targetTaskId !== draggedTaskId) {
+              onTaskDrop(draggedTaskId, sourceColumnId, column.id, targetTaskId);
+            } else if (!targetTaskId) { 
+              // Dropped in empty space of same column, append to end (or handle as no-op for now)
+              // For simplicity, we can treat dropping in empty space of the same column as a move to the end.
+              // Or, if targetTaskId is undefined, pass it and let parent decide.
+              onTaskDrop(draggedTaskId, sourceColumnId, column.id, undefined); // Drop at the end if no specific target task
+            }
+          } else { // Dropped in a different column
+            onTaskDrop(draggedTaskId, sourceColumnId, column.id, targetTaskId); // targetTaskId helps place it if dropped on a specific task
+          }
         }
       } catch (error) {
         console.error("Error parsing dragged task data:", error);
@@ -45,6 +70,7 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
       className="w-80 flex-shrink-0 h-full flex flex-col bg-muted/50 shadow-md"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      data-column-id={column.id} // For easier identification if needed
     >
       <CardHeader className="p-4 border-b">
         <div className="flex justify-between items-center">
@@ -79,5 +105,3 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
     </Card>
   );
 }
-
-    

@@ -11,11 +11,11 @@ import type { Column, Task, UserProfile } from '@/types';
 interface KanbanBoardProps {
   boardColumns: Column[];
   allTasksForBoard: Task[];
-  creatorProfiles: Record<string, UserProfile | null>; // Map of userId to UserProfile
+  creatorProfiles: Record<string, UserProfile | null>; 
   onTaskClick: (task: Task) => void;
   onAddTask: (columnId: string) => void;
   onAddColumn: () => void;
-  onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string) => void;
+  onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
 }
 
 export function KanbanBoard({ 
@@ -29,10 +29,14 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   
   const getTasksForColumn = (column: Column): Task[] => {
-    return column.taskIds
+    const tasksInColumn = column.taskIds
       .map(taskId => allTasksForBoard.find(t => t.id === taskId))
       .filter(Boolean) as Task[];
-    // Add sorting here if tasks have an 'order' property
+    
+    // Ensure the order of tasks matches the order in column.taskIds
+    return tasksInColumn.sort((a, b) => {
+      return column.taskIds.indexOf(a.id) - column.taskIds.indexOf(b.id);
+    });
   };
 
   const handleDragTaskStart = (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => {
@@ -66,5 +70,3 @@ export function KanbanBoard({
     </ScrollArea>
   );
 }
-
-    
