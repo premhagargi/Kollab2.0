@@ -175,10 +175,14 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
       
-      // Await board update before opening modal for consistency
-      await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
+      updateBoard(currentBoard.id, { columns: updatedBoardColumns })
+         .catch(err => {
+            console.error("Error updating board in background after task creation:", err);
+            toast({title: "Board Update Error", description: "Could not save new task to board structure in background.", variant: "destructive"});
+            // Optionally, trigger a re-fetch or more robust error handling
+         });
 
-      handleTaskClick(createdTask); // Open modal
+      handleTaskClick(createdTask); 
 
       if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
         getUsersByIds([createdTask.creatorId]).then(profile => {
@@ -335,29 +339,25 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     return null;
   }
 
-  // AppHeader height is h-16 (4rem or 64px)
-  const boardHeaderHeight = "h-[60px]"; // Approximate height for the board header (p-4, text-2xl)
+  const boardHeaderHeight = "h-[60px]";
 
   return (
-     <div className="flex flex-col h-full overflow-hidden bg-neutral-900 text-neutral-100"> {/* Main container for board view dark theme */}
+     <div className="flex flex-col h-full overflow-hidden bg-background text-foreground">
       {/* Board Header - Sticky below AppHeader */}
-      <div className={`sticky top-16 z-30 flex items-center justify-between p-4 border-b border-neutral-700 bg-neutral-850 shadow-md ${boardHeaderHeight} flex-shrink-0`}>
+      <div className={`sticky top-16 z-30 flex items-center justify-between p-4 border-b bg-card shadow-sm ${boardHeaderHeight} flex-shrink-0`}>
         <h1 className="text-xl font-semibold truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button 
             size="sm" 
             onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')} 
             disabled={currentBoard.columns.length === 0}
-            variant="secondary" // Use a less prominent variant for dark theme
-            className="bg-neutral-700 hover:bg-neutral-600 text-neutral-100"
+            variant="secondary"
           >
             <Plus className="mr-2 h-4 w-4" /> New Task
           </Button>
         </div>
       </div>
       
-      {/* Kanban Board - Scrollable area */}
-      {/* Adjust top padding to account for the AppHeader and BoardHeader heights */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden"> 
         <KanbanBoard
           boardColumns={currentBoard.columns}
@@ -382,4 +382,4 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
-
+    

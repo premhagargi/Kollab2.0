@@ -1,3 +1,8 @@
+
+// src/hooks/use-mobile.tsx
+// This hook was primarily used by the now-removed AppSidebar.
+// If not used elsewhere, it can be deleted. For now, keeping its content.
+"use client"
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
@@ -17,3 +22,4 @@ export function useIsMobile() {
 
   return !!isMobile
 }
+    

@@ -1,39 +1,34 @@
+
 // src/app/analytics/page.tsx
 "use client";
-import React, { useState } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import React from 'react';
+// Removed SidebarProvider
 import { AppHeader } from '@/components/layout/AppHeader';
-import { AppSidebar } from '@/components/layout/AppSidebar';
+// Removed AppSidebar
 import { AnalyticsDashboardView } from '@/components/analytics/AnalyticsDashboardView';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { mockBoard } from '@/lib/mock-data'; // For sidebar consistency
+// Removed mockBoard import as sidebar and its related state are gone
 
 export default function AnalyticsPage() {
-  // This state is just for sidebar consistency; analytics view itself doesn't depend on a board.
-  const [currentBoardId, setCurrentBoardId] = useState<string | null>(mockBoard.id);
-
-  const handleSelectBoard = (boardId: string) => {
-    setCurrentBoardId(boardId);
-    // Typically, navigation would happen here if boards affected analytics,
-    // or analytics might be workspace-wide.
-  };
+  // Removed currentBoardId and handleSelectBoard as sidebar is gone
+  // If boards list is needed for AppHeader in analytics, it should be fetched similarly to DashboardPage
   
   return (
     <AuthProvider>
-      <SidebarProvider defaultOpen={true}>
-        <div className="flex min-h-screen">
-          <AppSidebar 
-            currentBoardId={currentBoardId} 
-            onSelectBoard={handleSelectBoard}
-          />
-          <div className="flex flex-col flex-1 w-full">
-            <AppHeader />
-            <main className="flex-1 overflow-auto"> {/* Allow scrolling for analytics content */}
-              <AnalyticsDashboardView />
-            </main>
-          </div>
-        </div>
-      </SidebarProvider>
+      {/* Removed SidebarProvider */}
+      <div className="flex flex-col min-h-screen"> {/* Simplified layout */}
+        <AppHeader 
+          boards={[]} // Pass empty or fetch if needed for "Boards" dropdown consistency
+          currentBoardId={null}
+          onSelectBoard={() => {}}
+          onBoardCreated={async () => null}
+          isLoadingBoards={false}
+        />
+        <main className="flex-1 overflow-auto pt-16"> {/* pt-16 to offset AppHeader height */}
+          <AnalyticsDashboardView />
+        </main>
+      </div>
     </AuthProvider>
   );
 }
+    

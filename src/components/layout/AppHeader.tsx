@@ -3,7 +3,8 @@
 "use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Menu, UserCircle, LogOut, Settings, Users, LogInIcon, Mail, KeyRound } from 'lucide-react';
+import { usePathname } from 'next/navigation'; // For active link styling
+import { UserCircle, LogOut, Settings, Users, LogInIcon, Mail, KeyRound, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,17 +13,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useSidebar } from '@/components/ui/sidebar';
+// Removed useSidebar
 import { siteConfig } from '@/config/site';
 import { InviteTeamMemberModal } from '@/components/modals/InviteTeamMemberModal';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input'; // For Create Board Modal
 import { useAuth } from '@/hooks/useAuth';
 import { EmailPasswordLoginForm } from '@/components/auth/EmailPasswordLoginForm';
 import { EmailPasswordSignupForm } from '@/components/auth/EmailPasswordSignupForm';
+import type { Board } from '@/types';
+import { cn } from '@/lib/utils';
 
-// Define an icon for Google
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18px" height="18px" className="mr-2">
     <path fill="#EA4335" d="M24 9.5c3.22 0 5.17.46 6.81 1.37 2.51 1.39 4.2 3.83 4.2 7.13 0 1.4-.33 2.7-.92 3.87L24 24l-8.09-8.09C16.24 14.55 18.67 12.5 24 12.5V9.5z"/>
@@ -33,57 +41,116 @@ const GoogleIcon = () => (
   </svg>
 );
 
+interface AppHeaderProps {
+  boards: Board[];
+  currentBoardId: string | null;
+  onSelectBoard: (boardId: string) => void;
+  onBoardCreated: (newBoardName: string) => Promise<string | null>; // Returns new board ID or null
+  isLoadingBoards: boolean;
+}
 
-export function AppHeader() {
-  const { toggleSidebar } = useSidebar();
-  const { user, loginWithGoogle, logout, loading } = useAuth();
+export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreated, isLoadingBoards }: AppHeaderProps) {
+  // Removed toggleSidebar and useSidebar
+  const pathname = usePathname();
+  const { user, loginWithGoogle, logout, loading: authLoading } = useAuth();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'google' | 'emailLogin' | 'emailSignup'>('google');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-
+  const [isCreateBoardModalOpen, setIsCreateBoardModalOpen] = useState(false);
+  const [newBoardName, setNewBoardName] = useState('');
+  const [isCreatingBoard, setIsCreatingBoard] = useState(false);
 
   const handleLoginSuccess = () => {
     setIsLoginModalOpen(false); 
     setAuthView('google'); 
   };
 
+  const handleCreateBoard = async () => {
+    if (!newBoardName.trim()) return; // Basic validation
+    setIsCreatingBoard(true);
+    const newBoardId = await onBoardCreated(newBoardName);
+    if (newBoardId) {
+      setNewBoardName('');
+      setIsCreateBoardModalOpen(false);
+      // onSelectBoard(newBoardId); // Already handled by DashboardContent
+    }
+    setIsCreatingBoard(false);
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-16 flex-shrink-0">
       <div className="container mx-auto flex h-full items-center px-4">
-        {/* Left Section: Sidebar Toggle (mobile) & Logo/Brand */}
-        <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="md:hidden mr-2" 
-            aria-label="Toggle sidebar"
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
+        {/* Left Section: Logo/Brand & Nav Links */}
+        <div className="flex items-center space-x-4">
+          {/* Removed Sidebar Toggle Button */}
           <Link href="/" className="flex items-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-primary">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
             </svg>
             <span className="font-bold font-headline text-xl">{siteConfig.name}</span>
           </Link>
+          
+          {user && (
+            <nav className="hidden md:flex items-center space-x-2">
+              <Button variant={pathname === '/' ? "secondary" : "ghost"} size="sm" asChild>
+                <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
+              </Button>
+              <Button variant={pathname === '/analytics' ? "secondary" : "ghost"} size="sm" asChild>
+                <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</Link>
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <HardDrive className="mr-2 h-4 w-4" /> Boards <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  <DropdownMenuLabel>Your Boards</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {isLoadingBoards ? (
+                    <DropdownMenuItem disabled>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </DropdownMenuItem>
+                  ) : boards.length === 0 ? (
+                    <DropdownMenuItem disabled>No boards yet.</DropdownMenuItem>
+                  ) : (
+                    <ScrollArea className="max-h-60"> {/* Added ScrollArea for many boards */}
+                      {boards.map(board => (
+                        <DropdownMenuItem 
+                          key={board.id} 
+                          onClick={() => onSelectBoard(board.id)}
+                          className={cn(currentBoardId === board.id && "bg-accent text-accent-foreground")}
+                        >
+                          {board.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </ScrollArea>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsCreateBoardModalOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Board...
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </nav>
+          )}
         </div>
 
-        {/* Spacer to push right content */}
-        <div className="flex-grow" />
+        <div className="flex-grow" /> {/* Spacer */}
 
-        {/* Right Section: Actions & User Menu - Ensure this section does not cause overflow */}
+        {/* Right Section: Actions & User Menu */}
         <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-          {loading && !user ? ( 
+          {authLoading && !user ? ( 
             <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
           ) : user ? (
             <>
-            <Button variant="ghost" onClick={() => setIsInviteModalOpen(true)} disabled={loading} size="sm">
+            <Button variant="ghost" onClick={() => setIsInviteModalOpen(true)} disabled={authLoading} size="sm" className="hidden sm:inline-flex">
               <Users className="mr-2 h-4 w-4" /> Invite Team
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled={loading}>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled={authLoading}>
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar" />
                     <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : <UserCircle />}</AvatarFallback>
@@ -100,6 +167,48 @@ export function AppHeader() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                 {/* Mobile only nav links */}
+                <DropdownMenuGroup className="md:hidden">
+                   <DropdownMenuItem asChild>
+                     <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem asChild>
+                     <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</Link>
+                   </DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger><HardDrive className="mr-2 h-4 w-4" />Boards</DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="w-48">
+                          <DropdownMenuLabel>Your Boards</DropdownMenuLabel>
+                           <DropdownMenuSeparator />
+                            {isLoadingBoards ? (
+                              <DropdownMenuItem disabled>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                              </DropdownMenuItem>
+                            ) : boards.length === 0 ? (
+                              <DropdownMenuItem disabled>No boards yet.</DropdownMenuItem>
+                            ) : (
+                               <ScrollArea className="max-h-48">
+                                {boards.map(board => (
+                                  <DropdownMenuItem key={board.id} onClick={() => onSelectBoard(board.id)}
+                                   className={cn(currentBoardId === board.id && "bg-accent text-accent-foreground")}>
+                                    {board.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </ScrollArea>
+                            )}
+                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setIsCreateBoardModalOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Create New
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                   <DropdownMenuItem className="sm:hidden" onClick={() => setIsInviteModalOpen(true)}>
+                        <Users className="mr-2 h-4 w-4" /> Invite Team
+                    </DropdownMenuItem>
+                  <DropdownMenuSeparator className="md:hidden"/>
+                </DropdownMenuGroup>
                 <DropdownMenuItem disabled> 
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
@@ -115,7 +224,7 @@ export function AppHeader() {
           ) : ( 
             <Dialog open={isLoginModalOpen} onOpenChange={(open) => { setIsLoginModalOpen(open); if (!open) setAuthView('google'); }}>
               <DialogTrigger asChild>
-                <Button onClick={() => { setIsLoginModalOpen(true); setAuthView('google'); }} disabled={loading} size="sm">
+                <Button onClick={() => { setIsLoginModalOpen(true); setAuthView('google'); }} disabled={authLoading} size="sm">
                   <LogInIcon className="mr-2 h-4 w-4" />
                   Login
                 </Button>
@@ -137,7 +246,7 @@ export function AppHeader() {
                 <div className="py-6 px-2 space-y-6">
                   {authView === 'google' && (
                     <>
-                      <Button onClick={async () => { await loginWithGoogle(); handleLoginSuccess();}} className="w-full" disabled={loading}>
+                      <Button onClick={async () => { await loginWithGoogle(); handleLoginSuccess();}} className="w-full" disabled={authLoading}>
                         <GoogleIcon /> Sign in with Google
                       </Button>
                       <div className="relative my-4">
@@ -150,12 +259,12 @@ export function AppHeader() {
                           </span>
                         </div>
                       </div>
-                      <Button variant="outline" onClick={() => setAuthView('emailLogin')} className="w-full" disabled={loading}>
+                      <Button variant="outline" onClick={() => setAuthView('emailLogin')} className="w-full" disabled={authLoading}>
                         <Mail className="mr-2 h-4 w-4" /> Sign in with Email
                       </Button>
                        <p className="text-center text-sm text-muted-foreground">
                           Don't have an account?{' '}
-                          <Button variant="link" type="button" onClick={() => setAuthView('emailSignup')} className="p-0 h-auto font-semibold text-primary" disabled={loading}>
+                          <Button variant="link" type="button" onClick={() => setAuthView('emailSignup')} className="p-0 h-auto font-semibold text-primary" disabled={authLoading}>
                             Sign Up
                           </Button>
                         </p>
@@ -178,7 +287,7 @@ export function AppHeader() {
                 </div>
                 { (authView === 'emailLogin' || authView === 'emailSignup') &&
                   <DialogFooter className="pt-4 border-t">
-                     <Button variant="ghost" onClick={() => setAuthView('google')} className="w-full text-sm" disabled={loading}>
+                     <Button variant="ghost" onClick={() => setAuthView('google')} className="w-full text-sm" disabled={authLoading}>
                       &larr; Back to all login options
                     </Button>
                   </DialogFooter>
@@ -189,7 +298,29 @@ export function AppHeader() {
         </div>
       </div>
       {isInviteModalOpen && user && <InviteTeamMemberModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} />}
+      <Dialog open={isCreateBoardModalOpen} onOpenChange={setIsCreateBoardModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Board</DialogTitle>
+            <DialogDescription>Enter a name for your new board.</DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Board Name"
+            value={newBoardName}
+            onChange={(e) => setNewBoardName(e.target.value)}
+            className="my-4"
+            disabled={isCreatingBoard}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateBoardModalOpen(false)} disabled={isCreatingBoard}>Cancel</Button>
+            <Button onClick={handleCreateBoard} disabled={isCreatingBoard || !newBoardName.trim()}>
+              {isCreatingBoard && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Board
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
-
+    
