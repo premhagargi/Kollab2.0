@@ -4,7 +4,7 @@
 import React from 'react';
 import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Reverted to Card
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { KanbanTaskCard } from './KanbanTaskCard';
 import type { Column, Task, UserProfile } from '@/types';
@@ -60,32 +60,34 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
   };
   
   return (
-    <Card // Reverted to Card from div
-      className="w-72 flex-shrink-0 h-full flex flex-col bg-muted/60 shadow-sm" // Adjusted background, removed explicit dark theme classes
+    <div // Changed from Card to div for more control, but kept card-like styling
+      className="w-72 flex-shrink-0 h-full flex flex-col bg-muted/50 rounded-lg shadow-sm" 
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       data-column-id={column.id}
     >
-      <CardHeader className="sticky top-0 z-10 p-3 border-b bg-card"> {/* Reverted background to card, adjusted padding */}
-        <div className="flex justify-between items-center ">
-          <CardTitle className="text-sm font-semibold truncate pr-2">{column.name}</CardTitle> {/* Used CardTitle for consistency */}
+      <div className="sticky top-0 z-10 p-3 border-b bg-muted/70 rounded-t-lg"> {/* Header for column title */}
+        <div className="flex justify-between items-center">
+          <h3 className="text-sm font-semibold truncate pr-2 text-foreground">{column.name}</h3>
           <div className="flex items-center">
             <span className="text-xs text-muted-foreground mr-2">{tasks.length}</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:bg-accent/50">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:bg-accent/20">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end"> {/* Removed explicit dark theme classes */}
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem 
                   // onClick={() => {/* Handle edit column name */}}
+                  disabled // Placeholder
                 >
                   Edit column name
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  className="text-destructive hover:!text-destructive-foreground focus:!text-destructive-foreground" // Adjusted destructive styling
+                  className="text-destructive hover:!text-destructive-foreground focus:!text-destructive-foreground"
                   // onClick={() => {/* Handle delete column */}}
+                   disabled // Placeholder
                 >
                   Delete column
                 </DropdownMenuItem>
@@ -93,10 +95,9 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
             </DropdownMenu>
           </div>
         </div>
-      </CardHeader>
+      </div>
       
-      <CardContent className="flex-grow p-2 min-h-0"> {/* Added min-h-0, adjusted padding */}
-        <ScrollArea className="h-full"> {/* Ensured ScrollArea takes full height of CardContent */}
+      <ScrollArea className="flex-grow p-2 min-h-0"> {/* Content area with scroll */}
           <div className="space-y-2">
             {tasks.map((task) => (
               <KanbanTaskCard 
@@ -108,25 +109,24 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
               />
             ))}
             {tasks.length === 0 && (
-              <div className="text-center text-xs text-muted-foreground py-4">
-                Drag tasks here or add new.
+              <div className="text-center text-xs text-muted-foreground py-4 px-2 rounded-md border-2 border-dashed border-border">
+                Drag tasks here or click "Add a card" below.
               </div>
             )}
           </div>
-        </ScrollArea>
-      </CardContent>
+      </ScrollArea>
 
-      <div className="p-2 border-t mt-auto"> {/* Reverted to standard border */}
+      <div className="p-2 border-t mt-auto"> {/* Footer for add card button */}
         <Button 
           variant="ghost" 
-          className="w-full justify-start text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground text-sm" 
+          className="w-full justify-start text-muted-foreground hover:bg-accent/20 hover:text-accent-foreground text-sm" 
           onClick={() => onAddTask(column.id)}
         >
           <PlusCircle className="h-4 w-4 mr-2" />
           Add a card
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
     

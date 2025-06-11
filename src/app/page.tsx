@@ -2,13 +2,11 @@
 // src/app/page.tsx
 "use client";
 import React, { useState, useEffect } from 'react';
-// Removed SidebarProvider
 import { AppHeader } from '@/components/layout/AppHeader';
-// Removed AppSidebar
 import { KanbanBoardView } from '@/components/kanban/KanbanBoardView';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
-import { getBoardsByOwner, createBoard as createBoardService } from '@/services/boardService'; // Renamed createBoard
+import { getBoardsByOwner, createBoard as createBoardService } from '@/services/boardService';
 import type { Board } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +15,7 @@ function DashboardContent() {
   const { user, loading: authLoading } = useAuth();
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
   const [userBoards, setUserBoards] = useState<Board[]>([]);
-  const [isLoadingBoards, setIsLoadingBoards] = useState(true); // For initial boards load for AppHeader
+  const [isLoadingBoards, setIsLoadingBoards] = useState(true);
   const { toast } = useToast();
 
 
@@ -30,7 +28,7 @@ function DashboardContent() {
           if (boards.length > 0 && !currentBoardId) {
             setCurrentBoardId(boards[0].id);
           } else if (boards.length === 0) {
-            setCurrentBoardId(null); // No boards available
+            setCurrentBoardId(null); 
           }
         })
         .catch(error => {
@@ -73,9 +71,7 @@ function DashboardContent() {
   };
   
   return (
-      // Removed SidebarProvider
-      // This div takes care of the overall page structure below the root body
-      <div className="flex flex-col flex-1 h-screen overflow-hidden">
+      <div className="flex flex-col flex-1 h-screen overflow-hidden"> {/* Ensures this container takes full height and manages overflow */}
         <AppHeader 
             boards={userBoards}
             currentBoardId={currentBoardId}
@@ -83,8 +79,8 @@ function DashboardContent() {
             onBoardCreated={handleBoardCreated}
             isLoadingBoards={isLoadingBoards}
         />
-        {/* Container for main content, allows main content to scroll if needed, below fixed AppHeader */}
-        <main className="flex-1 flex flex-col overflow-hidden pt-16"> {/* pt-16 to offset AppHeader height */}
+        {/* pt-16 offsets content below the fixed AppHeader (h-16) */}
+        <main className="flex-1 flex flex-col overflow-hidden pt-16 bg-background"> 
           {authLoading || (isLoadingBoards && user) ? (
               <div className="flex flex-1 items-center justify-center h-full">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -108,7 +104,6 @@ function DashboardContent() {
       </div>
   );
 }
-
 
 export default function DashboardPage() {
   return (

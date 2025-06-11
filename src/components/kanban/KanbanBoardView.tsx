@@ -14,6 +14,7 @@ import { getTasksByBoard, createTask, updateTask as updateTaskService, deleteTas
 import { getUsersByIds } from '@/services/userService';
 
 const DEFAULT_NEW_TASK_TITLE = 'New Task';
+const BOARD_HEADER_HEIGHT_CLASS = "h-[60px]"; // Consistent height for board header
 
 export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const { user } = useAuth();
@@ -175,14 +176,13 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
       
+      handleTaskClick(createdTask); 
+
       updateBoard(currentBoard.id, { columns: updatedBoardColumns })
          .catch(err => {
             console.error("Error updating board in background after task creation:", err);
             toast({title: "Board Update Error", description: "Could not save new task to board structure in background.", variant: "destructive"});
-            // Optionally, trigger a re-fetch or more robust error handling
          });
-
-      handleTaskClick(createdTask); 
 
       if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
         getUsersByIds([createdTask.creatorId]).then(profile => {
@@ -257,13 +257,13 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
 
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
 
-    if (sourceColumnId === destinationColumnId) { // Reordering within the same column
+    if (sourceColumnId === destinationColumnId) { 
         if (targetIndexInDest !== -1) {
             destTaskIds.splice(targetIndexInDest, 0, taskId);
         } else {
-            destTaskIds.push(taskId); // Dropped at the end or into empty space
+            destTaskIds.push(taskId); 
         }
-    } else { // Moving to a different column
+    } else { 
         if (targetIndexInDest !== -1) {
             destTaskIds.splice(targetIndexInDest, 0, taskId);
         } else {
@@ -279,7 +279,6 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
             await updateTaskService(taskId, { columnId: destinationColumnId });
         }
         await updateBoard(currentBoard.id, { columns: newBoardColumns });
-        // toast({ title: "Task Moved", description: `Task "${taskToMove.title}" position updated.` });
     } catch (error) {
         console.error("Error moving task:", error);
         toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching board.", variant: "destructive" });
@@ -339,19 +338,16 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     return null;
   }
 
-  const boardHeaderHeight = "h-[60px]";
-
   return (
      <div className="flex flex-col h-full overflow-hidden bg-background text-foreground">
-      {/* Board Header - Sticky below AppHeader */}
-      <div className={`sticky top-16 z-30 flex items-center justify-between p-4 border-b bg-card shadow-sm ${boardHeaderHeight} flex-shrink-0`}>
+      <div className={`sticky top-16 z-30 flex items-center justify-between p-4 border-b bg-background shadow-sm ${BOARD_HEADER_HEIGHT_CLASS} flex-shrink-0`}>
         <h1 className="text-xl font-semibold truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button 
             size="sm" 
             onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')} 
             disabled={currentBoard.columns.length === 0}
-            variant="secondary"
+            variant="default" // Changed to default for better visibility
           >
             <Plus className="mr-2 h-4 w-4" /> New Task
           </Button>

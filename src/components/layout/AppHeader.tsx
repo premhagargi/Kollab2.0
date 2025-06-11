@@ -20,7 +20,6 @@ import {
   DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-// Removed useSidebar
 import { siteConfig } from '@/config/site';
 import { InviteTeamMemberModal } from '@/components/modals/InviteTeamMemberModal';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
@@ -30,7 +29,7 @@ import { EmailPasswordLoginForm } from '@/components/auth/EmailPasswordLoginForm
 import { EmailPasswordSignupForm } from '@/components/auth/EmailPasswordSignupForm';
 import type { Board } from '@/types';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from "@/components/ui/scroll-area"; // Added missing import
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18px" height="18px" className="mr-2">
@@ -46,12 +45,11 @@ interface AppHeaderProps {
   boards: Board[];
   currentBoardId: string | null;
   onSelectBoard: (boardId: string) => void;
-  onBoardCreated: (newBoardName: string) => Promise<string | null>; // Returns new board ID or null
+  onBoardCreated: (newBoardName: string) => Promise<string | null>;
   isLoadingBoards: boolean;
 }
 
 export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreated, isLoadingBoards }: AppHeaderProps) {
-  // Removed toggleSidebar and useSidebar
   const pathname = usePathname();
   const { user, loginWithGoogle, logout, loading: authLoading } = useAuth();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -67,13 +65,12 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
   };
 
   const handleCreateBoard = async () => {
-    if (!newBoardName.trim()) return; // Basic validation
+    if (!newBoardName.trim()) return;
     setIsCreatingBoard(true);
     const newBoardId = await onBoardCreated(newBoardName);
     if (newBoardId) {
       setNewBoardName('');
       setIsCreateBoardModalOpen(false);
-      // onSelectBoard(newBoardId); // Already handled by DashboardContent
     }
     setIsCreatingBoard(false);
   };
@@ -81,9 +78,7 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-16 flex-shrink-0">
       <div className="container mx-auto flex h-full items-center px-4">
-        {/* Left Section: Logo/Brand & Nav Links */}
         <div className="flex items-center space-x-4">
-          {/* Removed Sidebar Toggle Button */}
           <Link href="/" className="flex items-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-primary">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
@@ -92,7 +87,7 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
           </Link>
           
           {user && (
-            <nav className="hidden md:flex items-center space-x-2">
+            <nav className="hidden md:flex items-center space-x-1">
               <Button variant={pathname === '/' ? "secondary" : "ghost"} size="sm" asChild>
                 <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
               </Button>
@@ -116,7 +111,7 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
                   ) : boards.length === 0 ? (
                     <DropdownMenuItem disabled>No boards yet.</DropdownMenuItem>
                   ) : (
-                    <ScrollArea className="max-h-60"> {/* Added ScrollArea for many boards */}
+                    <ScrollArea className="max-h-60">
                       {boards.map(board => (
                         <DropdownMenuItem 
                           key={board.id} 
@@ -138,10 +133,9 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
           )}
         </div>
 
-        <div className="flex-grow" /> {/* Spacer */}
+        <div className="flex-grow" />
 
-        {/* Right Section: Actions & User Menu */}
-        <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
           {authLoading && !user ? ( 
             <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
           ) : user ? (
@@ -168,7 +162,6 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                 {/* Mobile only nav links */}
                 <DropdownMenuGroup className="md:hidden">
                    <DropdownMenuItem asChild>
                      <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
