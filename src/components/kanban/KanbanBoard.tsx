@@ -19,7 +19,8 @@ interface KanbanBoardProps {
   onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
   isAddingColumn: boolean;
   setIsAddingColumn: (isAdding: boolean) => void;
-  onUpdateColumnName: (columnId: string, newName: string) => void; // New prop
+  onUpdateColumnName: (columnId: string, newName: string) => void;
+  onToggleTaskCompleted: (taskId: string, completed: boolean) => void; // New prop
 }
 
 export function KanbanBoard({
@@ -32,7 +33,8 @@ export function KanbanBoard({
   onTaskDrop,
   isAddingColumn,
   setIsAddingColumn,
-  onUpdateColumnName, // Destructure new prop
+  onUpdateColumnName,
+  onToggleTaskCompleted, // Destructure new prop
 }: KanbanBoardProps) {
   const [newColumnNameInput, setNewColumnNameInput] = useState('');
 
@@ -76,7 +78,8 @@ export function KanbanBoard({
           onAddTask={onAddTask}
           onTaskDrop={onTaskDrop}
           onDragTaskStart={handleDragTaskStart}
-          onUpdateColumnName={onUpdateColumnName} // Pass down prop
+          onUpdateColumnName={onUpdateColumnName}
+          onToggleTaskCompleted={onToggleTaskCompleted} // Pass down prop
         />
       ))}
       <div className="w-72 flex-shrink-0">
@@ -128,3 +131,4 @@ export function KanbanBoard({
     </div>
   );
 }
+

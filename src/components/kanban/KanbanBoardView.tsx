@@ -38,7 +38,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       if (boardData && boardData.ownerId === user.id) {
         setCurrentBoard(boardData);
         const tasksData = await getTasksByBoard(id);
-        setBoardTasks(tasksData);
+        setBoardTasks(tasksData.map(task => ({...task, isCompleted: task.isCompleted || false}))); // Ensure isCompleted defaults to false
 
         const allUserIds = new Set<string>();
         tasksData.forEach(task => {
@@ -148,7 +148,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         return;
     }
 
-    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
+    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted'> = {
       title: DEFAULT_NEW_TASK_TITLE,
       description: '',
       priority: 'medium',
@@ -161,7 +161,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     };
 
     try {
-      const createdTask = await createTask(newTaskData);
+      const createdTask = await createTask(newTaskData); // isCompleted will be false by default from service
       provisionalNewTaskIdRef.current = createdTask.id;
       setBoardTasks(prevTasks => [...prevTasks, createdTask]);
       const updatedBoardColumns = currentBoard.columns.map(col => {
@@ -204,7 +204,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     const trimmedColumnName = columnName.trim();
     if (!trimmedColumnName) {
       toast({ title: "Invalid Column Name", description: "Column name cannot be empty.", variant: "destructive"});
-      return; // Do NOT close the form, let user correct it.
+      return; 
     }
 
     const newColumn: ColumnType = {
@@ -335,7 +335,6 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       col.id === columnId ? { ...col, name: newName } : col
     );
 
-    // Optimistic UI update
     setCurrentBoard(prevBoard =>
       prevBoard ? { ...prevBoard, columns: updatedColumns } : null
     );
@@ -346,10 +345,33 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     } catch (error) {
       console.error("Error updating column name in Firestore:", error);
       toast({ title: "Error Renaming Column", description: "Failed to save column name. Reverting.", variant: "destructive" });
-      // Revert optimistic update
       setCurrentBoard(prevBoard =>
         prevBoard ? { ...prevBoard, columns: oldColumns } : null
       );
+    }
+  };
+
+  const handleToggleTaskCompleted = async (taskId: string, completed: boolean) => {
+    if (!user || !currentBoard) {
+      toast({ title: "Error", description: "Cannot update task: No board or user.", variant: "destructive" });
+      return;
+    }
+    
+    const originalTasks = [...boardTasks];
+    setBoardTasks(prevTasks => 
+      prevTasks.map(t => t.id === taskId ? { ...t, isCompleted: completed, updatedAt: new Date().toISOString() } : t)
+    );
+
+    try {
+      await updateTaskService(taskId, { isCompleted: completed });
+      toast({ 
+        title: "Task Updated", 
+        description: `Task marked as ${completed ? 'complete' : 'incomplete'}.` 
+      });
+    } catch (error) {
+      console.error("Error updating task completion status:", error);
+      toast({ title: "Error Updating Task", description: "Could not save task completion status. Reverting.", variant: "destructive" });
+      setBoardTasks(originalTasks); // Revert optimistic update
     }
   };
 
@@ -398,7 +420,8 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
           onTaskDrop={handleTaskDrop}
           isAddingColumn={isAddingColumn}
           setIsAddingColumn={setIsAddingColumn}
-          onUpdateColumnName={handleUpdateColumnName} // Pass down new handler
+          onUpdateColumnName={handleUpdateColumnName}
+          onToggleTaskCompleted={handleToggleTaskCompleted} 
         />
       </div>
 
@@ -414,3 +437,4 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
+

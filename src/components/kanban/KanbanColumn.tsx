@@ -25,6 +25,7 @@ interface KanbanColumnProps {
   onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
   onDragTaskStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
   onUpdateColumnName: (columnId: string, newName: string) => void;
+  onToggleTaskCompleted: (taskId: string, completed: boolean) => void; // New prop
 }
 
 export function KanbanColumn({
@@ -36,6 +37,7 @@ export function KanbanColumn({
   onTaskDrop,
   onDragTaskStart,
   onUpdateColumnName,
+  onToggleTaskCompleted, // Destructure new prop
 }: KanbanColumnProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [currentEditingName, setCurrentEditingName] = useState(column.name);
@@ -126,7 +128,7 @@ export function KanbanColumn({
             />
           ) : (
             <h3
-              className="text-sm font-semibold truncate pr-2 text-foreground cursor-pointer hover:bg-accent/10 p-1 -ml-1 rounded min-h-[32px] flex items-center" // Ensure min-height matches input
+              className="text-sm font-semibold truncate pr-2 text-foreground cursor-pointer hover:bg-accent/10 p-1 -ml-1 rounded min-h-[32px] flex items-center" 
               onClick={handleNameDisplayClick}
               title="Click to edit column name"
             >
@@ -168,6 +170,7 @@ export function KanbanColumn({
                 onClick={() => onTaskClick(task)}
                 creatorProfile={creatorProfiles[task.creatorId] || null}
                 onDragStart={onDragTaskStart}
+                onToggleTaskCompleted={onToggleTaskCompleted} // Pass down prop
               />
             ))}
             {tasks.length === 0 && (

@@ -49,6 +49,7 @@ export interface Task {
   order?: number; // Optional: for ordering within a column if not relying on taskIds array order
   isArchived?: boolean;
   archivedAt?: string; // ISO string, when the task was archived
+  isCompleted: boolean; // New field for task completion status
 }
 
 export interface Subtask {
@@ -83,3 +84,4 @@ export interface AISubtaskSuggestion {
   id: string;
   text: string;
 }
+

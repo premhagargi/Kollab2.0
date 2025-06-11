@@ -5,15 +5,17 @@ import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Task, UserProfile, TaskPriority } from '@/types';
-import { CalendarDays, MessageSquare, Users, AlignLeft, CheckSquare } from 'lucide-react';
+import { CalendarDays, MessageSquare, Users, AlignLeft, CheckSquare as CheckSquareIcon } from 'lucide-react'; // Renamed to avoid conflict
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox
 
 interface KanbanTaskCardProps {
   task: Task;
   onClick: () => void;
   creatorProfile?: UserProfile | null; 
   onDragStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
+  onToggleTaskCompleted: (taskId: string, completed: boolean) => void; // New prop
 }
 
 const priorityBorderColor: Record<TaskPriority, string> = {
@@ -24,7 +26,7 @@ const priorityBorderColor: Record<TaskPriority, string> = {
 };
 
 
-export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: KanbanTaskCardProps) {
+export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onToggleTaskCompleted }: KanbanTaskCardProps) {
   
   const handleDragStartLocal = (event: React.DragEvent<HTMLDivElement>) => {
     onDragStart(event, task.id, task.columnId);
@@ -33,24 +35,48 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
   const totalSubtasks = task.subtasks.length;
 
+  const handleCheckboxClick = (event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card click (modal open)
+  };
+
   return (
     <Card
       className={cn(
-        "mb-2 cursor-pointer hover:shadow-md transition-shadow duration-150 bg-card text-card-foreground shadow-sm active:shadow-lg rounded-md",
-        "border-l-4", // Add a thicker left border for priority
-        priorityBorderColor[task.priority] // Apply specific color based on priority
+        "mb-2 hover:shadow-md transition-shadow duration-150 bg-card text-card-foreground shadow-sm active:shadow-lg rounded-md",
+        "border-l-4", 
+        priorityBorderColor[task.priority],
+        task.isCompleted && "opacity-70" // Add opacity if completed
       )}
-      onClick={onClick}
+      onClick={onClick} // This will open the modal
       aria-label={`Task: ${task.title}`}
       draggable="true" 
       onDragStart={handleDragStartLocal}
       data-task-id={task.id} 
     >
       <CardContent className="p-2.5 space-y-1.5"> 
+        <div className="flex items-start space-x-2">
+          <div onClick={handleCheckboxClick} className="flex-shrink-0 pt-0.5"> 
+            <Checkbox
+              id={`task-complete-${task.id}`}
+              checked={task.isCompleted}
+              onCheckedChange={(checked) => {
+                onToggleTaskCompleted(task.id, !!checked);
+              }}
+              className="h-4 w-4 rounded border-muted-foreground/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              aria-label={`Mark task ${task.title} as ${task.isCompleted ? 'incomplete' : 'complete'}`}
+            />
+          </div>
+          <p className={cn(
+            "text-sm font-medium leading-snug text-foreground flex-grow cursor-pointer",
+            task.isCompleted && "line-through text-muted-foreground"
+            )}
+            onClick={onClick} // Ensure title click also opens modal if not clicking checkbox area
+          >
+              {task.title}
+          </p>
+        </div>
         
-        <p className="text-sm font-medium leading-snug text-foreground">{task.title}</p>
-        
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground ml-6"> {/* Indent meta items */}
           {task.dueDate && (
             <div className="flex items-center" title={`Due date: ${format(parseISO(task.dueDate), 'MMM d, yyyy')}`}>
               <CalendarDays className="h-3.5 w-3.5 mr-1" />
@@ -62,7 +88,7 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart }: K
           )}
           {totalSubtasks > 0 && (
             <div className="flex items-center" title={`${completedSubtasks} of ${totalSubtasks} subtasks completed`}>
-              <CheckSquare className="h-3.5 w-3.5 mr-1" />
+              <CheckSquareIcon className="h-3.5 w-3.5 mr-1" />
               <span>{completedSubtasks}/{totalSubtasks}</span>
             </div>
           )}

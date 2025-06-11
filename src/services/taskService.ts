@@ -33,10 +33,11 @@ const mapTimestampToISO = (timestampField: any): string => {
  * @param taskData The data for the new task, including boardId, columnId, and creatorId.
  * @returns The created task object with its Firestore ID.
  */
-export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> => {
+export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted'>): Promise<Task> => {
   try {
     const newTaskData = {
       ...taskData,
+      isCompleted: false, // Initialize isCompleted
       isArchived: false, // Initialize isArchived
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -47,6 +48,7 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
     return {
       id: docRef.id,
       ...taskData,
+      isCompleted: false,
       isArchived: false,
       createdAt: now, 
       updatedAt: now, 
@@ -69,6 +71,7 @@ export const getTasksByBoard = async (boardId: string): Promise<Task[]> => {
     return querySnapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
+      isCompleted: docSnap.data().isCompleted || false, // Ensure default if field is missing
       createdAt: mapTimestampToISO(docSnap.data().createdAt),
       updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
     } as Task));
@@ -92,6 +95,7 @@ export const getTaskById = async (taskId: string): Promise<Task | null> => {
       return {
         id: docSnap.id,
         ...data,
+        isCompleted: data.isCompleted || false, // Ensure default if field is missing
         createdAt: mapTimestampToISO(data.createdAt),
         updatedAt: mapTimestampToISO(data.updatedAt),
       } as Task;
@@ -173,3 +177,4 @@ export const deleteTask = async (taskId: string): Promise<void> => {
     throw error;
   }
 };
+
