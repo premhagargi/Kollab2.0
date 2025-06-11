@@ -206,13 +206,14 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
       <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-2xl font-headline">
+          <DialogTitle> {/* Removed text-2xl font-headline from here */}
             <Input
               id="title"
               value={task.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
-              className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto"
+              className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto w-full" // Added w-full
               disabled={isSaving}
+              placeholder="Task Title"
             />
           </DialogTitle>
           <DialogDescription>

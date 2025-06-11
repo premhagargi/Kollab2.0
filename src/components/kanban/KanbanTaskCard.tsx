@@ -15,7 +15,7 @@ interface KanbanTaskCardProps {
   onClick: () => void;
   creatorProfile?: UserProfile | null; 
   onDragStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
-  onToggleTaskCompleted: (taskId: string, completed: boolean) => void; // New prop
+  onToggleTaskCompleted: (taskId: string, completed: boolean) => void;
 }
 
 const priorityBorderColor: Record<TaskPriority, string> = {
@@ -42,12 +42,12 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
   return (
     <Card
       className={cn(
-        "mb-2 hover:shadow-md transition-shadow duration-150 bg-card text-card-foreground shadow-sm active:shadow-lg rounded-md",
+        "mb-2 hover:shadow-md transition-shadow duration-150 bg-card text-card-foreground shadow-sm active:shadow-lg rounded-md group", // Added 'group'
         "border-l-4", 
         priorityBorderColor[task.priority],
-        task.isCompleted && "opacity-70" // Add opacity if completed
+        task.isCompleted && "opacity-70"
       )}
-      onClick={onClick} // This will open the modal
+      onClick={onClick}
       aria-label={`Task: ${task.title}`}
       draggable="true" 
       onDragStart={handleDragStartLocal}
@@ -55,7 +55,11 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
     >
       <CardContent className="p-2.5 space-y-1.5"> 
         <div className="flex items-start space-x-2">
-          <div onClick={handleCheckboxClick} className="flex-shrink-0 pt-0.5"> 
+          {/* Checkbox container - becomes visible on parent hover */}
+          <div 
+            onClick={handleCheckboxClick} 
+            className="flex-shrink-0 pt-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          > 
             <Checkbox
               id={`task-complete-${task.id}`}
               checked={task.isCompleted}
@@ -70,13 +74,13 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
             "text-sm font-medium leading-snug text-foreground flex-grow cursor-pointer",
             task.isCompleted && "line-through text-muted-foreground"
             )}
-            onClick={onClick} // Ensure title click also opens modal if not clicking checkbox area
+            onClick={onClick}
           >
               {task.title}
           </p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground ml-6"> {/* Indent meta items */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground ml-6">
           {task.dueDate && (
             <div className="flex items-center" title={`Due date: ${format(parseISO(task.dueDate), 'MMM d, yyyy')}`}>
               <CalendarDays className="h-3.5 w-3.5 mr-1" />
