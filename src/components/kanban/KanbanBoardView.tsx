@@ -394,7 +394,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Board Header */}
-      <div className="sticky top-0 z-30 flex items-center justify-between p-3 border-b bg-background shadow-sm flex-shrink-0">
+      <div className="sticky top-0 z-30 flex items-center justify-between p-3 bg-background shadow-sm flex-shrink-0">
         <h1 className="text-lg font-medium truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button

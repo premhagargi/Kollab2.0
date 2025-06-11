@@ -1,4 +1,3 @@
-
 # Kollab - Task Management Platform
 
 Kollab is a Trello-like task management platform designed for remote teams, built with a modern web stack including Firebase, Next.js, and Genkit for AI-powered features.

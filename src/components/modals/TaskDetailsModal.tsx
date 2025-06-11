@@ -204,72 +204,69 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
-      <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle> {/* Removed text-2xl font-headline from here */}
+      <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col bg-white rounded-lg shadow-xl">
+        <DialogHeader className="flex-shrink-0 px-2 pt-2 pb-2 border-b">
+          <DialogTitle>
             <Input
               id="title"
               value={task.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
-              className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto w-full" // Added w-full
+              className="text-2xl font-semibold border-0 shadow-none p-1 h-auto w-full placeholder:text-gray-400"
               disabled={isSaving}
               placeholder="Task Title"
             />
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm text-gray-500 mt-1">
             Last updated: {format(parseISO(task.updatedAt), 'MMM d, yyyy p')}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="flex-grow min-h-0 overflow-y-auto">
-          <ScrollArea className="h-full pr-6">
-            <div className="grid gap-6 py-4">
+  
+        <div className="flex-grow min-h-0 overflow-y-auto px-6">
+          <ScrollArea className="h-full">
+            <div className="grid gap-6 py-6">
+              {/* Description Section */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-base font-medium flex items-center">
-                  <Edit3 className="mr-2 h-5 w-5 text-primary" /> Description
+                <Label htmlFor="description" className="text-base font-medium flex items-center text-gray-700">
+                  <Edit3 className="mr-2 h-5 w-5 text-blue-600" /> Description
                 </Label>
                 <Textarea
                   id="description"
                   value={task.description || ''}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Add a more detailed description..."
-                  className="min-h-[100px]"
+                  className="min-h-[100px] border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                   disabled={isSaving}
                 />
-              </div>
-
-              <div className="space-y-4 p-4 border rounded-lg bg-secondary/30">
-                <h3 className="text-sm font-semibold flex items-center text-primary">
-                  <Brain className="mr-2 h-5 w-5" /> AI Assistant
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button
+                {/* AI Buttons as Text Links */}
+                <div className="flex space-x-4 mt-2">
+                  <button
                     onClick={handleGenerateSummary}
                     disabled={isSummarizing || (!task.description && !task.title) || isSaving}
-                    variant="outline"
+                    className={`text-sm flex items-center text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors ${isSummarizing ? 'animate-pulse' : ''}`}
                   >
-                    <Sparkles className="mr-2 h-4 w-4" /> {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
-                  </Button>
-                  <Button
+                    <Sparkles className="mr-1 h-4 w-4" /> {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
+                  </button>
+                  <button
                     onClick={handleSuggestSubtasks}
                     disabled={isSuggestingSubtasks || (!task.description && !task.title) || isSaving}
-                    variant="outline"
+                    className={`text-sm flex items-center text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors ${isSuggestingSubtasks ? 'animate-pulse' : ''}`}
                   >
-                    <ListChecks className="mr-2 h-4 w-4" /> {isSuggestingSubtasks ? 'Suggesting...' : 'Suggest Subtasks'}
-                  </Button>
+                    <ListChecks className="mr-1 h-4 w-4" /> {isSuggestingSubtasks ? 'Suggesting...' : 'Suggest Subtasks'}
+                  </button>
                 </div>
+                {/* AI Outputs */}
                 {aiSummary && (
-                  <ScrollArea className="mt-2 p-3 border rounded-md bg-background max-h-24">
-                    <p className="text-sm font-medium text-primary">AI Summary:</p>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{aiSummary.summary}</p>
-                  </ScrollArea>
+                  <div className="mt-3 p-3 border rounded-lg bg-gray-50">
+                    <p className="text-sm font-medium text-blue-600">AI Summary:</p>
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap mt-1">{aiSummary.summary}</p>
+                  </div>
                 )}
                 {aiSubtaskSuggestions.length > 0 && (
-                  <ScrollArea className="mt-2 p-3 border rounded-md bg-background max-h-32">
-                    <p className="text-sm font-medium text-primary">AI Subtask Suggestions:</p>
+                  <div className="mt-3 p-3 border rounded-lg bg-gray-50">
+                    <p className="text-sm font-medium text-blue-600">AI Subtask Suggestions:</p>
                     <ul className="list-disc list-inside space-y-1 mt-1">
                       {aiSubtaskSuggestions.map((suggestion) => (
-                        <li key={suggestion.id} className="text-sm text-muted-foreground flex justify-between items-center">
+                        <li key={suggestion.id} className="text-sm text-gray-600 flex justify-between items-center">
                           <span>{suggestion.text}</span>
                           <Button
                             size="sm"
@@ -277,25 +274,32 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                             onClick={() => handleAddSubtask(suggestion.text, true)}
                             title="Add this subtask"
                             disabled={isSaving}
+                            className="text-blue-600 hover:text-blue-800"
                           >
                             <PlusCircle className="h-4 w-4" />
                           </Button>
                         </li>
                       ))}
                     </ul>
-                  </ScrollArea>
+                  </div>
                 )}
               </div>
-
+  
+              {/* Metadata Section (Due Date, Priority, Assignees) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate" className="flex items-center">
-                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" /> Due Date
+                  <Label htmlFor="dueDate" className="flex items-center text-gray-700">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" /> Due Date
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button id="dueDate" variant="outline" className="w-full justify-start text-left font-normal" disabled={isSaving}>
-                        {task.dueDate ? format(parseISO(task.dueDate), 'PPP') : <span>Pick a date</span>}
+                      <Button 
+                        id="dueDate" 
+                        variant="outline" 
+                        className="w-full justify-start text-left font-normal border-gray-300 hover:bg-gray-50" 
+                        disabled={isSaving}
+                      >
+                        {task.dueDate ? format(parseISO(task.dueDate), 'PPP') : <span className="text-gray-500">Pick a date</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -309,14 +313,14 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   </Popover>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="priority" className="flex items-center">
-                    <Sparkles className="mr-2 h-4 w-4 text-primary" /> Priority
+                  <Label htmlFor="priority" className="flex items-center text-gray-700">
+                    <Sparkles className="mr-2 h-4 w-4 text-blue-600" /> Priority
                   </Label>
                   <select
                     id="priority"
                     value={task.priority}
-                    onChange={(e) => handleInputChange('priority', e.target.value as TaskPriority)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    onChange={(e) => handleInputChange('priority', e.target.value)}
+                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={isSaving}
                   >
                     {priorityOptions.map((p) => (
@@ -327,31 +331,39 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="assignees" className="flex items-center">
-                    <User className="mr-2 h-4 w-4 text-primary" /> Assignees
+                  <Label htmlFor="assignees" className="flex items-center text-gray-700">
+                    <User className="mr-2 h-4 w-4 text-blue-600" /> Assignees
                   </Label>
-                  <div className="flex items-center space-x-2 p-2 border rounded-md min-h-[40px]">
+                  <div className="flex items-center space-x-2 p-2 border border-gray-300 rounded-md min-h-[40px] bg-white">
                     {assignee && task.assigneeIds?.includes(assignee.id) ? (
                       <Avatar className="h-7 w-7" title={assignee.name || undefined}>
-                        <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} data-ai-hint="user avatar small"/>
+                        <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} />
                         <AvatarFallback>{assignee.name ? assignee.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                       </Avatar>
                     ) : (
-                      <span className="text-sm text-muted-foreground">No assignees</span>
+                      <span className="text-sm text-gray-500">No assignees</span>
                     )}
-                    <Button variant="outline" size="icon" className="h-7 w-7 ml-auto" onClick={() => toast({ title: "Feature Coming Soon", description: "Assignee selection will be implemented." })} disabled={isSaving}>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-7 w-7 ml-auto border-gray-300 hover:bg-gray-50" 
+                      onClick={() => toast({ title: "Feature Coming Soon", description: "Assignee selection will be implemented." })} 
+                      disabled={isSaving}
+                      aria-label="Add assignee"
+                    >
                       <PlusCircle className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               </div>
-
+  
+              {/* Subtasks Section */}
               <div className="space-y-2">
-                <Label className="text-base font-medium flex items-center">
-                  <ListChecks className="mr-2 h-5 w-5 text-primary" /> Subtasks
+                <Label className="text-base font-medium flex items-center text-gray-700">
+                  <ListChecks className="mr-2 h-5 w-5 text-blue-600" /> Subtasks
                 </Label>
                 {task.subtasks.map((subtask) => (
-                  <div key={subtask.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted/50">
+                  <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-gray-300 rounded-md hover:bg-gray-50">
                     <Checkbox
                       id={`subtask-${subtask.id}`}
                       checked={subtask.completed}
@@ -360,11 +372,18 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     />
                     <Label
                       htmlFor={`subtask-${subtask.id}`}
-                      className={`flex-grow ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}
+                      className={`flex-grow text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700'}`}
                     >
                       {subtask.text}
                     </Label>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 hover:opacity-100" onClick={() => toast({ title: "Subtask Deletion", description: "To be implemented" })} disabled={isSaving}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-500 hover:text-red-600" 
+                      onClick={() => toast({ title: "Subtask Deletion", description: "To be implemented" })} 
+                      disabled={isSaving}
+                      aria-label={`Delete subtask ${subtask.text}`}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -376,63 +395,81 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     placeholder="Add new subtask..."
                     onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask(newSubtask)}
                     disabled={isSaving}
+                    className="border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <Button onClick={() => handleAddSubtask(newSubtask)} size="sm" disabled={!newSubtask.trim() || isSaving}>
+                  <Button 
+                    onClick={() => handleAddSubtask(newSubtask)} 
+                    size="sm" 
+                    disabled={!newSubtask.trim() || isSaving}
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                  >
                     <PlusCircle className="mr-1 h-4 w-4" /> Add
                   </Button>
                 </div>
               </div>
-
+  
+              {/* Attachments Section */}
               <div className="space-y-2">
-                <Label className="text-base font-medium flex items-center">
-                  <Paperclip className="mr-2 h-5 w-5 text-primary" /> Attachments
+                <Label className="text-base font-medium flex items-center text-gray-700">
+                  <Paperclip className="mr-2 h-5 w-5 text-blue-600" /> Attachments
                 </Label>
-                <Button variant="outline" className="w-full" onClick={() => toast({ title: "Feature Coming Soon", description: "File attachments will be implemented." })} disabled={isSaving}>
+                <Button 
+                  variant="outline" 
+                  className="w-full border-gray-300 hover:bg-gray-50" 
+                  onClick={() => toast({ title: "Feature Coming Soon", description: "File attachments will be implemented." })} 
+                  disabled={isSaving}
+                >
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Attachment
                 </Button>
               </div>
-
-              <Separator />
-
+  
+              <Separator className="my-4" />
+  
+              {/* Comments Section */}
               <div className="space-y-2">
-                <Label className="text-base font-medium flex items-center">
-                  <MessageSquare className="mr-2 h-5 w-5 text-primary" /> Comments
+                <Label className="text-base font-medium flex items-center text-gray-700">
+                  <MessageSquare className="mr-2 h-5 w-5 text-blue-600" /> Comments
                 </Label>
-                <ScrollArea className="max-h-48">
+                <ScrollArea className="max-h-48 border border-gray-300 rounded-lg p-3">
                   {task.comments.map((comment) => (
-                    <div key={comment.id} className="flex items-start space-x-3 p-3 border rounded-md mb-2">
+                    <div key={comment.id} className="flex items-start space-x-3 py-2 border-b last:border-b-0">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={comment.userAvatarUrl || undefined} alt={comment.userName} data-ai-hint="user avatar small"/>
+                        <AvatarImage src={comment.userAvatarUrl || undefined} alt={comment.userName} />
                         <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="flex-grow">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{comment.userName}</p>
-                          <p className="text-xs text-muted-foreground">{format(parseISO(comment.createdAt), 'MMM d, p')}</p>
+                          <p className="text-sm font-medium text-gray-700">{comment.userName}</p>
+                          <p className="text-xs text-gray-500">{format(parseISO(comment.createdAt), 'MMM d, p')}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">{comment.text}</p>
+                        <p className="text-sm text-gray-600 mt-1">{comment.text}</p>
                       </div>
                     </div>
                   ))}
-                  {task.comments.length === 0 && <p className="text-sm text-muted-foreground p-2">No comments yet.</p>}
+                  {task.comments.length === 0 && <p className="text-sm text-gray-500 p-2">No comments yet.</p>}
                 </ScrollArea>
                 {user && (
                   <>
-                    <div className="flex items-start space-x-3 pt-2">
+                    <div className="flex items-start space-x-3 pt-3">
                       <Avatar className="h-8 w-8 mt-1">
-                        <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar small"/>
+                        <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} />
                         <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                       </Avatar>
                       <Textarea
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Write a comment..."
-                        className="flex-grow"
+                        className="flex-grow border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-20"
                         disabled={isSaving}
                       />
                     </div>
                     <div className="text-right mt-2">
-                      <Button onClick={handleAddComment} size="sm" disabled={!newComment.trim() || isSaving}>
+                      <Button 
+                        onClick={handleAddComment} 
+                        size="sm" 
+                        disabled={!newComment.trim() || isSaving}
+                        className="bg-blue-600 text-white hover:bg-blue-700"
+                      >
                         Post Comment
                       </Button>
                     </div>
@@ -442,22 +479,33 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
             </div>
           </ScrollArea>
         </div>
-
-        <DialogFooter className="pt-4 border-t flex-shrink-0">
+  
+        <DialogFooter className="px-6 py-4 border-t flex-shrink-0 bg-gray-50">
           <Button
             variant="outline"
             onClick={() => {
-              if (task && !isSaving) { // Prevent archiving if already saving something else
+              if (task && !isSaving) {
                 onArchiveTask(task);
               }
             }}
-            className="mr-auto"
-            disabled={isSaving || task.isArchived} // Disable if saving or already archived
+            className="mr-auto border-gray-300 hover:bg-gray-100 text-gray-700"
+            disabled={isSaving || task.isArchived}
           >
             <Archive className="mr-2 h-4 w-4" /> {task.isArchived ? 'Archived' : 'Archive Task'}
           </Button>
-          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>Cancel</Button>
-          <Button onClick={handleSaveChanges} disabled={isSaving}>
+          <Button 
+            variant="outline" 
+            onClick={handleCancel} 
+            disabled={isSaving}
+            className="border-gray-300 hover:bg-gray-100 text-gray-700"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveChanges} 
+            disabled={isSaving}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>
