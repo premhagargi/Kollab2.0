@@ -1,10 +1,10 @@
 
 // src/components/kanban/KanbanColumn.tsx
 "use client";
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { KanbanTaskCard } from './KanbanTaskCard';
 import type { Column, Task, UserProfile } from '@/types';
@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
+import { cn } from '@/lib/utils';
 
 interface KanbanColumnProps {
   column: Column;
@@ -24,9 +24,57 @@ interface KanbanColumnProps {
   onAddTask: (columnId: string) => void;
   onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
   onDragTaskStart: (event: React.DragEvent<HTMLDivElement>, taskId: string, sourceColumnId: string) => void;
+  onUpdateColumnName: (columnId: string, newName: string) => void; // New prop
 }
 
-export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAddTask, onTaskDrop, onDragTaskStart }: KanbanColumnProps) {
+export function KanbanColumn({
+  column,
+  tasks,
+  creatorProfiles,
+  onTaskClick,
+  onAddTask,
+  onTaskDrop,
+  onDragTaskStart,
+  onUpdateColumnName,
+}: KanbanColumnProps) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [currentEditingName, setCurrentEditingName] = useState(column.name);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  const handleNameDisplayClick = () => {
+    setCurrentEditingName(column.name); // Reset to current name in case of previous aborted edit
+    setIsEditingName(true);
+  };
+
+  const handleNameChangeCommit = () => {
+    const trimmedName = currentEditingName.trim();
+    if (trimmedName && trimmedName !== column.name) {
+      onUpdateColumnName(column.id, trimmedName);
+    }
+    setIsEditingName(false);
+    // If trimmedName is empty, it effectively cancels the edit or keeps the old name
+    // The parent component (KanbanBoardView) will handle the actual data update and re-render
+  };
+
+  const handleNameInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentEditingName(event.target.value);
+  };
+
+  const handleNameInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleNameChangeCommit();
+    } else if (event.key === 'Escape') {
+      setCurrentEditingName(column.name); // Revert to original name
+      setIsEditingName(false);
+    }
+  };
   
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault(); 
@@ -60,16 +108,34 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
   };
   
   return (
-    <div // Changed from Card to div for more control, but kept card-like styling
+    <div
       className="w-72 flex-shrink-0 h-full flex flex-col bg-muted/50 rounded-lg shadow-sm" 
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       data-column-id={column.id}
     >
-      <div className="sticky top-0 z-10 p-3 border-b bg-muted/70 rounded-t-lg"> {/* Header for column title */}
+      <div className="sticky top-0 z-10 p-3 border-b border-border bg-muted/70 rounded-t-lg">
         <div className="flex justify-between items-center">
-          <h3 className="text-sm font-semibold truncate pr-2 text-foreground">{column.name}</h3>
-          <div className="flex items-center">
+          {isEditingName ? (
+            <Input
+              ref={nameInputRef}
+              value={currentEditingName}
+              onChange={handleNameInputChange}
+              onBlur={handleNameChangeCommit}
+              onKeyDown={handleNameInputKeyDown}
+              className="text-sm font-semibold h-8 flex-grow mr-2 border-primary focus:border-primary focus:ring-primary"
+              placeholder="Column name"
+            />
+          ) : (
+            <h3
+              className="text-sm font-semibold truncate pr-2 text-foreground cursor-pointer hover:bg-accent/10 p-1 -ml-1 rounded"
+              onClick={handleNameDisplayClick}
+              title="Click to edit column name"
+            >
+              {column.name}
+            </h3>
+          )}
+          <div className="flex items-center flex-shrink-0">
             <span className="text-xs text-muted-foreground mr-2">{tasks.length}</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -79,15 +145,13 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem 
-                  // onClick={() => {/* Handle edit column name */}}
-                  disabled // Placeholder
+                  onClick={handleNameDisplayClick} // Also allow editing from dropdown
                 >
-                  Edit column name
+                  Rename column
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="text-destructive hover:!text-destructive-foreground focus:!text-destructive-foreground"
-                  // onClick={() => {/* Handle delete column */}}
-                   disabled // Placeholder
+                  disabled // Placeholder for delete column
                 >
                   Delete column
                 </DropdownMenuItem>
@@ -97,7 +161,7 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
         </div>
       </div>
       
-      <ScrollArea className="flex-grow p-2 min-h-0"> {/* Content area with scroll */}
+      <ScrollArea className="flex-grow p-2 min-h-0">
           <div className="space-y-2">
             {tasks.map((task) => (
               <KanbanTaskCard 
@@ -116,7 +180,7 @@ export function KanbanColumn({ column, tasks, creatorProfiles, onTaskClick, onAd
           </div>
       </ScrollArea>
 
-      <div className="p-2 border-t mt-auto"> {/* Footer for add card button */}
+      <div className="p-2 border-t border-border mt-auto">
         <Button 
           variant="ghost" 
           className="w-full justify-start text-muted-foreground hover:bg-accent/20 hover:text-accent-foreground text-sm" 

@@ -32,7 +32,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     if (!user) return;
     setIsLoadingBoard(true);
     setUserProfiles({});
-    setIsAddingColumn(false); // Reset when fetching new board data
+    setIsAddingColumn(false);
     try {
       const boardData = await getBoardById(id);
       if (boardData && boardData.ownerId === user.id) {
@@ -72,7 +72,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       setCurrentBoard(null);
       setBoardTasks([]);
       setUserProfiles({});
-      setIsAddingColumn(false); // Reset if no boardId
+      setIsAddingColumn(false);
     }
   }, [boardId, fetchBoardData]);
 
@@ -204,8 +204,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     const trimmedColumnName = columnName.trim();
     if (!trimmedColumnName) {
       toast({ title: "Invalid Column Name", description: "Column name cannot be empty.", variant: "destructive"});
-      // Do NOT close the form (setIsAddingColumn(false)) here. Let the user correct the input.
-      return;
+      return; // Do NOT close the form, let user correct it.
     }
 
     const newColumn: ColumnType = {
@@ -219,11 +218,11 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       await updateBoard(currentBoard.id, { columns: updatedColumns });
       setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
       toast({ title: "Column Added", description: `Column "${newColumn.name}" added successfully.` });
-      setIsAddingColumn(false); // Close form on successful addition
+      setIsAddingColumn(false);
     } catch (error) {
       console.error("Error adding column to Firestore:", error);
       toast({ title: "Error Adding Column", description: "Failed to save the new column to the database.", variant: "destructive" });
-      setIsAddingColumn(false); // Also close form on database error after attempting
+      setIsAddingColumn(false);
     }
   };
 
@@ -325,6 +324,36 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     }
   };
 
+  const handleUpdateColumnName = async (columnId: string, newName: string) => {
+    if (!currentBoard || !user) {
+      toast({ title: "Error", description: "Cannot update column name: No board or user.", variant: "destructive" });
+      return;
+    }
+
+    const oldColumns = currentBoard.columns;
+    const updatedColumns = oldColumns.map(col =>
+      col.id === columnId ? { ...col, name: newName } : col
+    );
+
+    // Optimistic UI update
+    setCurrentBoard(prevBoard =>
+      prevBoard ? { ...prevBoard, columns: updatedColumns } : null
+    );
+
+    try {
+      await updateBoard(currentBoard.id, { columns: updatedColumns });
+      toast({ title: "Column Renamed", description: `Column renamed to "${newName}".` });
+    } catch (error) {
+      console.error("Error updating column name in Firestore:", error);
+      toast({ title: "Error Renaming Column", description: "Failed to save column name. Reverting.", variant: "destructive" });
+      // Revert optimistic update
+      setCurrentBoard(prevBoard =>
+        prevBoard ? { ...prevBoard, columns: oldColumns } : null
+      );
+    }
+  };
+
+
   const activeTasks = boardTasks.filter(task => !task.isArchived);
 
   if (isLoadingBoard) {
@@ -342,6 +371,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Board Header */}
       <div className="sticky top-0 z-30 flex items-center justify-between p-3 border-b bg-background shadow-sm flex-shrink-0">
         <h1 className="text-lg font-medium truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
@@ -356,6 +386,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         </div>
       </div>
 
+      {/* Kanban Board Area */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
         <KanbanBoard
           boardColumns={currentBoard.columns}
@@ -367,6 +398,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
           onTaskDrop={handleTaskDrop}
           isAddingColumn={isAddingColumn}
           setIsAddingColumn={setIsAddingColumn}
+          onUpdateColumnName={handleUpdateColumnName} // Pass down new handler
         />
       </div>
 

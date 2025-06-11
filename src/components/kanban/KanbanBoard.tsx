@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { KanbanColumn } from './KanbanColumn';
 import type { Column, Task, UserProfile } from '@/types';
-import { Card } from '@/components/ui/card'; // Added for the input form container
+import { Card } from '@/components/ui/card';
 
 interface KanbanBoardProps {
   boardColumns: Column[];
@@ -15,10 +15,11 @@ interface KanbanBoardProps {
   creatorProfiles: Record<string, UserProfile | null>;
   onTaskClick: (task: Task) => void;
   onAddTask: (columnId: string) => void;
-  onAddColumn: (columnName: string) => void; // Changed from () => void
+  onAddColumn: (columnName: string) => void;
   onTaskDrop: (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => void;
   isAddingColumn: boolean;
   setIsAddingColumn: (isAdding: boolean) => void;
+  onUpdateColumnName: (columnId: string, newName: string) => void; // New prop
 }
 
 export function KanbanBoard({
@@ -30,7 +31,8 @@ export function KanbanBoard({
   onAddColumn,
   onTaskDrop,
   isAddingColumn,
-  setIsAddingColumn
+  setIsAddingColumn,
+  onUpdateColumnName, // Destructure new prop
 }: KanbanBoardProps) {
   const [newColumnNameInput, setNewColumnNameInput] = useState('');
 
@@ -53,7 +55,7 @@ export function KanbanBoard({
     if (newColumnNameInput.trim()) {
       onAddColumn(newColumnNameInput.trim());
       setNewColumnNameInput('');
-      // setIsAddingColumn(false); // Let parent (KanbanBoardView) handle this
+      // setIsAddingColumn is handled by parent (KanbanBoardView) after successful add or error
     }
   };
 
@@ -74,6 +76,7 @@ export function KanbanBoard({
           onAddTask={onAddTask}
           onTaskDrop={onTaskDrop}
           onDragTaskStart={handleDragTaskStart}
+          onUpdateColumnName={onUpdateColumnName} // Pass down prop
         />
       ))}
       <div className="w-72 flex-shrink-0">
@@ -110,11 +113,11 @@ export function KanbanBoard({
             </div>
           </Card>
         ) : (
-          <div className="pt-1"> {/* Added pt-1 for alignment with column headers if needed */}
+          <div className="pt-1">
             <Button
               variant="ghost"
               className="w-full h-10 border-2 border-dashed border-border hover:border-primary/70 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors duration-150 ease-in-out"
-              onClick={() => setIsAddingColumn(true)} // Correctly sets state to show form
+              onClick={() => setIsAddingColumn(true)}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Add another column
