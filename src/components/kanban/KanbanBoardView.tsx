@@ -14,7 +14,7 @@ import { getTasksByBoard, createTask, updateTask as updateTaskService, deleteTas
 import { getUsersByIds } from '@/services/userService';
 
 const DEFAULT_NEW_TASK_TITLE = 'New Task';
-const BOARD_HEADER_HEIGHT_CLASS = "h-[60px]"; // Consistent height for board header
+// Removed BOARD_HEADER_HEIGHT_CLASS constant
 
 export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   const { user } = useAuth();
@@ -340,14 +340,15 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
 
   return (
      <div className="flex flex-col h-full overflow-hidden bg-background text-foreground">
-      <div className={`sticky top-16 z-30 flex items-center justify-between p-4 border-b bg-background shadow-sm ${BOARD_HEADER_HEIGHT_CLASS} flex-shrink-0`}>
+      {/* Sticky Board Header: Removed explicit height class, reduced padding from p-4 to p-3 */}
+      <div className={`sticky top-16 z-30 flex items-center justify-between p-3 border-b bg-background shadow-sm flex-shrink-0`}>
         <h1 className="text-xl font-semibold truncate pr-2">{currentBoard.name}</h1>
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button 
             size="sm" 
             onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')} 
             disabled={currentBoard.columns.length === 0}
-            variant="default" // Changed to default for better visibility
+            variant="default"
           >
             <Plus className="mr-2 h-4 w-4" /> New Task
           </Button>
@@ -379,3 +380,4 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   );
 }
     
+
