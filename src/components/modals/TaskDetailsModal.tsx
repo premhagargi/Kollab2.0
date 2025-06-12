@@ -26,6 +26,7 @@ import type { Task, Subtask, Comment, TaskPriority, AISummary, AISubtaskSuggesti
 import { useAuth } from '@/hooks/useAuth';
 import { summarizeTaskAction, suggestSubtasksAction } from '@/actions/ai';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -128,7 +129,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
         toast({ title: "Task Saved", description: "Your changes have been saved." });
         onClose(); 
       } catch (error) {
-        // Error toast is likely handled by onUpdateTask caller or here if specific
         toast({ title: "Save Error", description: "Could not save task changes.", variant: "destructive" });
       } finally {
         setIsSaving(false);
@@ -138,17 +138,14 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
 
   const handleCancel = () => {
     if (initialTaskStateOnOpenRef.current) {
-      setTask(JSON.parse(JSON.stringify(initialTaskStateOnOpenRef.current))); // Revert to state when modal opened
+      setTask(JSON.parse(JSON.stringify(initialTaskStateOnOpenRef.current))); 
     }
     onClose();
   };
 
   const handleDialogCloseAttempt = (openState: boolean) => {
-    if (!openState) { // If dialog is attempting to close (e.g. X button, Esc)
-        // Revert unsaved changes if any (similar to cancel)
+    if (!openState) { 
         if (initialTaskStateOnOpenRef.current && task && !isEqual(task, initialTaskStateOnOpenRef.current)) {
-            // Check if this is a new task that was never really modified from default
-            // This logic is now primarily handled by KanbanBoardView.tsx for new tasks
         }
       onClose();
     }
@@ -200,23 +197,23 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     setIsSuggestingSubtasks(false);
   };
 
-  const assignee = user; // Placeholder, real assignee logic to be implemented
+  const assignee = user; 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
-      <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col bg-white rounded-lg shadow-xl">
+      <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col bg-background rounded-lg shadow-xl">
         <DialogHeader className="flex-shrink-0 px-2 pt-2 pb-2 border-b">
           <DialogTitle>
             <Input
               id="title"
               value={task.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
-              className="text-2xl font-semibold border-0 shadow-none p-1 h-auto w-full placeholder:text-gray-400"
+              className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto w-full placeholder:text-muted-foreground"
               disabled={isSaving}
               placeholder="Task Title"
             />
           </DialogTitle>
-          <DialogDescription className="text-sm text-gray-500 mt-1">
+          <DialogDescription className="text-sm text-muted-foreground mt-1">
             Last updated: {format(parseISO(task.updatedAt), 'MMM d, yyyy p')}
           </DialogDescription>
         </DialogHeader>
@@ -226,47 +223,51 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
             <div className="grid gap-6 py-6">
               {/* Description Section */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-base font-medium flex items-center text-gray-700">
-                  <Edit3 className="mr-2 h-5 w-5 text-blue-600" /> Description
+                <Label htmlFor="description" className="text-base font-medium flex items-center text-foreground">
+                  <Edit3 className="mr-2 h-5 w-5 text-primary" /> Description
                 </Label>
                 <Textarea
                   id="description"
                   value={task.description || ''}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Add a more detailed description..."
-                  className="min-h-[100px] border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                  className="min-h-[100px] border-input rounded-lg focus:ring-ring resize-y"
                   disabled={isSaving}
                 />
-                {/* AI Buttons as Text Links */}
                 <div className="flex space-x-4 mt-2">
                   <button
                     onClick={handleGenerateSummary}
                     disabled={isSummarizing || (!task.description && !task.title) || isSaving}
-                    className={`text-sm flex items-center text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors ${isSummarizing ? 'animate-pulse' : ''}`}
+                    className={cn(
+                      "text-sm flex items-center text-primary hover:text-primary/90 disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors",
+                      isSummarizing && 'animate-pulse'
+                    )}
                   >
                     <Sparkles className="mr-1 h-4 w-4" /> {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
                   </button>
                   <button
                     onClick={handleSuggestSubtasks}
                     disabled={isSuggestingSubtasks || (!task.description && !task.title) || isSaving}
-                    className={`text-sm flex items-center text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors ${isSuggestingSubtasks ? 'animate-pulse' : ''}`}
+                    className={cn(
+                      "text-sm flex items-center text-primary hover:text-primary/90 disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors",
+                      isSuggestingSubtasks && 'animate-pulse'
+                    )}
                   >
                     <ListChecks className="mr-1 h-4 w-4" /> {isSuggestingSubtasks ? 'Suggesting...' : 'Suggest Subtasks'}
                   </button>
                 </div>
-                {/* AI Outputs */}
                 {aiSummary && (
-                  <div className="mt-3 p-3 border rounded-lg bg-gray-50">
-                    <p className="text-sm font-medium text-blue-600">AI Summary:</p>
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap mt-1">{aiSummary.summary}</p>
+                  <div className="mt-3 p-3 border rounded-lg bg-muted">
+                    <p className="text-sm font-semibold text-primary">AI Summary:</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap mt-1">{aiSummary.summary}</p>
                   </div>
                 )}
                 {aiSubtaskSuggestions.length > 0 && (
-                  <div className="mt-3 p-3 border rounded-lg bg-gray-50">
-                    <p className="text-sm font-medium text-blue-600">AI Subtask Suggestions:</p>
+                  <div className="mt-3 p-3 border rounded-lg bg-muted">
+                    <p className="text-sm font-semibold text-primary">AI Subtask Suggestions:</p>
                     <ul className="list-disc list-inside space-y-1 mt-1">
                       {aiSubtaskSuggestions.map((suggestion) => (
-                        <li key={suggestion.id} className="text-sm text-gray-600 flex justify-between items-center">
+                        <li key={suggestion.id} className="text-sm text-foreground flex justify-between items-center">
                           <span>{suggestion.text}</span>
                           <Button
                             size="sm"
@@ -274,7 +275,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                             onClick={() => handleAddSubtask(suggestion.text, true)}
                             title="Add this subtask"
                             disabled={isSaving}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-primary hover:text-primary/90"
                           >
                             <PlusCircle className="h-4 w-4" />
                           </Button>
@@ -288,18 +289,18 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
               {/* Metadata Section (Due Date, Priority, Assignees) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate" className="flex items-center text-gray-700">
-                    <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" /> Due Date
+                  <Label htmlFor="dueDate" className="flex items-center text-foreground">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" /> Due Date
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button 
                         id="dueDate" 
                         variant="outline" 
-                        className="w-full justify-start text-left font-normal border-gray-300 hover:bg-gray-50" 
+                        className="w-full justify-start text-left font-normal" 
                         disabled={isSaving}
                       >
-                        {task.dueDate ? format(parseISO(task.dueDate), 'PPP') : <span className="text-gray-500">Pick a date</span>}
+                        {task.dueDate ? format(parseISO(task.dueDate), 'PPP') : <span className="text-muted-foreground">Pick a date</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -313,14 +314,14 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   </Popover>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="priority" className="flex items-center text-gray-700">
-                    <Sparkles className="mr-2 h-4 w-4 text-blue-600" /> Priority
+                  <Label htmlFor="priority" className="flex items-center text-foreground">
+                    <Sparkles className="mr-2 h-4 w-4 text-primary" /> Priority
                   </Label>
                   <select
                     id="priority"
                     value={task.priority}
                     onChange={(e) => handleInputChange('priority', e.target.value)}
-                    className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     disabled={isSaving}
                   >
                     {priorityOptions.map((p) => (
@@ -331,22 +332,22 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="assignees" className="flex items-center text-gray-700">
-                    <User className="mr-2 h-4 w-4 text-blue-600" /> Assignees
+                  <Label htmlFor="assignees" className="flex items-center text-foreground">
+                    <User className="mr-2 h-4 w-4 text-primary" /> Assignees
                   </Label>
-                  <div className="flex items-center space-x-2 p-2 border border-gray-300 rounded-md min-h-[40px] bg-white">
+                  <div className="flex items-center space-x-2 p-2 border border-input rounded-md min-h-[40px] bg-background">
                     {assignee && task.assigneeIds?.includes(assignee.id) ? (
                       <Avatar className="h-7 w-7" title={assignee.name || undefined}>
                         <AvatarImage src={assignee.avatarUrl || undefined} alt={assignee.name || 'User'} />
                         <AvatarFallback>{assignee.name ? assignee.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                       </Avatar>
                     ) : (
-                      <span className="text-sm text-gray-500">No assignees</span>
+                      <span className="text-sm text-muted-foreground">No assignees</span>
                     )}
                     <Button 
                       variant="outline" 
                       size="icon" 
-                      className="h-7 w-7 ml-auto border-gray-300 hover:bg-gray-50" 
+                      className="h-7 w-7 ml-auto" 
                       onClick={() => toast({ title: "Feature Coming Soon", description: "Assignee selection will be implemented." })} 
                       disabled={isSaving}
                       aria-label="Add assignee"
@@ -359,11 +360,11 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   
               {/* Subtasks Section */}
               <div className="space-y-2">
-                <Label className="text-base font-medium flex items-center text-gray-700">
-                  <ListChecks className="mr-2 h-5 w-5 text-blue-600" /> Subtasks
+                <Label className="text-base font-medium flex items-center text-foreground">
+                  <ListChecks className="mr-2 h-5 w-5 text-primary" /> Subtasks
                 </Label>
                 {task.subtasks.map((subtask) => (
-                  <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                  <div key={subtask.id} className="flex items-center space-x-2 p-2 border border-border rounded-md hover:bg-muted/50">
                     <Checkbox
                       id={`subtask-${subtask.id}`}
                       checked={subtask.completed}
@@ -372,14 +373,14 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     />
                     <Label
                       htmlFor={`subtask-${subtask.id}`}
-                      className={`flex-grow text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700'}`}
+                      className={cn("flex-grow text-sm", subtask.completed ? 'line-through text-muted-foreground' : 'text-foreground')}
                     >
                       {subtask.text}
                     </Label>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-6 w-6 text-gray-500 hover:text-red-600" 
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive" 
                       onClick={() => toast({ title: "Subtask Deletion", description: "To be implemented" })} 
                       disabled={isSaving}
                       aria-label={`Delete subtask ${subtask.text}`}
@@ -395,13 +396,12 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     placeholder="Add new subtask..."
                     onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask(newSubtask)}
                     disabled={isSaving}
-                    className="border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="border-input rounded-lg"
                   />
                   <Button 
                     onClick={() => handleAddSubtask(newSubtask)} 
                     size="sm" 
                     disabled={!newSubtask.trim() || isSaving}
-                    className="bg-blue-600 text-white hover:bg-blue-700"
                   >
                     <PlusCircle className="mr-1 h-4 w-4" /> Add
                   </Button>
@@ -410,12 +410,12 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   
               {/* Attachments Section */}
               <div className="space-y-2">
-                <Label className="text-base font-medium flex items-center text-gray-700">
-                  <Paperclip className="mr-2 h-5 w-5 text-blue-600" /> Attachments
+                <Label className="text-base font-medium flex items-center text-foreground">
+                  <Paperclip className="mr-2 h-5 w-5 text-primary" /> Attachments
                 </Label>
                 <Button 
                   variant="outline" 
-                  className="w-full border-gray-300 hover:bg-gray-50" 
+                  className="w-full" 
                   onClick={() => toast({ title: "Feature Coming Soon", description: "File attachments will be implemented." })} 
                   disabled={isSaving}
                 >
@@ -427,10 +427,10 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   
               {/* Comments Section */}
               <div className="space-y-2">
-                <Label className="text-base font-medium flex items-center text-gray-700">
-                  <MessageSquare className="mr-2 h-5 w-5 text-blue-600" /> Comments
+                <Label className="text-base font-medium flex items-center text-foreground">
+                  <MessageSquare className="mr-2 h-5 w-5 text-primary" /> Comments
                 </Label>
-                <ScrollArea className="max-h-48 border border-gray-300 rounded-lg p-3">
+                <ScrollArea className="max-h-48 border border-border rounded-lg p-3">
                   {task.comments.map((comment) => (
                     <div key={comment.id} className="flex items-start space-x-3 py-2 border-b last:border-b-0">
                       <Avatar className="h-8 w-8">
@@ -439,14 +439,14 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                       </Avatar>
                       <div className="flex-grow">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-gray-700">{comment.userName}</p>
-                          <p className="text-xs text-gray-500">{format(parseISO(comment.createdAt), 'MMM d, p')}</p>
+                          <p className="text-sm font-medium text-foreground">{comment.userName}</p>
+                          <p className="text-xs text-muted-foreground">{format(parseISO(comment.createdAt), 'MMM d, p')}</p>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">{comment.text}</p>
+                        <p className="text-sm text-foreground mt-1">{comment.text}</p>
                       </div>
                     </div>
                   ))}
-                  {task.comments.length === 0 && <p className="text-sm text-gray-500 p-2">No comments yet.</p>}
+                  {task.comments.length === 0 && <p className="text-sm text-muted-foreground p-2">No comments yet.</p>}
                 </ScrollArea>
                 {user && (
                   <>
@@ -459,7 +459,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Write a comment..."
-                        className="flex-grow border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-20"
+                        className="flex-grow border-input rounded-lg resize-none h-20"
                         disabled={isSaving}
                       />
                     </div>
@@ -468,7 +468,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                         onClick={handleAddComment} 
                         size="sm" 
                         disabled={!newComment.trim() || isSaving}
-                        className="bg-blue-600 text-white hover:bg-blue-700"
                       >
                         Post Comment
                       </Button>
@@ -480,7 +479,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
           </ScrollArea>
         </div>
   
-        <DialogFooter className="px-6 py-4 border-t flex-shrink-0 bg-gray-50">
+        <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
           <Button
             variant="outline"
             onClick={() => {
@@ -488,7 +487,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 onArchiveTask(task);
               }
             }}
-            className="mr-auto border-gray-300 hover:bg-gray-100 text-gray-700"
+            className="mr-auto"
             disabled={isSaving || task.isArchived}
           >
             <Archive className="mr-2 h-4 w-4" /> {task.isArchived ? 'Archived' : 'Archive Task'}
@@ -497,14 +496,12 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
             variant="outline" 
             onClick={handleCancel} 
             disabled={isSaving}
-            className="border-gray-300 hover:bg-gray-100 text-gray-700"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSaveChanges} 
             disabled={isSaving}
-            className="bg-blue-600 text-white hover:bg-blue-700"
           >
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
@@ -514,5 +511,3 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     </Dialog>
   );
 }
-
-    
