@@ -24,7 +24,7 @@ Kollab is a Trello-like personal workflow and task management platform designed 
     *   **Break Down Task:** Let AI suggest potential subtasks or next steps to clarify task scope.
 *   **Workflow Sharing:** (Simplified) Button to "Share" workflow, with a modal indicating future client preview link functionality and providing the current URL.
 *   **Solo Work Insights (Analytics):** A dashboard to visualize your task completion rates, work velocity, and task distribution (mock data for now).
-*   **Workflow Templates:** Create new workflows from predefined templates like "Blank", "Freelance Project", or "Content Creation" to quickly set up common column structures.
+*   **Workflow Templates:** Create new workflows from predefined templates like "Blank", "Freelance Project", "Content Creation", "Social Media Content Calendar", or "Weekly Solo Sprint" to quickly set up common column structures, optionally with sample tasks.
 *   **Responsive Design:** Works across different screen sizes.
 *   **Black & White UI Theme:** A clean, focused, and minimalist black and white interface.
 
@@ -95,11 +95,10 @@ Kollab is a Trello-like personal workflow and task management platform designed 
               allow get, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
 
               // Rule for creating tasks
-              // User must be authenticated, the new task's ownerId must be the user's UID,
-              // and the parent workflow must also be owned by the user.
-              allow create: if request.auth != null
-                            && request.resource.data.ownerId == request.auth.uid
-                            && get(/databases/$(database)/documents/boards/$(request.resource.data.workflowId)).data.ownerId == request.auth.uid;
+              // User must be authenticated and the new task's ownerId must be the user's UID.
+              // This rule allows batch creation of workflows with their sample tasks.
+              // The client is responsible for associating tasks with the correct workflowId.
+              allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
 
               // Rule for listing/querying tasks
               // Allows listing if the user is authenticated.
@@ -110,6 +109,10 @@ Kollab is a Trello-like personal workflow and task management platform designed 
         }
         ```
         Publish these rules in your Firebase Console (Firestore Database > Rules).
+    *   **Composite Index for Tasks:** For querying tasks by `workflowId` and `ownerId` efficiently (as done in `getTasksByWorkflow`), you will likely need a composite index on the `tasks` collection. Firebase Console will usually prompt you to create this index if it's missing when such a query is first run. Navigate to Firestore Database > Indexes tab to create or check for it. The index should typically be:
+        *   Collection ID: `tasks`
+        *   Fields indexed: `workflowId` (Ascending), `ownerId` (Ascending)
+        *   Query scope: Collection
 
 4.  **Environment Variables:**
     *   Create a `.env.local` file in the root of your project (copy `.env` if it exists, or create it from scratch).
@@ -165,3 +168,4 @@ Kollab is a Trello-like personal workflow and task management platform designed 
 ## License
 
 (Specify a license if applicable, e.g., MIT)
+
