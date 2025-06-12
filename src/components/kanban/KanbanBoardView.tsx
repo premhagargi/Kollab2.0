@@ -5,40 +5,46 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { KanbanBoard } from './KanbanBoard';
 import { TaskDetailsModal } from '../modals/TaskDetailsModal';
 import { Button } from '@/components/ui/button';
-import type { Board, Task, Column as ColumnType, UserProfile } from '@/types';
+import type { Workflow, Task, Column as ColumnType, UserProfile } from '@/types'; // Renamed Board to Workflow
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Loader2 } from 'lucide-react';
-import { getBoardById, updateBoard } from '@/services/boardService';
-import { getTasksByBoard, createTask, updateTask as updateTaskService, deleteTask } from '@/services/taskService';
+import { getWorkflowById, updateWorkflow } from '@/services/workflowService'; // Renamed
+import { getTasksByWorkflow, createTask, updateTask as updateTaskService, deleteTask } from '@/services/taskService'; // Renamed getTasksByBoard
 import { getUsersByIds } from '@/services/userService';
 
 const DEFAULT_NEW_TASK_TITLE = 'New Task';
 
-export function KanbanBoardView({ boardId }: { boardId: string | null }) {
+export function KanbanBoardView({ workflowId }: { workflowId: string | null }) { // Renamed boardId to workflowId
   const { user } = useAuth();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentBoard, setCurrentBoard] = useState<Board | null>(null);
-  const [boardTasks, setBoardTasks] = useState<Task[]>([]);
-  const [isLoadingBoard, setIsLoadingBoard] = useState(false);
+  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null); // Renamed currentBoard to currentWorkflow
+  const [workflowTasks, setWorkflowTasks] = useState<Task[]>([]); // Renamed boardTasks to workflowTasks
+  const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(false); // Renamed isLoadingBoard to isLoadingWorkflow
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile | null>>({});
   const provisionalNewTaskIdRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   const [isAddingColumn, setIsAddingColumn] = useState(false);
 
-  const fetchBoardData = useCallback(async (id: string) => {
+  const fetchWorkflowData = useCallback(async (id: string) => { // Renamed fetchBoardData to fetchWorkflowData
     if (!user) return;
-    setIsLoadingBoard(true);
+    setIsLoadingWorkflow(true);
     setUserProfiles({});
     setIsAddingColumn(false);
     try {
-      const boardData = await getBoardById(id);
-      if (boardData && boardData.ownerId === user.id) {
-        setCurrentBoard(boardData);
-        const tasksData = await getTasksByBoard(id);
-        setBoardTasks(tasksData.map(task => ({...task, isCompleted: task.isCompleted || false}))); // Ensure isCompleted defaults to false
+      const workflowData = await getWorkflowById(id); // Renamed
+      if (workflowData && workflowData.ownerId === user.id) {
+        setCurrentWorkflow(workflowData); // Renamed
+        const tasksData = await getTasksByWorkflow(id); // Renamed
+        setWorkflowTasks(tasksData.map(task => ({
+            ...task, 
+            isCompleted: task.isCompleted || false,
+            isBillable: task.isBillable || false,
+            clientName: task.clientName || '',
+            deliverables: task.deliverables || []
+        })));
 
         const allUserIds = new Set<string>();
         tasksData.forEach(task => {
@@ -50,31 +56,31 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
           profiles.forEach(p => profilesMap[p.id] = p);
           setUserProfiles(profilesMap);
         }
-      } else if (boardData) {
-        toast({ title: "Access Denied", description: "You do not have permission to view this board.", variant: "destructive" });
-        setCurrentBoard(null); setBoardTasks([]);
+      } else if (workflowData) {
+        toast({ title: "Access Denied", description: "You do not have permission to view this workflow.", variant: "destructive" }); // Renamed
+        setCurrentWorkflow(null); setWorkflowTasks([]);
       } else {
-        toast({ title: "Board Not Found", description: "The requested board does not exist.", variant: "destructive" });
-        setCurrentBoard(null); setBoardTasks([]);
+        toast({ title: "Workflow Not Found", description: "The requested workflow does not exist.", variant: "destructive" }); // Renamed
+        setCurrentWorkflow(null); setWorkflowTasks([]);
       }
     } catch (error) {
-      console.error("Error fetching board data:", error);
-      toast({ title: "Error", description: "Could not load board data.", variant: "destructive" });
+      console.error("Error fetching workflow data:", error); // Renamed
+      toast({ title: "Error", description: "Could not load workflow data.", variant: "destructive" }); // Renamed
     } finally {
-      setIsLoadingBoard(false);
+      setIsLoadingWorkflow(false); // Renamed
     }
   }, [user, toast]);
 
   useEffect(() => {
-    if (boardId) {
-      fetchBoardData(boardId);
+    if (workflowId) {
+      fetchWorkflowData(workflowId);
     } else {
-      setCurrentBoard(null);
-      setBoardTasks([]);
+      setCurrentWorkflow(null);
+      setWorkflowTasks([]);
       setUserProfiles({});
       setIsAddingColumn(false);
     }
-  }, [boardId, fetchBoardData]);
+  }, [workflowId, fetchWorkflowData]);
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -82,30 +88,30 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   };
 
   const deleteProvisionalTask = async (taskIdToDelete: string) => {
-    if (!currentBoard || !user) return;
+    if (!currentWorkflow || !user) return;
     try {
       await deleteTask(taskIdToDelete);
-      const updatedBoardColumns = currentBoard.columns.map(col => ({
+      const updatedWorkflowColumns = currentWorkflow.columns.map(col => ({
         ...col,
         taskIds: col.taskIds.filter(id => id !== taskIdToDelete)
       }));
-      setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
-      if (currentBoard) {
-        await updateBoard(currentBoard.id, { columns: updatedBoardColumns });
+      setCurrentWorkflow(prevWorkflow => prevWorkflow ? { ...prevWorkflow, columns: updatedWorkflowColumns } : null); // Renamed
+      if (currentWorkflow) {
+        await updateWorkflow(currentWorkflow.id, { columns: updatedWorkflowColumns }); // Renamed
       }
-      setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskIdToDelete));
+      setWorkflowTasks(prevTasks => prevTasks.filter(t => t.id !== taskIdToDelete));
       toast({ title: "New Task Discarded", description: "The empty new task was removed." });
     } catch (error) {
       console.error("Error deleting provisional task:", error);
       toast({ title: "Error", description: "Could not remove the provisional task.", variant: "destructive" });
-      if (currentBoard) fetchBoardData(currentBoard.id);
+      if (currentWorkflow) fetchWorkflowData(currentWorkflow.id);
     }
   };
 
   const handleCloseModal = () => {
     if (provisionalNewTaskIdRef.current && selectedTask && selectedTask.id === provisionalNewTaskIdRef.current) {
-        const taskInBoardTasks = boardTasks.find(t => t.id === selectedTask.id);
-        if (taskInBoardTasks && taskInBoardTasks.title === DEFAULT_NEW_TASK_TITLE && (!taskInBoardTasks.description || taskInBoardTasks.description.trim() === '')) {
+        const taskInWorkflowTasks = workflowTasks.find(t => t.id === selectedTask.id); // Renamed
+        if (taskInWorkflowTasks && taskInWorkflowTasks.title === DEFAULT_NEW_TASK_TITLE && (!taskInWorkflowTasks.description || taskInWorkflowTasks.description.trim() === '')) {
             deleteProvisionalTask(selectedTask.id);
         }
     }
@@ -115,10 +121,10 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
-    if (!user || !currentBoard) return;
+    if (!user || !currentWorkflow) return;
     try {
       await updateTaskService(updatedTask.id, updatedTask);
-      setBoardTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+      setWorkflowTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t)); // Renamed
 
       if (provisionalNewTaskIdRef.current === updatedTask.id) {
         provisionalNewTaskIdRef.current = null;
@@ -137,47 +143,47 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   };
 
   const handleAddTask = async (columnId: string) => {
-    if (!user || !currentBoard) {
-      toast({ title: "Error", description: "Cannot add task without a selected board or user.", variant: "destructive" });
+    if (!user || !currentWorkflow) {
+      toast({ title: "Error", description: "Cannot add task without a selected workflow or user.", variant: "destructive" }); // Renamed
       return;
     }
-    const targetColumn = currentBoard.columns.find(col => col.id === columnId) || currentBoard.columns[0];
+    const targetColumn = currentWorkflow.columns.find(col => col.id === columnId) || currentWorkflow.columns[0];
 
     if (!targetColumn) {
-        toast({ title: "Error", description: "Cannot add task: No columns available on the board.", variant: "destructive" });
+        toast({ title: "Error", description: "Cannot add task: No columns available on the workflow.", variant: "destructive" }); // Renamed
         return;
     }
 
-    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted'> = {
+    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables'> = {
       title: DEFAULT_NEW_TASK_TITLE,
       description: '',
       priority: 'medium',
       subtasks: [],
       comments: [],
-      boardId: currentBoard.id,
+      workflowId: currentWorkflow.id, // Renamed
       columnId: targetColumn.id,
       creatorId: user.id,
       isArchived: false,
     };
 
     try {
-      const createdTask = await createTask(newTaskData); // isCompleted will be false by default from service
+      const createdTask = await createTask(newTaskData);
       provisionalNewTaskIdRef.current = createdTask.id;
-      setBoardTasks(prevTasks => [...prevTasks, createdTask]);
-      const updatedBoardColumns = currentBoard.columns.map(col => {
+      setWorkflowTasks(prevTasks => [...prevTasks, createdTask]); // Renamed
+      const updatedWorkflowColumns = currentWorkflow.columns.map(col => { // Renamed
         if (col.id === targetColumn.id) {
           return { ...col, taskIds: [...col.taskIds, createdTask.id] };
         }
         return col;
       });
-      setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedBoardColumns } : null);
+      setCurrentWorkflow(prevWorkflow => prevWorkflow ? { ...prevWorkflow, columns: updatedWorkflowColumns } : null); // Renamed
 
       handleTaskClick(createdTask);
 
-      updateBoard(currentBoard.id, { columns: updatedBoardColumns })
+      updateWorkflow(currentWorkflow.id, { columns: updatedWorkflowColumns }) // Renamed
          .catch(err => {
-            console.error("Error updating board in background after task creation:", err);
-            toast({title: "Board Update Error", description: "Could not save new task to board structure in background.", variant: "destructive"});
+            console.error("Error updating workflow in background after task creation:", err); // Renamed
+            toast({title: "Workflow Update Error", description: "Could not save new task to workflow structure in background.", variant: "destructive"}); // Renamed
          });
 
       if (createdTask.creatorId && !userProfiles[createdTask.creatorId]) {
@@ -195,8 +201,8 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   };
 
   const handleAddColumn = async (columnName: string) => {
-    if (!user || !currentBoard) {
-      toast({ title: "Authentication Error", description: "Cannot add column without a selected board or user.", variant: "destructive" });
+    if (!user || !currentWorkflow) {
+      toast({ title: "Authentication Error", description: "Cannot add column without a selected workflow or user.", variant: "destructive" }); // Renamed
       setIsAddingColumn(false); 
       return;
     }
@@ -204,6 +210,7 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     const trimmedColumnName = columnName.trim();
     if (!trimmedColumnName) {
       toast({ title: "Invalid Column Name", description: "Column name cannot be empty.", variant: "destructive"});
+      // Do not call setIsAddingColumn(false) here, let user correct.
       return; 
     }
 
@@ -213,10 +220,10 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
       taskIds: [],
     };
 
-    const updatedColumns = [...currentBoard.columns, newColumn];
+    const updatedColumns = [...currentWorkflow.columns, newColumn];
     try {
-      await updateBoard(currentBoard.id, { columns: updatedColumns });
-      setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
+      await updateWorkflow(currentWorkflow.id, { columns: updatedColumns }); // Renamed
+      setCurrentWorkflow(prevWorkflow => prevWorkflow ? { ...prevWorkflow, columns: updatedColumns } : null); // Renamed
       toast({ title: "Column Added", description: `Column "${newColumn.name}" added successfully.` });
       setIsAddingColumn(false);
     } catch (error) {
@@ -227,30 +234,30 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   };
 
  const handleTaskDrop = async (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => {
-    if (!currentBoard || !user) return;
+    if (!currentWorkflow || !user) return;
 
-    const taskToMove = boardTasks.find(t => t.id === taskId);
+    const taskToMove = workflowTasks.find(t => t.id === taskId); // Renamed
     if (!taskToMove) return;
 
-    let newBoardColumns = JSON.parse(JSON.stringify(currentBoard.columns)) as ColumnType[];
-    const sourceColIndex = newBoardColumns.findIndex(col => col.id === sourceColumnId);
-    const destColIndex = newBoardColumns.findIndex(col => col.id === destinationColumnId);
+    let newWorkflowColumns = JSON.parse(JSON.stringify(currentWorkflow.columns)) as ColumnType[]; // Renamed
+    const sourceColIndex = newWorkflowColumns.findIndex(col => col.id === sourceColumnId);
+    const destColIndex = newWorkflowColumns.findIndex(col => col.id === destinationColumnId);
 
     if (sourceColIndex === -1 || destColIndex === -1) {
         console.error("Source or destination column not found during drag and drop.");
-        if (currentBoard) fetchBoardData(currentBoard.id);
+        if (currentWorkflow) fetchWorkflowData(currentWorkflow.id); // Renamed
         return;
     }
 
     if (sourceColumnId !== destinationColumnId) {
-        setBoardTasks(prevTasks =>
+        setWorkflowTasks(prevTasks => // Renamed
             prevTasks.map(t => (t.id === taskId ? { ...t, columnId: destinationColumnId } : t))
         );
     }
 
-    newBoardColumns[sourceColIndex].taskIds = newBoardColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
+    newWorkflowColumns[sourceColIndex].taskIds = newWorkflowColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
 
-    let destTaskIds = [...newBoardColumns[destColIndex].taskIds];
+    let destTaskIds = [...newWorkflowColumns[destColIndex].taskIds];
     const currentTaskIndexInDest = destTaskIds.indexOf(taskId); 
     if (currentTaskIndexInDest > -1) {
         destTaskIds.splice(currentTaskIndexInDest, 1); 
@@ -271,36 +278,36 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
             destTaskIds.push(taskId);
         }
     }
-    newBoardColumns[destColIndex].taskIds = destTaskIds;
+    newWorkflowColumns[destColIndex].taskIds = destTaskIds;
 
-    setCurrentBoard(prevBoard => (prevBoard ? { ...prevBoard, columns: newBoardColumns } : null));
+    setCurrentWorkflow(prevWorkflow => (prevWorkflow ? { ...prevWorkflow, columns: newWorkflowColumns } : null)); // Renamed
 
     try {
         if (sourceColumnId !== destinationColumnId) {
             await updateTaskService(taskId, { columnId: destinationColumnId });
         }
-        await updateBoard(currentBoard.id, { columns: newBoardColumns });
+        await updateWorkflow(currentWorkflow.id, { columns: newWorkflowColumns }); // Renamed
     } catch (error) {
         console.error("Error moving task:", error);
-        toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching board.", variant: "destructive" });
-        if (currentBoard) fetchBoardData(currentBoard.id);
+        toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching workflow.", variant: "destructive" }); // Renamed
+        if (currentWorkflow) fetchWorkflowData(currentWorkflow.id); // Renamed
     }
 };
 
   const handleArchiveTask = async (taskToArchive: Task) => {
-    if (!user || !currentBoard) return;
+    if (!user || !currentWorkflow) return;
 
-    const originalBoardTasks = [...boardTasks];
-    const originalBoardState = currentBoard ? JSON.parse(JSON.stringify(currentBoard)) : null;
+    const originalWorkflowTasks = [...workflowTasks]; // Renamed
+    const originalWorkflowState = currentWorkflow ? JSON.parse(JSON.stringify(currentWorkflow)) : null; // Renamed
 
-    setBoardTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
-    const updatedColumns = currentBoard.columns.map(col => {
+    setWorkflowTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id)); // Renamed
+    const updatedColumns = currentWorkflow.columns.map(col => {
       if (col.taskIds.includes(taskToArchive.id)) {
         return { ...col, taskIds: col.taskIds.filter(tid => tid !== taskToArchive.id) };
       }
       return col;
     });
-    setCurrentBoard(prevBoard => prevBoard ? { ...prevBoard, columns: updatedColumns } : null);
+    setCurrentWorkflow(prevWorkflow => prevWorkflow ? { ...prevWorkflow, columns: updatedColumns } : null); // Renamed
 
     const previouslySelectedTask = selectedTask;
     if (isModalOpen && previouslySelectedTask && previouslySelectedTask.id === taskToArchive.id) {
@@ -310,13 +317,13 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
 
     try {
       await updateTaskService(taskToArchive.id, { isArchived: true, archivedAt: new Date().toISOString() });
-      await updateBoard(currentBoard.id, { columns: updatedColumns });
+      await updateWorkflow(currentWorkflow.id, { columns: updatedColumns }); // Renamed
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
     } catch (error) {
       console.error("Error archiving task:", error);
       toast({ title: "Error Archiving Task", description: "Could not archive task. Reverting.", variant: "destructive" });
-      setBoardTasks(originalBoardTasks);
-      if (originalBoardState) setCurrentBoard(originalBoardState);
+      setWorkflowTasks(originalWorkflowTasks); // Renamed
+      if (originalWorkflowState) setCurrentWorkflow(originalWorkflowState); // Renamed
        if (previouslySelectedTask && previouslySelectedTask.id === taskToArchive.id) {
          setSelectedTask(previouslySelectedTask);
          setIsModalOpen(true);
@@ -325,40 +332,40 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
   };
 
   const handleUpdateColumnName = async (columnId: string, newName: string) => {
-    if (!currentBoard || !user) {
-      toast({ title: "Error", description: "Cannot update column name: No board or user.", variant: "destructive" });
+    if (!currentWorkflow || !user) {
+      toast({ title: "Error", description: "Cannot update column name: No workflow or user.", variant: "destructive" }); // Renamed
       return;
     }
 
-    const oldColumns = currentBoard.columns;
+    const oldColumns = currentWorkflow.columns;
     const updatedColumns = oldColumns.map(col =>
       col.id === columnId ? { ...col, name: newName } : col
     );
 
-    setCurrentBoard(prevBoard =>
-      prevBoard ? { ...prevBoard, columns: updatedColumns } : null
+    setCurrentWorkflow(prevWorkflow => // Renamed
+      prevWorkflow ? { ...prevWorkflow, columns: updatedColumns } : null
     );
 
     try {
-      await updateBoard(currentBoard.id, { columns: updatedColumns });
+      await updateWorkflow(currentWorkflow.id, { columns: updatedColumns }); // Renamed
       toast({ title: "Column Renamed", description: `Column renamed to "${newName}".` });
     } catch (error) {
       console.error("Error updating column name in Firestore:", error);
       toast({ title: "Error Renaming Column", description: "Failed to save column name. Reverting.", variant: "destructive" });
-      setCurrentBoard(prevBoard =>
-        prevBoard ? { ...prevBoard, columns: oldColumns } : null
+      setCurrentWorkflow(prevWorkflow => // Renamed
+        prevWorkflow ? { ...prevWorkflow, columns: oldColumns } : null
       );
     }
   };
 
   const handleToggleTaskCompleted = async (taskId: string, completed: boolean) => {
-    if (!user || !currentBoard) {
-      toast({ title: "Error", description: "Cannot update task: No board or user.", variant: "destructive" });
+    if (!user || !currentWorkflow) {
+      toast({ title: "Error", description: "Cannot update task: No workflow or user.", variant: "destructive" }); // Renamed
       return;
     }
     
-    const originalTasks = [...boardTasks];
-    setBoardTasks(prevTasks => 
+    const originalTasks = [...workflowTasks]; // Renamed
+    setWorkflowTasks(prevTasks =>  // Renamed
       prevTasks.map(t => t.id === taskId ? { ...t, isCompleted: completed, updatedAt: new Date().toISOString() } : t)
     );
 
@@ -371,36 +378,35 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     } catch (error) {
       console.error("Error updating task completion status:", error);
       toast({ title: "Error Updating Task", description: "Could not save task completion status. Reverting.", variant: "destructive" });
-      setBoardTasks(originalTasks); // Revert optimistic update
+      setWorkflowTasks(originalTasks); // Renamed optimistic update
     }
   };
 
 
-  const activeTasks = boardTasks.filter(task => !task.isArchived);
+  const activeTasks = workflowTasks.filter(task => !task.isArchived); // Renamed
 
-  if (isLoadingBoard) {
+  if (isLoadingWorkflow) { // Renamed
     return (
       <div className="flex flex-col items-center justify-center h-full p-8">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading board...</p>
+        <p className="mt-4 text-muted-foreground">Loading workflow...</p> {/* Renamed */}
       </div>
     );
   }
 
-  if (!currentBoard) {
+  if (!currentWorkflow) { // Renamed
     return null;
   }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Board Header */}
       <div className="sticky top-0 z-30 flex items-center justify-between p-3 bg-background shadow-sm flex-shrink-0">
-        <h1 className="text-lg font-medium truncate pr-2">{currentBoard.name}</h1>
+        <h1 className="text-lg font-medium truncate pr-2">{currentWorkflow.name}</h1> {/* Renamed */}
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button
             size="sm"
-            onClick={() => handleAddTask(currentBoard.columns[0]?.id ?? '')}
-            disabled={currentBoard.columns.length === 0}
+            onClick={() => handleAddTask(currentWorkflow.columns[0]?.id ?? '')} // Renamed
+            disabled={currentWorkflow.columns.length === 0} // Renamed
             variant="default"
           >
             <Plus className="mr-1 h-3 w-3" /> New Task
@@ -408,14 +414,13 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
         </div>
       </div>
 
-      {/* Kanban Board Area */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
         <KanbanBoard
-          boardColumns={currentBoard.columns}
-          allTasksForBoard={activeTasks}
+          workflowColumns={currentWorkflow.columns} // Renamed
+          allTasksForWorkflow={activeTasks} // Renamed
           creatorProfiles={userProfiles}
           onTaskClick={handleTaskClick}
-          onAddTask={handleAddTask}
+          onAddTask={onAddTask}
           onAddColumn={handleAddColumn}
           onTaskDrop={handleTaskDrop}
           isAddingColumn={isAddingColumn}
@@ -437,4 +442,3 @@ export function KanbanBoardView({ boardId }: { boardId: string | null }) {
     </div>
   );
 }
-

@@ -10,8 +10,8 @@ import type { Column, Task, UserProfile } from '@/types';
 import { Card } from '@/components/ui/card';
 
 interface KanbanBoardProps {
-  boardColumns: Column[];
-  allTasksForBoard: Task[];
+  workflowColumns: Column[]; // Renamed from boardColumns
+  allTasksForWorkflow: Task[]; // Renamed from allTasksForBoard
   creatorProfiles: Record<string, UserProfile | null>;
   onTaskClick: (task: Task) => void;
   onAddTask: (columnId: string) => void;
@@ -20,12 +20,12 @@ interface KanbanBoardProps {
   isAddingColumn: boolean;
   setIsAddingColumn: (isAdding: boolean) => void;
   onUpdateColumnName: (columnId: string, newName: string) => void;
-  onToggleTaskCompleted: (taskId: string, completed: boolean) => void; // New prop
+  onToggleTaskCompleted: (taskId: string, completed: boolean) => void;
 }
 
 export function KanbanBoard({
-  boardColumns,
-  allTasksForBoard,
+  workflowColumns, // Renamed
+  allTasksForWorkflow, // Renamed
   creatorProfiles,
   onTaskClick,
   onAddTask,
@@ -34,13 +34,13 @@ export function KanbanBoard({
   isAddingColumn,
   setIsAddingColumn,
   onUpdateColumnName,
-  onToggleTaskCompleted, // Destructure new prop
+  onToggleTaskCompleted,
 }: KanbanBoardProps) {
   const [newColumnNameInput, setNewColumnNameInput] = useState('');
 
   const getTasksForColumn = (column: Column): Task[] => {
     const tasksInColumn = column.taskIds
-      .map(taskId => allTasksForBoard.find(t => t.id === taskId))
+      .map(taskId => allTasksForWorkflow.find(t => t.id === taskId)) // Renamed
       .filter(Boolean) as Task[];
 
     return tasksInColumn.sort((a, b) => {
@@ -57,7 +57,6 @@ export function KanbanBoard({
     if (newColumnNameInput.trim()) {
       onAddColumn(newColumnNameInput.trim());
       setNewColumnNameInput('');
-      // setIsAddingColumn is handled by parent (KanbanBoardView) after successful add or error
     }
   };
 
@@ -68,7 +67,7 @@ export function KanbanBoard({
 
   return (
     <div className="flex gap-4 p-4 h-full">
-      {boardColumns.map((column: Column) => (
+      {workflowColumns.map((column: Column) => ( // Renamed
         <KanbanColumn
           key={column.id}
           column={column}
@@ -79,7 +78,7 @@ export function KanbanBoard({
           onTaskDrop={onTaskDrop}
           onDragTaskStart={handleDragTaskStart}
           onUpdateColumnName={onUpdateColumnName}
-          onToggleTaskCompleted={onToggleTaskCompleted} // Pass down prop
+          onToggleTaskCompleted={onToggleTaskCompleted}
         />
       ))}
       <div className="w-72 flex-shrink-0">
@@ -131,4 +130,3 @@ export function KanbanBoard({
     </div>
   );
 }
-

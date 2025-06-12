@@ -1,8 +1,6 @@
 
-import type { UserProfile, Workspace, Board, Column, Task, TaskPriority } from '@/types';
+import type { UserProfile, Workspace, Workflow, Column, Task, TaskPriority } from '@/types'; // Renamed Board to Workflow
 
-// This mockUser is mainly for fallback or testing when auth is not fully integrated.
-// Actual user data will come from Firebase Auth and Firestore.
 export const mockUser: UserProfile = {
   id: 'user-mock-1',
   name: 'Mock User',
@@ -10,18 +8,13 @@ export const mockUser: UserProfile = {
   avatarUrl: 'https://placehold.co/100x100.png',
 };
 
-
-// The following mock data (tasks, columns, board) should ideally no longer be directly used
-// by the main application flow once Firestore integration is complete.
-// They can be kept for reference, testing, or as a fallback if needed.
-
-const createTasks = (boardId: string, columnId: string, count: number, prefix: string): Task[] => {
+const createTasks = (workflowId: string, columnId: string, count: number, prefix: string): Task[] => { // Renamed boardId to workflowId
   return Array.from({ length: count }, (_, i) => {
     const taskDate = new Date();
     taskDate.setDate(taskDate.getDate() + i * 2);
     const priorities: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
     return {
-      id: `task-${boardId}-${columnId}-${i + 1}`,
+      id: `task-${workflowId}-${columnId}-${i + 1}`,
       title: `${prefix} Task ${i + 1}`,
       description: `This is a detailed description for ${prefix} Task ${i + 1}. It involves several steps and considerations.`,
       priority: priorities[i % priorities.length],
@@ -43,16 +36,20 @@ const createTasks = (boardId: string, columnId: string, count: number, prefix: s
       ] : [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      boardId: boardId, // Added boardId
-      columnId: columnId, // Added columnId
-      creatorId: mockUser.id, // Added creatorId
+      workflowId: workflowId, // Renamed from boardId
+      columnId: columnId,
+      creatorId: mockUser.id,
+      isCompleted: false, // Added default
+      isBillable: i % 3 === 0, // Added default
+      clientName: i % 2 === 0 ? `Client ${String.fromCharCode(65 + i)}` : '', // Added default
+      deliverables: i % 2 === 0 ? [`Deliverable X${i+1}`, `Report Y${i+1}`] : [], // Added default
     };
   });
 };
 
-const todoTasks = createTasks('board-mock-1', 'col-mock-1', 3, 'Todo');
-const inProgressTasks = createTasks('board-mock-1', 'col-mock-2', 2, 'In Progress');
-const doneTasks = createTasks('board-mock-1', 'col-mock-3', 1, 'Done');
+const todoTasks = createTasks('workflow-mock-1', 'col-mock-1', 3, 'Todo');
+const inProgressTasks = createTasks('workflow-mock-1', 'col-mock-2', 2, 'In Progress');
+const doneTasks = createTasks('workflow-mock-1', 'col-mock-3', 1, 'Done');
 
 export const mockTasks: Task[] = [...todoTasks, ...inProgressTasks, ...doneTasks];
 
@@ -62,23 +59,23 @@ export const mockColumns: Column[] = [
   { id: 'col-mock-3', name: 'Done', taskIds: doneTasks.map(t => t.id) },
 ];
 
-export const mockBoard: Board = {
-  id: 'board-mock-1',
+export const mockWorkflow: Workflow = { // Renamed from mockBoard
+  id: 'workflow-mock-1', // Renamed
   workspaceId: 'ws-mock-1',
-  name: 'Mock Project Alpha',
+  name: 'Mock Freelance Project', // Updated name
   ownerId: mockUser.id,
   columns: mockColumns,
-  // tasks: mockTasks, // Tasks are no longer part of the board document directly
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  template: 'Freelance Project' // Added template
 };
 
-export const mockBoards: Board[] = [mockBoard]; // This should not be used for fetching user boards anymore
+export const mockWorkflows: Workflow[] = [mockWorkflow]; // Renamed
 
 export const mockWorkspace: Workspace = {
   id: 'ws-mock-1',
-  name: 'Mock Engineering Team',
+  name: 'My Freelance Hub', // Updated name
   ownerId: mockUser.id,
 };
 
-export const mockWorkspaces: Workspace[] = [mockWorkspace]; // This should not be used anymore
+export const mockWorkspaces: Workspace[] = [mockWorkspace];

@@ -3,8 +3,8 @@
 "use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // For active link styling
-import { UserCircle, LogOut, Settings, Users, LogInIcon, Mail, KeyRound, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { UserCircle, LogOut, Settings, Users, LogInIcon, Mail, KeyRound, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive, Share2, FileText } from 'lucide-react'; // Added Share2, FileText
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,15 +21,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { siteConfig } from '@/config/site';
-import { InviteTeamMemberModal } from '@/components/modals/InviteTeamMemberModal';
+import { ShareWorkflowModal } from '@/components/modals/ShareWorkflowModal'; // Renamed
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input'; // For Create Board Modal
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Added Select
 import { useAuth } from '@/hooks/useAuth';
 import { EmailPasswordLoginForm } from '@/components/auth/EmailPasswordLoginForm';
 import { EmailPasswordSignupForm } from '@/components/auth/EmailPasswordSignupForm';
-import type { Board } from '@/types';
+import type { Workflow } from '@/types'; // Renamed
 import { cn } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from '@/components/ui/label'; // Added Label
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18px" height="18px" className="mr-2">
@@ -42,37 +44,45 @@ const GoogleIcon = () => (
 );
 
 interface AppHeaderProps {
-  boards: Board[];
-  currentBoardId: string | null;
-  onSelectBoard: (boardId: string) => void;
-  onBoardCreated: (newBoardName: string) => Promise<string | null>;
-  isLoadingBoards: boolean;
+  workflows: Workflow[]; // Renamed
+  currentWorkflowId: string | null; // Renamed
+  onSelectWorkflow: (workflowId: string) => void; // Renamed
+  onWorkflowCreated: (newWorkflowName: string, templateName?: string) => Promise<string | null>; // Renamed, added templateName
+  isLoadingWorkflows: boolean; // Renamed
 }
 
-export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreated, isLoadingBoards }: AppHeaderProps) {
+const workflowTemplates = [
+  { value: "Blank Workflow", label: "Blank Workflow" },
+  { value: "Freelance Project", label: "Freelance Project" },
+  { value: "Content Creation", label: "Content Creation" },
+];
+
+export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWorkflowCreated, isLoadingWorkflows }: AppHeaderProps) {
   const pathname = usePathname();
   const { user, loginWithGoogle, logout, loading: authLoading } = useAuth();
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false); // Renamed
   const [authView, setAuthView] = useState<'google' | 'emailLogin' | 'emailSignup'>('google');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isCreateBoardModalOpen, setIsCreateBoardModalOpen] = useState(false);
-  const [newBoardName, setNewBoardName] = useState('');
-  const [isCreatingBoard, setIsCreatingBoard] = useState(false);
+  const [isCreateWorkflowModalOpen, setIsCreateWorkflowModalOpen] = useState(false); // Renamed
+  const [newWorkflowName, setNewWorkflowName] = useState(''); // Renamed
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(workflowTemplates[0].value); // New state for template
+  const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false); // Renamed
 
   const handleLoginSuccess = () => {
     setIsLoginModalOpen(false); 
     setAuthView('google'); 
   };
 
-  const handleCreateBoard = async () => {
-    if (!newBoardName.trim()) return;
-    setIsCreatingBoard(true);
-    const newBoardId = await onBoardCreated(newBoardName);
-    if (newBoardId) {
-      setNewBoardName('');
-      setIsCreateBoardModalOpen(false);
+  const handleCreateWorkflow = async () => { // Renamed
+    if (!newWorkflowName.trim()) return;
+    setIsCreatingWorkflow(true);
+    const newWorkflowId = await onWorkflowCreated(newWorkflowName, selectedTemplate); // Pass template
+    if (newWorkflowId) {
+      setNewWorkflowName('');
+      setSelectedTemplate(workflowTemplates[0].value); // Reset template
+      setIsCreateWorkflowModalOpen(false);
     }
-    setIsCreatingBoard(false);
+    setIsCreatingWorkflow(false);
   };
 
   return (
@@ -92,40 +102,40 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
                 <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
               </Button>
               <Button variant={pathname === '/analytics' ? "secondary" : "ghost"} size="sm" asChild>
-                <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</Link>
+                <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />My Insights</Link>
               </Button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
-                    <HardDrive className="mr-2 h-4 w-4" /> Boards <ChevronDown className="ml-1 h-4 w-4" />
+                    <HardDrive className="mr-2 h-4 w-4" /> Workflows <ChevronDown className="ml-1 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
-                  <DropdownMenuLabel>Your Boards</DropdownMenuLabel>
+                  <DropdownMenuLabel>Your Workflows</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {isLoadingBoards ? (
+                  {isLoadingWorkflows ? (
                     <DropdownMenuItem disabled>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
                     </DropdownMenuItem>
-                  ) : boards.length === 0 ? (
-                    <DropdownMenuItem disabled>No boards yet.</DropdownMenuItem>
+                  ) : workflows.length === 0 ? (
+                    <DropdownMenuItem disabled>No workflows yet.</DropdownMenuItem>
                   ) : (
                     <ScrollArea className="max-h-60">
-                      {boards.map(board => (
+                      {workflows.map(workflow => (
                         <DropdownMenuItem 
-                          key={board.id} 
-                          onClick={() => onSelectBoard(board.id)}
-                          className={cn(currentBoardId === board.id && "bg-accent text-accent-foreground")}
+                          key={workflow.id} 
+                          onClick={() => onSelectWorkflow(workflow.id)}
+                          className={cn(currentWorkflowId === workflow.id && "bg-accent text-accent-foreground")}
                         >
-                          {board.name}
+                          {workflow.name}
                         </DropdownMenuItem>
                       ))}
                     </ScrollArea>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setIsCreateBoardModalOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Board...
+                  <DropdownMenuItem onClick={() => setIsCreateWorkflowModalOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Workflow...
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -140,8 +150,8 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
             <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
           ) : user ? (
             <>
-            <Button variant="ghost" onClick={() => setIsInviteModalOpen(true)} disabled={authLoading} size="sm" className="hidden sm:inline-flex">
-              <Users className="mr-2 h-4 w-4" /> Invite Team
+            <Button variant="ghost" onClick={() => setIsShareModalOpen(true)} disabled={authLoading} size="sm" className="hidden sm:inline-flex">
+              <Share2 className="mr-2 h-4 w-4" /> Share
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -167,39 +177,39 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
                      <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
                    </DropdownMenuItem>
                    <DropdownMenuItem asChild>
-                     <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />Analytics</Link>
+                     <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />My Insights</Link>
                    </DropdownMenuItem>
                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger><HardDrive className="mr-2 h-4 w-4" />Boards</DropdownMenuSubTrigger>
+                      <DropdownMenuSubTrigger><HardDrive className="mr-2 h-4 w-4" />Workflows</DropdownMenuSubTrigger>
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent className="w-48">
-                          <DropdownMenuLabel>Your Boards</DropdownMenuLabel>
+                          <DropdownMenuLabel>Your Workflows</DropdownMenuLabel>
                            <DropdownMenuSeparator />
-                            {isLoadingBoards ? (
+                            {isLoadingWorkflows ? (
                               <DropdownMenuItem disabled>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
                               </DropdownMenuItem>
-                            ) : boards.length === 0 ? (
-                              <DropdownMenuItem disabled>No boards yet.</DropdownMenuItem>
+                            ) : workflows.length === 0 ? (
+                              <DropdownMenuItem disabled>No workflows yet.</DropdownMenuItem>
                             ) : (
                                <ScrollArea className="max-h-48">
-                                {boards.map(board => (
-                                  <DropdownMenuItem key={board.id} onClick={() => onSelectBoard(board.id)}
-                                   className={cn(currentBoardId === board.id && "bg-accent text-accent-foreground")}>
-                                    {board.name}
+                                {workflows.map(workflow => (
+                                  <DropdownMenuItem key={workflow.id} onClick={() => onSelectWorkflow(workflow.id)}
+                                   className={cn(currentWorkflowId === workflow.id && "bg-accent text-accent-foreground")}>
+                                    {workflow.name}
                                   </DropdownMenuItem>
                                 ))}
                               </ScrollArea>
                             )}
                            <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setIsCreateBoardModalOpen(true)}>
+                          <DropdownMenuItem onClick={() => setIsCreateWorkflowModalOpen(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Create New
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuPortal>
                     </DropdownMenuSub>
-                   <DropdownMenuItem className="sm:hidden" onClick={() => setIsInviteModalOpen(true)}>
-                        <Users className="mr-2 h-4 w-4" /> Invite Team
+                   <DropdownMenuItem className="sm:hidden" onClick={() => setIsShareModalOpen(true)}>
+                        <Share2 className="mr-2 h-4 w-4" /> Share
                     </DropdownMenuItem>
                   <DropdownMenuSeparator className="md:hidden"/>
                 </DropdownMenuGroup>
@@ -226,14 +236,14 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle className="text-center text-2xl font-semibold">
-                    {authView === 'emailLogin' && 'Login to Kollab'}
-                    {authView === 'emailSignup' && 'Create your Kollab Account'}
+                    {authView === 'emailLogin' && `Login to ${siteConfig.name}`}
+                    {authView === 'emailSignup' && `Create your ${siteConfig.name} Account`}
                     {authView === 'google' && `Welcome to ${siteConfig.name}`}
                   </DialogTitle>
                   <DialogDescription className="text-center">
-                    {authView === 'emailLogin' && 'Enter your email and password to access your account.'}
-                    {authView === 'emailSignup' && 'Get started by creating a new account.'}
-                    {authView === 'google' && 'Choose your preferred sign-in method.'}
+                    {authView === 'emailLogin' && 'Enter your email and password to access your workflows.'}
+                    {authView === 'emailSignup' && 'Get started by creating a new account to manage your projects.'}
+                    {authView === 'google' && `Your personal command center. Let's get you signed in.`}
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -291,25 +301,46 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
           )}
         </div>
       </div>
-      {isInviteModalOpen && user && <InviteTeamMemberModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} />}
-      <Dialog open={isCreateBoardModalOpen} onOpenChange={setIsCreateBoardModalOpen}>
+      {isShareModalOpen && user && <ShareWorkflowModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} currentWorkflowName={workflows.find(w => w.id === currentWorkflowId)?.name} />}
+      <Dialog open={isCreateWorkflowModalOpen} onOpenChange={setIsCreateWorkflowModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Board</DialogTitle>
-            <DialogDescription>Enter a name for your new board.</DialogDescription>
+            <DialogTitle>Create New Workflow</DialogTitle>
+            <DialogDescription>Give your workflow a name and optionally choose a template to get started quickly.</DialogDescription>
           </DialogHeader>
-          <Input
-            placeholder="Board Name"
-            value={newBoardName}
-            onChange={(e) => setNewBoardName(e.target.value)}
-            className="my-4"
-            disabled={isCreatingBoard}
-          />
+          <div className="space-y-4 my-4">
+            <div>
+              <Label htmlFor="workflowName" className="mb-1 block text-sm font-medium text-foreground">Workflow Name</Label>
+              <Input
+                id="workflowName"
+                placeholder="e.g., Client Project Alpha, My Content Plan"
+                value={newWorkflowName}
+                onChange={(e) => setNewWorkflowName(e.target.value)}
+                disabled={isCreatingWorkflow}
+              />
+            </div>
+            <div>
+              <Label htmlFor="workflowTemplate" className="mb-1 block text-sm font-medium text-foreground">Start with a Template</Label>
+               <Select value={selectedTemplate} onValueChange={setSelectedTemplate} disabled={isCreatingWorkflow}>
+                <SelectTrigger id="workflowTemplate">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workflowTemplates.map(template => (
+                    <SelectItem key={template.value} value={template.value}>
+                      <FileText className="mr-2 h-4 w-4 inline-block text-muted-foreground" />
+                      {template.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateBoardModalOpen(false)} disabled={isCreatingBoard}>Cancel</Button>
-            <Button onClick={handleCreateBoard} disabled={isCreatingBoard || !newBoardName.trim()}>
-              {isCreatingBoard && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Board
+            <Button variant="outline" onClick={() => setIsCreateWorkflowModalOpen(false)} disabled={isCreatingWorkflow}>Cancel</Button>
+            <Button onClick={handleCreateWorkflow} disabled={isCreatingWorkflow || !newWorkflowName.trim()}>
+              {isCreatingWorkflow && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Workflow
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -317,4 +348,3 @@ export function AppHeader({ boards, currentBoardId, onSelectBoard, onBoardCreate
     </header>
   );
 }
-    

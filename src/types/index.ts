@@ -14,14 +14,15 @@ export interface Workspace {
   ownerId: string; // UserProfile.id
 }
 
-export interface Board {
+export interface Workflow { // Renamed from Board
   id: string; // Document ID from Firestore
   workspaceId?: string; // Optional for now
   name: string;
-  ownerId: string; // UserProfile.id - who created/owns the board
-  columns: Column[]; // Stored directly in the board document
+  ownerId: string; // UserProfile.id - who created/owns the workflow
+  columns: Column[]; // Stored directly in the workflow document
   createdAt?: string; // ISO string
   updatedAt?: string; // ISO string
+  template?: string; // Optional: To store which template was used
 }
 
 export interface Column {
@@ -43,13 +44,16 @@ export interface Task {
   comments: Comment[];
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
-  boardId: string; // Board.id - which board this task belongs to
+  workflowId: string; // Renamed from boardId, Workflow.id - which workflow this task belongs to
   columnId: string; // Column.id - which column this task is in
   creatorId: string; // UserProfile.id - who created the task
   order?: number; // Optional: for ordering within a column if not relying on taskIds array order
   isArchived?: boolean;
   archivedAt?: string; // ISO string, when the task was archived
-  isCompleted: boolean; // New field for task completion status
+  isCompleted: boolean;
+  clientName?: string; // New field for freelancers
+  isBillable: boolean; // New field for freelancers
+  deliverables?: string[]; // New field for freelancers
 }
 
 export interface Subtask {
@@ -67,12 +71,12 @@ export interface Comment {
   createdAt: string; // ISO string
 }
 
-export interface TeamMemberInvite {
+export interface TeamMemberInvite { // This might be deprecated or re-purposed for client preview link state
   email: string;
   role: 'editor' | 'viewer';
-  workspaceId?: string; // To associate invite with a specific workspace/board
-  boardId?: string;
-  token?: string; // For verification, to be implemented
+  workspaceId?: string;
+  workflowId?: string; // Changed from boardId
+  token?: string;
   status?: 'pending' | 'accepted' | 'declined' | 'expired';
 }
 
@@ -84,4 +88,3 @@ export interface AISubtaskSuggestion {
   id: string;
   text: string;
 }
-

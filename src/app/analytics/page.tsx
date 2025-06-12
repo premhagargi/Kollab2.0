@@ -2,33 +2,27 @@
 // src/app/analytics/page.tsx
 "use client";
 import React from 'react';
-// Removed SidebarProvider
 import { AppHeader } from '@/components/layout/AppHeader';
-// Removed AppSidebar
 import { AnalyticsDashboardView } from '@/components/analytics/AnalyticsDashboardView';
 import { AuthProvider } from '@/contexts/AuthContext';
-// Removed mockBoard import as sidebar and its related state are gone
+// Removed imports and state related to boards/workflows as AppHeader now handles this internally for its dropdown if needed.
+// The Analytics page itself doesn't need to manage workflow selection.
 
 export default function AnalyticsPage() {
-  // Removed currentBoardId and handleSelectBoard as sidebar is gone
-  // If boards list is needed for AppHeader in analytics, it should be fetched similarly to DashboardPage
-  
   return (
     <AuthProvider>
-      {/* Removed SidebarProvider */}
-      <div className="flex flex-col min-h-screen"> {/* Simplified layout */}
+      <div className="flex flex-col min-h-screen">
         <AppHeader 
-          boards={[]} // Pass empty or fetch if needed for "Boards" dropdown consistency
-          currentBoardId={null}
-          onSelectBoard={() => {}}
-          onBoardCreated={async () => null}
-          isLoadingBoards={false}
+          workflows={[]} // Analytics page doesn't directly manage workflows; AppHeader fetches its own if needed for dropdown
+          currentWorkflowId={null} // Not applicable here
+          onSelectWorkflow={() => {}} // Not applicable here
+          onWorkflowCreated={async () => null} // Not applicable here
+          isLoadingWorkflows={true} // Reflects that this page isn't loading them
         />
-        <main className="flex-1 overflow-auto pt-16"> {/* pt-16 to offset AppHeader height */}
+        <main className="flex-1 overflow-auto pt-16">
           <AnalyticsDashboardView />
         </main>
       </div>
     </AuthProvider>
   );
 }
-    

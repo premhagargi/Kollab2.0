@@ -23,22 +23,23 @@ const mapTimestampToISO = (timestampField: any): string => {
   if (timestampField instanceof Timestamp) {
     return timestampField.toDate().toISOString();
   }
-  // Fallback for client-side optimistic updates or if already a string
   return typeof timestampField === 'string' ? timestampField : new Date().toISOString();
 };
 
-
 /**
  * Creates a new task in Firestore.
- * @param taskData The data for the new task, including boardId, columnId, and creatorId.
+ * @param taskData The data for the new task, including workflowId, columnId, and creatorId.
  * @returns The created task object with its Firestore ID.
  */
-export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted'>): Promise<Task> => {
+export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables'> & Partial<Pick<Task, 'clientName' | 'deliverables'>>): Promise<Task> => {
   try {
     const newTaskData = {
       ...taskData,
-      isCompleted: false, // Initialize isCompleted
-      isArchived: false, // Initialize isArchived
+      isCompleted: false,
+      isBillable: taskData.isBillable || false,
+      clientName: taskData.clientName || '',
+      deliverables: taskData.deliverables || [],
+      isArchived: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -49,6 +50,9 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
       id: docRef.id,
       ...taskData,
       isCompleted: false,
+      isBillable: newTaskData.isBillable,
+      clientName: newTaskData.clientName,
+      deliverables: newTaskData.deliverables,
       isArchived: false,
       createdAt: now, 
       updatedAt: now, 
@@ -60,23 +64,26 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
 };
 
 /**
- * Fetches all tasks for a specific board.
- * @param boardId The ID of the board.
+ * Fetches all tasks for a specific workflow.
+ * @param workflowId The ID of the workflow.
  * @returns A promise that resolves to an array of Task objects.
  */
-export const getTasksByBoard = async (boardId: string): Promise<Task[]> => {
+export const getTasksByWorkflow = async (workflowId: string): Promise<Task[]> => { // Renamed from getTasksByBoard
   try {
-    const q = query(collection(db, TASKS_COLLECTION), where('boardId', '==', boardId));
+    const q = query(collection(db, TASKS_COLLECTION), where('workflowId', '==', workflowId)); // Changed boardId to workflowId
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
-      isCompleted: docSnap.data().isCompleted || false, // Ensure default if field is missing
+      isCompleted: docSnap.data().isCompleted || false,
+      isBillable: docSnap.data().isBillable || false,
+      clientName: docSnap.data().clientName || '',
+      deliverables: docSnap.data().deliverables || [],
       createdAt: mapTimestampToISO(docSnap.data().createdAt),
       updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
     } as Task));
   } catch (error) {
-    console.error("Error fetching tasks by board:", error);
+    console.error("Error fetching tasks by workflow:", error);
     throw error;
   }
 };
@@ -95,7 +102,10 @@ export const getTaskById = async (taskId: string): Promise<Task | null> => {
       return {
         id: docSnap.id,
         ...data,
-        isCompleted: data.isCompleted || false, // Ensure default if field is missing
+        isCompleted: data.isCompleted || false,
+        isBillable: data.isBillable || false,
+        clientName: data.clientName || '',
+        deliverables: data.deliverables || [],
         createdAt: mapTimestampToISO(data.createdAt),
         updatedAt: mapTimestampToISO(data.updatedAt),
       } as Task;
@@ -113,11 +123,18 @@ export const getTaskById = async (taskId: string): Promise<Task | null> => {
  * @param updates An object containing the fields to update.
  * @returns A promise that resolves when the update is complete.
  */
-export const updateTask = async (taskId: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'boardId' | 'creatorId'>>): Promise<void> => {
+export const updateTask = async (taskId: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'workflowId' | 'creatorId'>>): Promise<void> => { // Changed boardId to workflowId
   try {
     const taskDocRef = doc(db, TASKS_COLLECTION, taskId);
+    // Ensure boolean false values are not stripped by spread operator if undefined in updates
+    const dataToUpdate = { ...updates };
+    if (updates.isBillable === false) dataToUpdate.isBillable = false;
+    if (updates.isCompleted === false) dataToUpdate.isCompleted = false;
+    if (updates.isArchived === false) dataToUpdate.isArchived = false;
+
+
     await updateDoc(taskDocRef, {
-      ...updates,
+      ...dataToUpdate,
       updatedAt: serverTimestamp(),
     });
   } catch (error)
@@ -154,7 +171,7 @@ export const unarchiveTask = async (taskId: string): Promise<void> => {
     const taskDocRef = doc(db, TASKS_COLLECTION, taskId);
     await updateDoc(taskDocRef, {
       isArchived: false,
-      archivedAt: deleteField(), // Or set to null if you prefer
+      archivedAt: deleteField(),
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -177,4 +194,3 @@ export const deleteTask = async (taskId: string): Promise<void> => {
     throw error;
   }
 };
-
