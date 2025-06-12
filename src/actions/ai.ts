@@ -43,7 +43,8 @@ export async function suggestSubtasksAction(input: SubtaskSuggestionsInput): Pro
 export async function generateClientProgressSummaryAction(
   workflowId: string,
   workflowName: string,
-  clientContext?: string
+  clientContext?: string,
+  dateRangeContext?: string // Added dateRangeContext
 ): Promise<ClientProgressSummaryOutput> {
   try {
     const tasksFromDb = await getTasksByWorkflow(workflowId);
@@ -55,9 +56,10 @@ export async function generateClientProgressSummaryAction(
       description: task.description,
       priority: task.priority,
       dueDate: task.dueDate,
+      updatedAt: task.updatedAt, // Pass updatedAt for AI context
       isCompleted: task.isCompleted,
-      columnId: task.columnId, // This helps infer status if not completed
-      clientName: task.clientName, // Pass clientName if available on tasks
+      columnId: task.columnId, 
+      clientName: task.clientName, 
       isBillable: task.isBillable,
     }));
 
@@ -65,6 +67,7 @@ export async function generateClientProgressSummaryAction(
       workflowName,
       tasks: tasksForAI,
       clientContext: clientContext || "General progress update",
+      dateRangeContext: dateRangeContext, // Pass dateRangeContext
     });
 
     if (!result || typeof result.summaryText !== 'string') {
@@ -76,3 +79,4 @@ export async function generateClientProgressSummaryAction(
     return { summaryText: `Error: ${errorMessage}` };
   }
 }
+
