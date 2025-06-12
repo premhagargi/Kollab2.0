@@ -2,7 +2,7 @@
 // src/services/workflowService.ts
 // Renamed from boardService.ts
 import { db } from '@/lib/firebase';
-import type { Workflow, Column } from '@/types'; // Renamed Board to Workflow
+import type { Workflow, Column, Task, TaskPriority } from '@/types'; // Renamed Board to Workflow, added TaskPriority
 import {
   collection,
   addDoc,
@@ -34,43 +34,43 @@ export const getColumnsByTemplate = (templateName?: string): Column[] => {
   switch (templateName) {
     case 'Freelance Project':
       return [
-        { id: `col-${now}-1`, name: 'Backlog', taskIds: [] },
-        { id: `col-${now}-2`, name: 'Proposal/Quote', taskIds: [] },
-        { id: `col-${now}-3`, name: 'Active Work', taskIds: [] },
-        { id: `col-${now}-4`, name: 'Client Review', taskIds: [] },
-        { id: `col-${now}-5`, name: 'Revisions', taskIds: [] },
-        { id: `col-${now}-6`, name: 'Final Delivery', taskIds: [] },
-        { id: `col-${now}-7`, name: 'Paid', taskIds: [] },
+        { id: `col-${now}-fp1`, name: 'Backlog', taskIds: [] },
+        { id: `col-${now}-fp2`, name: 'Proposal/Quote', taskIds: [] },
+        { id: `col-${now}-fp3`, name: 'Active Work', taskIds: [] },
+        { id: `col-${now}-fp4`, name: 'Client Review', taskIds: [] },
+        { id: `col-${now}-fp5`, name: 'Revisions', taskIds: [] },
+        { id: `col-${now}-fp6`, name: 'Final Delivery', taskIds: [] },
+        { id: `col-${now}-fp7`, name: 'Paid', taskIds: [] },
       ];
     case 'Content Creation':
       return [
-        { id: `col-${now}-1`, name: 'Ideas', taskIds: [] },
-        { id: `col-${now}-2`, name: 'Researching', taskIds: [] },
-        { id: `col-${now}-3`, name: 'Drafting', taskIds: [] },
-        { id: `col-${now}-4`, name: 'Review', taskIds: [] },
-        { id: `col-${now}-5`, name: 'Ready to Publish', taskIds: [] },
-        { id: `col-${now}-6`, name: 'Published', taskIds: [] },
+        { id: `col-${now}-cc1`, name: 'Ideas', taskIds: [] },
+        { id: `col-${now}-cc2`, name: 'Researching', taskIds: [] },
+        { id: `col-${now}-cc3`, name: 'Drafting', taskIds: [] },
+        { id: `col-${now}-cc4`, name: 'Review', taskIds: [] },
+        { id: `col-${now}-cc5`, name: 'Ready to Publish', taskIds: [] },
+        { id: `col-${now}-cc6`, name: 'Published', taskIds: [] },
       ];
     case 'Social Media Content Calendar':
       return [
-        { id: `col-${now}-s1`, name: 'Ideas/Brainstorm', taskIds: [] },
-        { id: `col-${now}-s2`, name: 'To Draft (Content/Copy)', taskIds: [] },
-        { id: `col-${now}-s3`, name: 'Visuals Needed/Creating', taskIds: [] },
-        { id: `col-${now}-s4`, name: 'Scheduled', taskIds: [] },
-        { id: `col-${now}-s5`, name: 'Published', taskIds: [] },
-        { id: `col-${now}-s6`, name: 'Analyzing Performance', taskIds: [] },
+        { id: `col-${now}-sm1`, name: 'Ideas/Brainstorm', taskIds: [] },
+        { id: `col-${now}-sm2`, name: 'To Draft (Content/Copy)', taskIds: [] },
+        { id: `col-${now}-sm3`, name: 'Visuals Needed/Creating', taskIds: [] },
+        { id: `col-${now}-sm4`, name: 'Scheduled', taskIds: [] },
+        { id: `col-${now}-sm5`, name: 'Published', taskIds: [] },
+        { id: `col-${now}-sm6`, name: 'Analyzing Performance', taskIds: [] },
       ];
     case 'Weekly Solo Sprint':
       return [
-        { id: `col-${now}-w1`, name: 'Sprint Goals', taskIds: [] },
-        { id: `col-${now}-w2`, name: 'Sprint Backlog', taskIds: [] },
-        { id: `col-${now}-w3`, name: 'Monday', taskIds: [] },
-        { id: `col-${now}-w4`, name: 'Tuesday', taskIds: [] },
-        { id: `col-${now}-w5`, name: 'Wednesday', taskIds: [] },
-        { id: `col-${now}-w6`, name: 'Thursday', taskIds: [] },
-        { id: `col-${now}-w7`, name: 'Friday', taskIds: [] },
-        { id: `col-${now}-w8`, name: 'Completed This Week', taskIds: [] },
-        { id: `col-${now}-w9`, name: 'Blocked/Needs Review', taskIds: [] },
+        { id: `col-${now}-ws1`, name: 'Sprint Goals', taskIds: [] },
+        { id: `col-${now}-ws2`, name: 'Sprint Backlog', taskIds: [] },
+        { id: `col-${now}-ws3`, name: 'Monday', taskIds: [] },
+        { id: `col-${now}-ws4`, name: 'Tuesday', taskIds: [] },
+        { id: `col-${now}-ws5`, name: 'Wednesday', taskIds: [] },
+        { id: `col-${now}-ws6`, name: 'Thursday', taskIds: [] },
+        { id: `col-${now}-ws7`, name: 'Friday', taskIds: [] },
+        { id: `col-${now}-ws8`, name: 'Completed This Week', taskIds: [] },
+        { id: `col-${now}-ws9`, name: 'Blocked/Needs Review', taskIds: [] },
       ];
     case 'Blank Workflow':
     default:
@@ -82,6 +82,40 @@ export const getColumnsByTemplate = (templateName?: string): Column[] => {
   }
 };
 
+interface SampleTaskDefinition {
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+  targetColumnName: string;
+}
+
+const getSampleTaskDefinitionsForTemplate = (templateName?: string): SampleTaskDefinition[] => {
+  switch (templateName) {
+    case 'Social Media Content Calendar':
+      return [
+        { title: "Finalize Q3 Content Strategy Doc", targetColumnName: 'Ideas/Brainstorm', priority: 'high', description: "Review analytics and outline main themes for Q3." },
+        { title: "Brainstorm 5 TikTok video ideas for new feature", targetColumnName: 'Ideas/Brainstorm', description: "Focus on engaging and short-form content." },
+        { title: "Write copy: Instagram Product Launch Announcement", targetColumnName: 'To Draft (Content/Copy)', priority: 'urgent', description: "Include key features, benefits, and a call to action." },
+        { title: "Design carousel images for IG launch (3-5 slides)", targetColumnName: 'Visuals Needed/Creating', priority: 'urgent', description: "Ensure visuals align with brand guidelines." },
+        { title: "Schedule all approved posts for w/c Mon July 29th", targetColumnName: 'Scheduled', description: "Use scheduling tool to ensure timely posting." },
+        { title: "Track engagement on last week's campaign", targetColumnName: 'Analyzing Performance', priority: 'medium' },
+      ];
+    case 'Weekly Solo Sprint':
+      return [
+        { title: "Define Top 3 Sprint Objectives", targetColumnName: 'Sprint Goals', priority: 'high', description: "What are the must-achieve items for this week?" },
+        { title: "Client Alpha - Follow-up Email on Proposal", targetColumnName: 'Sprint Backlog', description: "Send by EOD Tuesday." },
+        { title: "Develop User Authentication for Project Beta", targetColumnName: 'Sprint Backlog', priority: 'medium', description: "Implement email/password and Google Sign-In." },
+        { title: "Morning: Code Review for Project Gamma", targetColumnName: 'Monday' },
+        { title: "Afternoon: Outline Blog Post - 'Time Management for Freelancers'", targetColumnName: 'Monday' },
+        { title: "Ship feature: User Authentication for Project Beta", targetColumnName: 'Completed This Week', priority: 'high' },
+        { title: "Waiting for client feedback on design mockups", targetColumnName: 'Blocked/Needs Review' },
+      ];
+    default:
+      return [];
+  }
+};
+
+
 /**
  * Creates a new workflow in Firestore for a given user.
  * @param userId The UID of the user creating the workflow.
@@ -90,25 +124,71 @@ export const getColumnsByTemplate = (templateName?: string): Column[] => {
  * @returns The created workflow object with its Firestore ID.
  */
 export const createWorkflow = async (userId: string, workflowName: string, templateName?: string): Promise<Workflow> => {
+  const batch = writeBatch(db);
+  const workflowDocRef = doc(collection(db, WORKFLOWS_COLLECTION));
+
+  const initialColumns = getColumnsByTemplate(templateName);
+  const columnsWithTaskIds = JSON.parse(JSON.stringify(initialColumns)) as Column[]; // Deep copy for modification
+
+  const newWorkflowData = {
+    name: workflowName,
+    ownerId: userId,
+    columns: columnsWithTaskIds, // Will be used as is if no sample tasks
+    template: templateName || 'Blank Workflow',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  const sampleTaskDefinitions = getSampleTaskDefinitionsForTemplate(templateName);
+
+  if (sampleTaskDefinitions.length > 0) {
+    for (const sampleDef of sampleTaskDefinitions) {
+      const taskDocRef = doc(collection(db, TASKS_COLLECTION)); // Firestore generates ID
+      const targetColumn = columnsWithTaskIds.find(c => c.name === sampleDef.targetColumnName);
+
+      if (targetColumn) {
+        const taskDataForDb = {
+          title: sampleDef.title,
+          description: sampleDef.description || '',
+          priority: sampleDef.priority || 'medium' as TaskPriority,
+          subtasks: [],
+          comments: [],
+          workflowId: workflowDocRef.id, // Link to the new workflow
+          columnId: targetColumn.id,
+          creatorId: userId,
+          ownerId: userId, // Denormalized ownerId
+          isCompleted: false,
+          isBillable: false,
+          clientName: '',
+          deliverables: [],
+          isArchived: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        batch.set(taskDocRef, taskDataForDb);
+        targetColumn.taskIds.push(taskDocRef.id); // Add new task ID to the column
+      }
+    }
+    // Update newWorkflowData with columns that now include task IDs
+    newWorkflowData.columns = columnsWithTaskIds;
+  }
+
+  batch.set(workflowDocRef, newWorkflowData); // Add workflow creation to batch
+
   try {
-    const newWorkflowData = {
-      name: workflowName,
-      ownerId: userId,
-      columns: getColumnsByTemplate(templateName),
-      template: templateName || 'Blank Workflow',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-    const docRef = await addDoc(collection(db, WORKFLOWS_COLLECTION), newWorkflowData);
+    await batch.commit();
+    const now = new Date().toISOString();
     return {
-      id: docRef.id,
-      ...newWorkflowData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      columns: newWorkflowData.columns,
-    } as Workflow;
+      id: workflowDocRef.id,
+      name: newWorkflowData.name,
+      ownerId: newWorkflowData.ownerId,
+      columns: newWorkflowData.columns, // These now include IDs of sample tasks if any
+      template: newWorkflowData.template,
+      createdAt: now, // Approximate client-side timestamp
+      updatedAt: now, // Approximate client-side timestamp
+    };
   } catch (error) {
-    console.error("Error creating workflow:", error);
+    console.error("Error creating workflow with sample tasks:", error);
     throw error;
   }
 };
@@ -201,3 +281,4 @@ export const deleteWorkflow = async (workflowId: string): Promise<void> => {
     throw error;
   }
 };
+
