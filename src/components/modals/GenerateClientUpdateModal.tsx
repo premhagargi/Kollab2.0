@@ -141,7 +141,7 @@ export function GenerateClientUpdateModal({ isOpen, onClose, workflowId, workflo
             <RadioGroup value={selectedDateRangeOption} onValueChange={(value: string) => setSelectedDateRangeOption(value as DateRangeOption)} disabled={isLoading}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="allTime" id="dr_allTime" />
-                <Label htmlFor="dr_allTime" className="font-normal text-sm">All Time</Label>
+                <Label htmlFor="dr_allTime" className="font-normal text-sm">Summarize everything I’ve done here</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="thisWeek" id="dr_thisWeek" />
