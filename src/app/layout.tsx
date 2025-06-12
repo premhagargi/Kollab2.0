@@ -3,6 +3,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { siteConfig } from '@/config/site';
+import { ThemeProvider } from '@/components/layout/ThemeProvider'; // Added import
 
 export const metadata: Metadata = {
   title: {
@@ -25,12 +26,16 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased min-h-screen bg-background text-foreground flex flex-col">
-        {/* The main content area should be able to grow and allow AppHeader to be sticky */}
-        {/* Removed flex flex-col flex-1 from here, will be handled by page.tsx */}
-        {children}
-        <Toaster />
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange
+        >
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
 }
-

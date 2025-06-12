@@ -32,6 +32,7 @@ import type { Workflow } from '@/types'; // Renamed
 import { cn } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from '@/components/ui/label'; // Added Label
+import { ThemeToggleButton } from '@/components/layout/ThemeToggleButton'; // Added import
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18px" height="18px" className="mr-2">
@@ -148,6 +149,7 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
         <div className="flex-grow" />
 
         <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+          <ThemeToggleButton /> {/* Added Theme Toggle Button */}
           {authLoading && !user ? ( 
             <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
           ) : user ? (
