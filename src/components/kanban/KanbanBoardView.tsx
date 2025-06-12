@@ -1,15 +1,14 @@
-
 // src/components/kanban/KanbanBoardView.tsx
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { KanbanBoard } from './KanbanBoard';
 import { TaskDetailsModal } from '../modals/TaskDetailsModal';
-import { GenerateClientUpdateModal } from '../modals/GenerateClientUpdateModal'; // Added import
+import { GenerateClientUpdateModal } from '../modals/GenerateClientUpdateModal';
 import { Button } from '@/components/ui/button';
 import type { Workflow, Task, Column as ColumnType, UserProfile } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Loader2, MessageSquareText } from 'lucide-react'; // Added MessageSquareText
+import { Plus, Loader2, MessageSquareText } from 'lucide-react';
 import { getWorkflowById, updateWorkflow } from '@/services/workflowService';
 import { getTasksByWorkflow, createTask, updateTask as updateTaskService, deleteTask } from '@/services/taskService';
 import { getUsersByIds } from '@/services/userService';
@@ -20,28 +19,38 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
   const { user } = useAuth();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [isClientUpdateModalOpen, setIsClientUpdateModalOpen] = useState(false); // New state for client update modal
+  const [isClientUpdateModalOpen, setIsClientUpdateModalOpen] = useState(false);
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
   const [workflowTasks, setWorkflowTasks] = useState<Task[]>([]);
   const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(false);
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile | null>>({});
   const provisionalNewTaskIdRef = useRef<string | null>(null);
   const { toast } = useToast();
-
   const [isAddingColumn, setIsAddingColumn] = useState(false);
 
-  const fetchWorkflowData = useCallback(async (id: string) => {
-    if (!user) return;
+  const fetchWorkflowData = useCallback(async (id: string, currentUserId: string) => {
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      console.warn("fetchWorkflowData was called with an invalid workflowId (id parameter). ID:", id);
+      setIsLoadingWorkflow(false);
+      return;
+    }
+    if (!currentUserId || typeof currentUserId !== 'string' || currentUserId.trim() === '') {
+      console.warn("fetchWorkflowData was called with an invalid currentUserId. UserID:", currentUserId);
+      setIsLoadingWorkflow(false);
+      return;
+    }
+
     setIsLoadingWorkflow(true);
     setUserProfiles({});
     setIsAddingColumn(false);
+
     try {
       const workflowData = await getWorkflowById(id);
-      if (workflowData && workflowData.ownerId === user.id) {
+      if (workflowData && workflowData.ownerId === currentUserId) {
         setCurrentWorkflow(workflowData);
-        const tasksData = await getTasksByWorkflow(id);
+        const tasksData = await getTasksByWorkflow(id, currentUserId);
         setWorkflowTasks(tasksData.map(task => ({
-            ...task, 
+            ...task,
             isCompleted: task.isCompleted || false,
             isBillable: task.isBillable || false,
             clientName: task.clientName || '',
@@ -71,18 +80,24 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
     } finally {
       setIsLoadingWorkflow(false);
     }
-  }, [user, toast]);
+  }, [toast]); // Removed user from here, pass user.id directly
 
   useEffect(() => {
-    if (workflowId) {
-      fetchWorkflowData(workflowId);
+    const currentUserId = user?.id;
+    if (workflowId && typeof workflowId === 'string' && workflowId.trim() !== '' &&
+        currentUserId && typeof currentUserId === 'string' && currentUserId.trim() !== '') {
+      fetchWorkflowData(workflowId, currentUserId);
     } else {
       setCurrentWorkflow(null);
       setWorkflowTasks([]);
       setUserProfiles({});
       setIsAddingColumn(false);
+      if (workflowId && !currentUserId) {
+         // console.log("KanbanBoardView: workflowId present, but user.id not yet. Waiting for user auth.");
+      }
     }
-  }, [workflowId, fetchWorkflowData]);
+  }, [workflowId, user?.id, fetchWorkflowData]);
+
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -106,7 +121,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
     } catch (error) {
       console.error("Error deleting provisional task:", error);
       toast({ title: "Error", description: "Could not remove the provisional task.", variant: "destructive" });
-      if (currentWorkflow) fetchWorkflowData(currentWorkflow.id);
+      if (currentWorkflow && user?.id) fetchWorkflowData(currentWorkflow.id, user.id);
     }
   };
 
@@ -145,7 +160,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
   };
 
   const handleAddTask = async (columnId: string) => {
-    if (!user || !currentWorkflow) {
+    if (!user || !user.id || !currentWorkflow) {
       toast({ title: "Error", description: "Cannot add task without a selected workflow or user.", variant: "destructive" });
       return;
     }
@@ -165,6 +180,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
       workflowId: currentWorkflow.id,
       columnId: targetColumn.id,
       creatorId: user.id,
+      ownerId: user.id, // Explicitly set ownerId
       isArchived: false,
     };
 
@@ -203,16 +219,16 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
   };
 
   const handleAddColumn = async (columnName: string) => {
-    if (!user || !currentWorkflow) {
+    if (!user || !user.id || !currentWorkflow) {
       toast({ title: "Authentication Error", description: "Cannot add column without a selected workflow or user.", variant: "destructive" });
-      setIsAddingColumn(false); 
+      setIsAddingColumn(false);
       return;
     }
 
     const trimmedColumnName = columnName.trim();
     if (!trimmedColumnName) {
       toast({ title: "Invalid Column Name", description: "Column name cannot be empty.", variant: "destructive"});
-      return; 
+      return;
     }
 
     const newColumn: ColumnType = {
@@ -235,7 +251,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
   };
 
  const handleTaskDrop = async (taskId: string, sourceColumnId: string, destinationColumnId: string, targetTaskId?: string) => {
-    if (!currentWorkflow || !user) return;
+    if (!currentWorkflow || !user || !user.id) return;
 
     const taskToMove = workflowTasks.find(t => t.id === taskId);
     if (!taskToMove) return;
@@ -246,7 +262,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
 
     if (sourceColIndex === -1 || destColIndex === -1) {
         console.error("Source or destination column not found during drag and drop.");
-        if (currentWorkflow) fetchWorkflowData(currentWorkflow.id);
+        if (currentWorkflow && user?.id) fetchWorkflowData(currentWorkflow.id, user.id); // Pass user.id
         return;
     }
 
@@ -259,23 +275,23 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
     newWorkflowColumns[sourceColIndex].taskIds = newWorkflowColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
 
     let destTaskIds = [...newWorkflowColumns[destColIndex].taskIds];
-    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); 
+    const currentTaskIndexInDest = destTaskIds.indexOf(taskId);
     if (currentTaskIndexInDest > -1) {
-        destTaskIds.splice(currentTaskIndexInDest, 1); 
+        destTaskIds.splice(currentTaskIndexInDest, 1);
     }
 
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
 
-    if (sourceColumnId === destinationColumnId) { 
-        if (targetIndexInDest !== -1) { 
+    if (sourceColumnId === destinationColumnId) {
+        if (targetIndexInDest !== -1) {
             destTaskIds.splice(targetIndexInDest, 0, taskId);
-        } else { 
+        } else {
             destTaskIds.push(taskId);
         }
-    } else { 
-        if (targetIndexInDest !== -1) { 
+    } else {
+        if (targetIndexInDest !== -1) {
             destTaskIds.splice(targetIndexInDest, 0, taskId);
-        } else { 
+        } else {
             destTaskIds.push(taskId);
         }
     }
@@ -291,12 +307,12 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
     } catch (error) {
         console.error("Error moving task:", error);
         toast({ title: "Error Moving Task", description: "Could not update task position. Re-fetching workflow.", variant: "destructive" });
-        if (currentWorkflow) fetchWorkflowData(currentWorkflow.id);
+        if (currentWorkflow && user?.id) fetchWorkflowData(currentWorkflow.id, user.id); // Pass user.id
     }
 };
 
   const handleArchiveTask = async (taskToArchive: Task) => {
-    if (!user || !currentWorkflow) return;
+    if (!user || !user.id || !currentWorkflow) return;
 
     const originalWorkflowTasks = [...workflowTasks];
     const originalWorkflowState = currentWorkflow ? JSON.parse(JSON.stringify(currentWorkflow)) : null;
@@ -333,7 +349,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
   };
 
   const handleUpdateColumnName = async (columnId: string, newName: string) => {
-    if (!currentWorkflow || !user) {
+    if (!currentWorkflow || !user || !user.id) {
       toast({ title: "Error", description: "Cannot update column name: No workflow or user.", variant: "destructive" });
       return;
     }
@@ -360,21 +376,21 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
   };
 
   const handleToggleTaskCompleted = async (taskId: string, completed: boolean) => {
-    if (!user || !currentWorkflow) {
+    if (!user || !user.id || !currentWorkflow) {
       toast({ title: "Error", description: "Cannot update task: No workflow or user.", variant: "destructive" });
       return;
     }
-    
+
     const originalTasks = [...workflowTasks];
-    setWorkflowTasks(prevTasks => 
+    setWorkflowTasks(prevTasks =>
       prevTasks.map(t => t.id === taskId ? { ...t, isCompleted: completed, updatedAt: new Date().toISOString() } : t)
     );
 
     try {
       await updateTaskService(taskId, { isCompleted: completed });
-      toast({ 
-        title: "Task Updated", 
-        description: `Task marked as ${completed ? 'complete' : 'incomplete'}.` 
+      toast({
+        title: "Task Updated",
+        description: `Task marked as ${completed ? 'complete' : 'incomplete'}.`
       });
     } catch (error) {
       console.error("Error updating task completion status:", error);
@@ -386,7 +402,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
 
   const activeTasks = workflowTasks.filter(task => !task.isArchived);
 
-  if (isLoadingWorkflow) {
+  if (isLoadingWorkflow && !(user?.id && workflowId)) { // Only show full page loader if we don't have IDs yet.
     return (
       <div className="flex flex-col items-center justify-center h-full p-8">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -395,51 +411,63 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
     );
   }
 
-  if (!currentWorkflow) {
-    return null;
+
+  if (!currentWorkflow && !isLoadingWorkflow) { // If not loading and still no workflow (e.g. due to error or no selection)
+    return null; // Or a "select a workflow" message if appropriate for context
   }
+
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="sticky top-0 z-30 flex items-center justify-between px-3 bg-background shadow-sm flex-shrink-0">
-        <h1 className="text-lg font-medium truncate pr-2 py-3">{currentWorkflow.name}</h1>
-        <div className="flex items-center space-x-2 flex-shrink-0">
-           <Button
-            size="sm"
-            onClick={() => setIsClientUpdateModalOpen(true)}
-            disabled={workflowTasks.length === 0}
-            variant="outline"
-            className="border-border/70 hover:bg-muted/50"
-          >
-            <MessageSquareText className="mr-1 h-3 w-3" /> Client Update
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => handleAddTask(currentWorkflow.columns[0]?.id ?? '')}
-            disabled={currentWorkflow.columns.length === 0}
-            variant="default"
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus className="mr-1 h-3 w-3" /> New Task
-          </Button>
-        </div>
-      </div>
+      {isLoadingWorkflow && currentWorkflow && ( // Show a smaller loader overlay if already showing a workflow but refreshing
+         <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/50">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+         </div>
+      )}
+      {currentWorkflow && (
+        <>
+          <div className="sticky top-0 z-30 flex items-center justify-between px-3 bg-background shadow-sm flex-shrink-0">
+            <h1 className="text-lg font-medium truncate pr-2 py-3">{currentWorkflow.name}</h1>
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              <Button
+                size="sm"
+                onClick={() => setIsClientUpdateModalOpen(true)}
+                disabled={workflowTasks.length === 0 || isLoadingWorkflow}
+                variant="outline"
+                className="border-border/70 hover:bg-muted/50"
+              >
+                <MessageSquareText className="mr-1 h-3 w-3" /> Client Update
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleAddTask(currentWorkflow.columns[0]?.id ?? '')}
+                disabled={currentWorkflow.columns.length === 0 || isLoadingWorkflow}
+                variant="default"
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Plus className="mr-1 h-3 w-3" /> New Task
+              </Button>
+            </div>
+          </div>
 
-      <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
-        <KanbanBoard
-          workflowColumns={currentWorkflow.columns}
-          allTasksForWorkflow={activeTasks}
-          creatorProfiles={userProfiles}
-          onTaskClick={handleTaskClick}
-          onAddTask={handleAddTask}
-          onAddColumn={handleAddColumn}
-          onTaskDrop={handleTaskDrop}
-          isAddingColumn={isAddingColumn}
-          setIsAddingColumn={setIsAddingColumn}
-          onUpdateColumnName={handleUpdateColumnName}
-          onToggleTaskCompleted={handleToggleTaskCompleted} 
-        />
-      </div>
+          <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
+            <KanbanBoard
+              workflowColumns={currentWorkflow.columns}
+              allTasksForWorkflow={activeTasks}
+              creatorProfiles={userProfiles}
+              onTaskClick={handleTaskClick}
+              onAddTask={handleAddTask}
+              onAddColumn={handleAddColumn}
+              onTaskDrop={handleTaskDrop}
+              isAddingColumn={isAddingColumn}
+              setIsAddingColumn={setIsAddingColumn}
+              onUpdateColumnName={handleUpdateColumnName}
+              onToggleTaskCompleted={handleToggleTaskCompleted}
+            />
+          </div>
+        </>
+      )}
+
 
       {selectedTask && (
         <TaskDetailsModal
@@ -461,4 +489,3 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
     </div>
   );
 }
-
