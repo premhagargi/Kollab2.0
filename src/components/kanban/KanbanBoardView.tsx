@@ -400,8 +400,8 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="sticky top-0 z-30 flex items-center justify-between p-3 bg-background shadow-sm flex-shrink-0">
-        <h1 className="text-lg font-medium truncate pr-2">{currentWorkflow.name}</h1> {/* Renamed */}
+      <div className="sticky top-0 z-30 flex items-center justify-between px-3 bg-background shadow-sm flex-shrink-0">
+        <h1 className="text-lg font-medium truncate pr-2 py-3">{currentWorkflow.name}</h1> {/* Renamed, added py-3 for h1 */}
         <div className="flex items-center space-x-2 flex-shrink-0">
           <Button
             size="sm"
