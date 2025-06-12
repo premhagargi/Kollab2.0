@@ -311,11 +311,10 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 <div className="flex space-x-3">
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={handleGenerateSummary}
                     disabled={isSummarizing || (!task.description && !task.title) || isSaving}
                     className={cn(
-                      "text-xs font-medium flex items-center text-primary hover:bg-primary/10 rounded-full transition-colors",
+                      "text-xs font-medium flex items-center text-primary p-0 h-auto hover:bg-transparent hover:underline",
                       isSummarizing && 'animate-pulse'
                     )}
                   >
@@ -323,11 +322,10 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={handleSuggestSubtasks}
                     disabled={isSuggestingSubtasks || (!task.description && !task.title) || isSaving}
                     className={cn(
-                      "text-xs font-medium flex items-center text-primary hover:bg-primary/10 rounded-full transition-colors",
+                      "text-xs font-medium flex items-center text-primary p-0 h-auto hover:bg-transparent hover:underline",
                       isSuggestingSubtasks && 'animate-pulse'
                     )}
                   >
@@ -656,3 +654,4 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     </Dialog>
   );
 }
+
