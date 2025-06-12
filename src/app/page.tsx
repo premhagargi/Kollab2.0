@@ -6,65 +6,66 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { KanbanBoardView } from '@/components/kanban/KanbanBoardView';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
-import { getWorkflowsByOwner, createWorkflow as createWorkflowService } from '@/services/workflowService'; // Renamed
-import type { Workflow } from '@/types'; // Renamed
+import { getWorkflowsByOwner, createWorkflow as createWorkflowService } from '@/services/workflowService';
+import type { Workflow } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { siteConfig } from '@/config/site'; // Added import
 
 function DashboardContent() {
   const { user, loading: authLoading } = useAuth();
-  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null); // Renamed
-  const [userWorkflows, setUserWorkflows] = useState<Workflow[]>([]); // Renamed
-  const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true); // Renamed
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
+  const [userWorkflows, setUserWorkflows] = useState<Workflow[]>([]);
+  const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     if (user && !authLoading) {
       setIsLoadingWorkflows(true);
-      getWorkflowsByOwner(user.id) // Renamed
-        .then(workflows => { // Renamed
-          setUserWorkflows(workflows); // Renamed
+      getWorkflowsByOwner(user.id)
+        .then(workflows => {
+          setUserWorkflows(workflows);
           if (workflows.length > 0 && !currentWorkflowId) {
             setCurrentWorkflowId(workflows[0].id);
           } else if (workflows.length === 0) {
-            setCurrentWorkflowId(null); 
+            setCurrentWorkflowId(null);
           }
         })
         .catch(error => {
-          console.error("Error fetching workflows for user:", error); // Renamed
-          toast({ title: "Error", description: "Could not load your workflows.", variant: "destructive" }); // Renamed
-          setUserWorkflows([]); // Renamed
+          console.error("Error fetching workflows for user:", error);
+          toast({ title: "Error", description: "Could not load your workflows.", variant: "destructive" });
+          setUserWorkflows([]);
           setCurrentWorkflowId(null);
         })
         .finally(() => {
-          setIsLoadingWorkflows(false); // Renamed
+          setIsLoadingWorkflows(false);
         });
     } else if (!user && !authLoading) {
-      setUserWorkflows([]); // Renamed
+      setUserWorkflows([]);
       setCurrentWorkflowId(null);
-      setIsLoadingWorkflows(false); // Renamed
+      setIsLoadingWorkflows(false);
     }
   }, [user, authLoading, currentWorkflowId, toast]);
 
 
-  const handleSelectWorkflow = (workflowId: string) => { // Renamed
+  const handleSelectWorkflow = (workflowId: string) => {
     setCurrentWorkflowId(workflowId);
   };
 
-  const handleWorkflowCreated = async (newWorkflowName: string, templateName?: string): Promise<string | null> => { // Renamed, added templateName
+  const handleWorkflowCreated = async (newWorkflowName: string, templateName?: string): Promise<string | null> => {
     if (!user) {
-      toast({ title: "Authentication Error", description: "You must be logged in to create a workflow.", variant: "destructive" }); // Renamed
+      toast({ title: "Authentication Error", description: "You must be logged in to create a workflow.", variant: "destructive" });
       return null;
     }
     try {
-      const newWorkflow = await createWorkflowService(user.id, newWorkflowName, templateName); // Renamed, passed templateName
-      setUserWorkflows(prevWorkflows => [...prevWorkflows, newWorkflow]); // Renamed
-      setCurrentWorkflowId(newWorkflow.id); 
-      toast({ title: "Workflow Created", description: `Workflow "${newWorkflow.name}" has been created.` }); // Renamed
+      const newWorkflow = await createWorkflowService(user.id, newWorkflowName, templateName);
+      setUserWorkflows(prevWorkflows => [...prevWorkflows, newWorkflow]);
+      setCurrentWorkflowId(newWorkflow.id);
+      toast({ title: "Workflow Created", description: `Workflow "${newWorkflow.name}" has been created.` });
       return newWorkflow.id;
     } catch (error) {
-      console.error("Error creating workflow from page:", error); // Renamed
-      toast({ title: "Error", description: "Failed to create workflow.", variant: "destructive" }); // Renamed
+      console.error("Error creating workflow from page:", error);
+      toast({ title: "Error", description: "Failed to create workflow.", variant: "destructive" });
       return null;
     }
   };
@@ -72,19 +73,19 @@ function DashboardContent() {
   return (
       <div className="flex flex-col h-screen">
         <AppHeader 
-            workflows={userWorkflows} // Renamed
-            currentWorkflowId={currentWorkflowId} // Renamed
-            onSelectWorkflow={handleSelectWorkflow} // Renamed
-            onWorkflowCreated={handleWorkflowCreated} // Renamed
-            isLoadingWorkflows={isLoadingWorkflows} // Renamed
+            workflows={userWorkflows}
+            currentWorkflowId={currentWorkflowId}
+            onSelectWorkflow={handleSelectWorkflow}
+            onWorkflowCreated={handleWorkflowCreated}
+            isLoadingWorkflows={isLoadingWorkflows}
         />
         <main className="flex-1 flex flex-col overflow-hidden bg-background min-h-0 pt-16"> 
-          {authLoading || (isLoadingWorkflows && user) ? ( // Renamed
+          {authLoading || (isLoadingWorkflows && user) ? (
               <div className="flex flex-1 items-center justify-center h-full">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
               </div>
           ) : currentWorkflowId ? (
-            <KanbanBoardView workflowId={currentWorkflowId} /> // Renamed prop
+            <KanbanBoardView workflowId={currentWorkflowId} />
           ) : user ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-layout-grid mb-4 text-muted-foreground"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18M12 3v18"/></svg>

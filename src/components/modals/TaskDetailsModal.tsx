@@ -243,7 +243,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
       <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col bg-gradient-to-br from-background to-background/95 rounded-xl shadow-2xl border border-border/50">
-        <DialogHeader className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-border/50">
+        <DialogHeader className="flex-shrink-0 px-2 pt-2 pb-1 border-b border-border/50">
           <DialogTitle>
             <div className="group relative flex items-center">
               <Input
