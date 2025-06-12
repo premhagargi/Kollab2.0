@@ -1,3 +1,4 @@
+
 # Kollab - Task Management Platform
 
 Kollab is a Trello-like task management platform designed for remote teams, built with a modern web stack including Firebase, Next.js, and Genkit for AI-powered features.
@@ -78,13 +79,15 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
             match /users/{userId} {
               allow read, write: if request.auth != null && request.auth.uid == userId;
             }
-            match /boards/{boardId} {
+            // Collection name is 'boards' in Firestore, but represents 'workflows' in UI
+            match /boards/{workflowId} { // Renamed boardId to workflowId for clarity here
               allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
               allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
             }
             match /tasks/{taskId} {
-              allow read, update, delete: if request.auth != null && get(/databases/$(database)/documents/boards/$(resource.data.boardId)).data.ownerId == request.auth.uid;
-              allow create: if request.auth != null && get(/databases/$(database)/documents/boards/$(request.resource.data.boardId)).data.ownerId == request.auth.uid;
+              // Ensure you check ownership via the parent workflow (board) document
+              allow read, update, delete: if request.auth != null && get(/databases/$(database)/documents/boards/$(resource.data.workflowId)).data.ownerId == request.auth.uid;
+              allow create: if request.auth != null && get(/databases/$(database)/documents/boards/$(request.resource.data.workflowId)).data.ownerId == request.auth.uid;
             }
           }
         }
@@ -133,7 +136,7 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 *   **`src/contexts/`**: React context providers (e.g., `AuthContext`).
 *   **`src/hooks/`**: Custom React hooks.
 *   **`src/lib/`**: Utility functions, Firebase initialization, Nodemailer setup.
-*   **`src/services/`**: Firestore interaction logic (e.g., `boardService.ts`, `taskService.ts`).
+*   **`src/services/`**: Firestore interaction logic (e.g., `workflowService.ts`, `taskService.ts`).
 *   **`src/actions/`**: Next.js Server Actions (e.g., for AI, email sending).
 *   **`src/ai/`**: Genkit related files (flows, prompts).
 *   **`src/types/`**: TypeScript type definitions.
@@ -146,3 +149,4 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 ## License
 
 (Specify a license if applicable, e.g., MIT)
+
