@@ -55,6 +55,8 @@ const workflowTemplates = [
   { value: "Blank Workflow", label: "Blank Workflow" },
   { value: "Freelance Project", label: "Freelance Project" },
   { value: "Content Creation", label: "Content Creation" },
+  { value: "Social Media Content Calendar", label: "Social Media Content Calendar" },
+  { value: "Weekly Solo Sprint", label: "Weekly Solo Sprint" },
 ];
 
 export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWorkflowCreated, isLoadingWorkflows }: AppHeaderProps) {

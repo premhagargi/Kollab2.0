@@ -51,12 +51,33 @@ export const getColumnsByTemplate = (templateName?: string): Column[] => {
         { id: `col-${now}-5`, name: 'Ready to Publish', taskIds: [] },
         { id: `col-${now}-6`, name: 'Published', taskIds: [] },
       ];
+    case 'Social Media Content Calendar':
+      return [
+        { id: `col-${now}-s1`, name: 'Ideas/Brainstorm', taskIds: [] },
+        { id: `col-${now}-s2`, name: 'To Draft (Content/Copy)', taskIds: [] },
+        { id: `col-${now}-s3`, name: 'Visuals Needed/Creating', taskIds: [] },
+        { id: `col-${now}-s4`, name: 'Scheduled', taskIds: [] },
+        { id: `col-${now}-s5`, name: 'Published', taskIds: [] },
+        { id: `col-${now}-s6`, name: 'Analyzing Performance', taskIds: [] },
+      ];
+    case 'Weekly Solo Sprint':
+      return [
+        { id: `col-${now}-w1`, name: 'Sprint Goals', taskIds: [] },
+        { id: `col-${now}-w2`, name: 'Sprint Backlog', taskIds: [] },
+        { id: `col-${now}-w3`, name: 'Monday', taskIds: [] },
+        { id: `col-${now}-w4`, name: 'Tuesday', taskIds: [] },
+        { id: `col-${now}-w5`, name: 'Wednesday', taskIds: [] },
+        { id: `col-${now}-w6`, name: 'Thursday', taskIds: [] },
+        { id: `col-${now}-w7`, name: 'Friday', taskIds: [] },
+        { id: `col-${now}-w8`, name: 'Completed This Week', taskIds: [] },
+        { id: `col-${now}-w9`, name: 'Blocked/Needs Review', taskIds: [] },
+      ];
     case 'Blank Workflow':
     default:
       return [
-        { id: `col-${now}-1`, name: 'To Do', taskIds: [] },
-        { id: `col-${now}-2`, name: 'In Progress', taskIds: [] },
-        { id: `col-${now}-3`, name: 'Done', taskIds: [] },
+        { id: `col-${now}-b1`, name: 'To Do', taskIds: [] },
+        { id: `col-${now}-b2`, name: 'In Progress', taskIds: [] },
+        { id: `col-${now}-b3`, name: 'Done', taskIds: [] },
       ];
   }
 };
