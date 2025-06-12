@@ -420,7 +420,7 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
           allTasksForWorkflow={activeTasks} // Renamed
           creatorProfiles={userProfiles}
           onTaskClick={handleTaskClick}
-          onAddTask={onAddTask}
+          onAddTask={handleAddTask}
           onAddColumn={handleAddColumn}
           onTaskDrop={handleTaskDrop}
           isAddingColumn={isAddingColumn}
@@ -442,3 +442,4 @@ export function KanbanBoardView({ workflowId }: { workflowId: string | null }) {
     </div>
   );
 }
+
