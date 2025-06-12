@@ -6,20 +6,28 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 ## Features
 
 *   **Real-time Collaboration:** (Future goal, current focus on single-user task management)
-*   **Kanban Boards:** Organize tasks visually with customizable columns.
-*   **Task Management:** Create, update, and manage tasks with details like descriptions, priority, due dates, subtasks, and comments.
-*   **User Authentication:** Secure sign-up and login using Firebase Authentication (Google Sign-In).
-*   **Firestore Integration:** All user data, boards, and tasks are stored and managed in Cloud Firestore.
-*   **Drag & Drop:** Smoothly move tasks between columns on the Kanban board.
-*   **Task Archiving:** Archive tasks to declutter your board, with the option to view and manage archived items (viewing/permanent delete to be implemented).
-*   **Auto-Saving Task Details:** Changes in the task details modal are automatically saved with debouncing and visual feedback.
-*   **AI-Powered Features (via Genkit):**
-    *   Task Summarization: Get quick AI-generated summaries of task descriptions.
-    *   Subtask Suggestions: Let AI suggest potential subtasks based on the task's main goal.
-*   **Team Invitations via Email:** (Partially Implemented - backend email sending)
-*   **Task Assignment Notifications via Email:** (Planned - requires assignee selection UI)
-*   **Analytics Dashboard:** (Basic view implemented)
+*   **Kanban Workflows:** Organize tasks visually with customizable columns within different workflows (e.g., for client projects, content calendars, personal goals).
+    *   Inline column creation and renaming.
+*   **Task Management:** Create, update, and manage tasks with details like:
+    *   Client Name
+    *   Billable status (toggle)
+    *   Deliverables list
+    *   Descriptions, priority, due dates, subtasks, and comments.
+*   **Task Cards on Workflow:**
+    *   Visual priority indicators.
+    *   Quick task completion via a subtle checkbox (appears on hover for incomplete, always visible for completed).
+    *   Drag & Drop tasks between columns and reorder them.
+*   **Task Archiving:** Archive tasks to declutter your workflow.
+*   **User Authentication:** Secure sign-up and login using Firebase Authentication (Google Sign-In & Email/Password).
+*   **Firestore Integration:** All user data, workflows, and tasks are stored and managed in Cloud Firestore.
+*   **AI-Powered Clarity Tools (via Genkit):**
+    *   **Client Update Drafts:** Get quick AI-generated summaries of task progress suitable for client updates. Users can specify date ranges and provide additional context.
+    *   **Break Down Task:** Let AI suggest potential subtasks or next steps to clarify task scope.
+*   **Workflow Sharing:** (Simplified) Button to "Share" workflow, with a modal indicating future client preview link functionality and providing the current URL.
+*   **Solo Work Insights (Analytics):** A dashboard to visualize your task completion rates, work velocity, and task distribution (mock data for now).
+*   **Workflow Templates:** Create new workflows from predefined templates like "Blank", "Freelance Project", or "Content Creation" to quickly set up common column structures.
 *   **Responsive Design:** Works across different screen sizes.
+*   **Black & White UI Theme:** A clean, focused, and minimalist black and white interface.
 
 ## Tech Stack
 
@@ -36,7 +44,7 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 *   **AI Integration:**
     *   Genkit (with Google AI models like Gemini)
 *   **Email Notifications:**
-    *   Nodemailer
+    *   Nodemailer (currently for team invites, may be repurposed or deprecated)
 *   **Styling:**
     *   Tailwind CSS
     *   CSS Variables for theming (via `src/app/globals.css`)
@@ -68,10 +76,10 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 
 3.  **Firebase Configuration:**
     *   Create a Firebase project in the [Firebase Console](https://console.firebase.google.com/).
-    *   Enable **Firebase Authentication** (with Google Sign-In method).
+    *   Enable **Firebase Authentication** (with Google Sign-In and Email/Password methods).
     *   Enable **Cloud Firestore** in your Firebase project.
     *   Obtain your Firebase project configuration settings (apiKey, authDomain, etc.).
-    *   **Security Rules:** Update your Cloud Firestore security rules. A good starting point is provided below (ensure you adapt it to your needs):
+    *   **Security Rules:** Update your Cloud Firestore security rules. Use the rules provided below:
         ```javascript
         rules_version = '2';
         service cloud.firestore {
@@ -80,14 +88,26 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
               allow read, write: if request.auth != null && request.auth.uid == userId;
             }
             // Collection name is 'boards' in Firestore, but represents 'workflows' in UI
-            match /boards/{workflowId} { // Renamed boardId to workflowId for clarity here
+            match /boards/{workflowId} {
               allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
               allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
             }
             match /tasks/{taskId} {
-              // Ensure you check ownership via the parent workflow (board) document
-              allow read, update, delete: if request.auth != null && get(/databases/$(database)/documents/boards/$(resource.data.workflowId)).data.ownerId == request.auth.uid;
-              allow create: if request.auth != null && get(/databases/$(database)/documents/boards/$(request.resource.data.workflowId)).data.ownerId == request.auth.uid;
+              // Rules for single document operations (get, update, delete)
+              // User must be authenticated and own the task (via denormalized ownerId on the task)
+              allow get, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+
+              // Rule for creating tasks
+              // User must be authenticated, the new task's ownerId must be the user's UID,
+              // and the parent workflow must also be owned by the user.
+              allow create: if request.auth != null
+                            && request.resource.data.ownerId == request.auth.uid
+                            && get(/databases/$(database)/documents/boards/$(request.resource.data.workflowId)).data.ownerId == request.auth.uid;
+
+              // Rule for listing/querying tasks
+              // Allows listing if the user is authenticated.
+              // The actual security relies on the client-side query including a 'where("ownerId", "==", request.auth.uid)' clause.
+              allow list: if request.auth != null;
             }
           }
         }
@@ -110,6 +130,7 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
         GOOGLE_API_KEY=your_google_ai_api_key # or GENAI_API_KEY
 
         # For Email Notifications (Nodemailer) - Fill these based on your email provider
+        # This is less critical for the freelancer pivot but kept for potential future use.
         EMAIL_HOST=
         EMAIL_PORT=
         EMAIL_USER=
@@ -149,4 +170,3 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 ## License
 
 (Specify a license if applicable, e.g., MIT)
-
