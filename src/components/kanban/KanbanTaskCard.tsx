@@ -24,11 +24,12 @@ const priorityBorderColor: Record<TaskPriority, string> = {
   urgent: 'border-l-red-500',
 };
 
+// These priorityAccentColor might not be used anymore or could be simplified if we don't apply specific bg to metadata
 const priorityAccentColor: Record<TaskPriority, string> = {
-  low: 'bg-green-50 border-green-200',
-  medium: 'bg-yellow-50 border-yellow-200',
-  high: 'bg-orange-50 border-orange-200',
-  urgent: 'bg-red-50 border-red-200',
+  low: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/30',
+  medium: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700/30',
+  high: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700/30',
+  urgent: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/30',
 };
 
 export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onToggleTaskCompleted }: KanbanTaskCardProps) {
@@ -54,10 +55,10 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
   return (
     <Card
       className={cn(
-        "mb-2 hover:shadow-lg transition-all duration-200 bg-white border border-gray-200 shadow-sm active:shadow-xl rounded-lg group cursor-pointer select-none",
-        "border-l-4 hover:border-gray-300", 
+        "mb-2 hover:shadow-lg transition-all duration-200 bg-card border border-border shadow-sm active:shadow-xl rounded-lg group cursor-pointer select-none",
+        "border-l-4 hover:border-border/70", 
         priorityBorderColor[task.priority],
-        task.isCompleted && "opacity-60 bg-gray-50",
+        task.isCompleted && "opacity-60", // Removed bg-gray-50, bg-card will be the base
         "hover:scale-[1.01] hover:-translate-y-0.5"
       )}
       onClick={onClick}
@@ -73,7 +74,6 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
         !hasMetadata && shouldShowFooter && "pb-1"
       )}> 
         <div className="flex items-start gap-2">
-          {/* Enhanced Checkbox */}
           <div 
             onClick={handleCheckboxClick} 
             className={cn(
@@ -88,17 +88,16 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
               onCheckedChange={(checked) => {
                 onToggleTaskCompleted(task.id, !!checked);
               }}
-              className="h-3.5 w-3.5 rounded border-2 border-gray-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white hover:border-gray-400 transition-colors"
+              className="h-3.5 w-3.5 rounded border-2 border-muted-foreground/50 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-primary-foreground hover:border-primary/50 transition-colors"
               aria-label={`Mark task ${task.title} as ${task.isCompleted ? 'incomplete' : 'complete'}`}
             />
           </div>
 
-          {/* Task Title with tighter typography */}
           <div className="flex-grow min-w-0">
             <p className={cn(
-              "text-sm font-semibold leading-[1.2] text-gray-900 cursor-pointer",
+              "text-sm font-semibold leading-[1.2] text-card-foreground cursor-pointer",
               "line-clamp-2 break-words hyphens-auto",
-              task.isCompleted && "line-through text-gray-500"
+              task.isCompleted && "line-through text-muted-foreground"
             )}
             style={{
               display: '-webkit-box',
@@ -115,11 +114,10 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
           </div>
         </div>
         
-        {/* Metadata row with tighter spacing */}
         {hasMetadata && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 mt-1.5 ml-5.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5 ml-5.5">
             {task.dueDate && (
-              <div className="flex items-center gap-1 bg-gray-100 px-1.5 py-0.5 rounded-full" 
+              <div className="flex items-center gap-1 bg-muted/50 px-1.5 py-0.5 rounded-full" 
                    title={`Due date: ${format(parseISO(task.dueDate), 'MMM d, yyyy')}`}>
                 <CalendarDays className="h-2.5 w-2.5" />
                 <span className="font-medium text-[10px]">{format(parseISO(task.dueDate), 'MMM d')}</span>
@@ -127,13 +125,13 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
             )}
             
             {task.description && task.description.trim() !== '' && (
-               <div className="flex items-center text-gray-500" title="Has description">
-                 <AlignLeft className="h-2.5 w-2.5" />
+               <div className="flex items-center" title="Has description">
+                 <AlignLeft className="h-2.5 w-2.5 text-muted-foreground" />
                </div>
             )}
             
             {totalSubtasks > 0 && (
-              <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-full text-blue-700" 
+              <div className="flex items-center gap-1 bg-blue-500/10 dark:bg-blue-500/20 px-1.5 py-0.5 rounded-full text-blue-700 dark:text-blue-300" 
                    title={`${completedSubtasks} of ${totalSubtasks} subtasks completed`}>
                 <CheckSquareIcon className="h-2.5 w-2.5" />
                 <span className="font-medium text-[10px]">{completedSubtasks}/{totalSubtasks}</span>
@@ -141,7 +139,7 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
             )}
             
             {task.comments && task.comments.length > 0 && (
-              <div className="flex items-center gap-1 bg-purple-50 px-1.5 py-0.5 rounded-full text-purple-700" 
+              <div className="flex items-center gap-1 bg-purple-500/10 dark:bg-purple-500/20 px-1.5 py-0.5 rounded-full text-purple-700 dark:text-purple-300" 
                    title={`${task.comments.length} comments`}>
                 <MessageSquare className="h-2.5 w-2.5" />
                 <span className="font-medium text-[10px]">{task.comments.length}</span>
@@ -151,11 +149,9 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
         )}
       </CardContent>
       
-      {/* Compact Footer */}
       {shouldShowFooter && (
-        <CardFooter className="px-2 py-1.5 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center rounded-b-lg">
+        <CardFooter className="px-2 py-1.5 border-t border-border/50 bg-muted/30 flex justify-between items-center rounded-b-lg">
           <div className="flex items-center gap-1.5">
-            {/* Priority indicator dot */}
             <div className={cn(
               "w-1.5 h-1.5 rounded-full",
               task.priority === 'low' && "bg-green-500",
@@ -163,19 +159,19 @@ export function KanbanTaskCard({ task, onClick, creatorProfile, onDragStart, onT
               task.priority === 'high' && "bg-orange-500",
               task.priority === 'urgent' && "bg-red-500"
             )} title={`Priority: ${task.priority}`} />
-            <span className="text-[10px] text-gray-500 font-medium capitalize">{task.priority}</span>
+            <span className="text-[10px] text-muted-foreground font-medium capitalize">{task.priority}</span>
           </div>
           
           {creatorProfile && (
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-gray-500">by</span>
-              <Avatar className="h-5 w-5 ring-1 ring-white shadow-sm" title={`Created by: ${creatorProfile.name}`}>
+              <span className="text-[10px] text-muted-foreground">by</span>
+              <Avatar className="h-5 w-5 ring-1 ring-background shadow-sm" title={`Created by: ${creatorProfile.name}`}>
                 <AvatarImage 
                   src={creatorProfile.avatarUrl || undefined} 
                   alt={creatorProfile.name || 'Creator'} 
                   data-ai-hint="user avatar small"
                 />
-                <AvatarFallback className="text-[10px] bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                <AvatarFallback className="text-[10px] bg-primary/80 text-primary-foreground font-semibold">
                   {creatorProfile.name ? creatorProfile.name.charAt(0).toUpperCase() : <Users className="h-2.5 w-2.5"/>}
                 </AvatarFallback>
               </Avatar>
