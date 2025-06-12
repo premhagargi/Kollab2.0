@@ -10,8 +10,8 @@ import type { Column, Task, UserProfile } from '@/types';
 import { Card } from '@/components/ui/card';
 
 interface KanbanBoardProps {
-  workflowColumns: Column[]; // Renamed from boardColumns
-  allTasksForWorkflow: Task[]; // Renamed from allTasksForBoard
+  workflowColumns: Column[];
+  allTasksForWorkflow: Task[];
   creatorProfiles: Record<string, UserProfile | null>;
   onTaskClick: (task: Task) => void;
   onAddTask: (columnId: string) => void;
@@ -24,8 +24,8 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({
-  workflowColumns, // Renamed
-  allTasksForWorkflow, // Renamed
+  workflowColumns,
+  allTasksForWorkflow,
   creatorProfiles,
   onTaskClick,
   onAddTask,
@@ -40,7 +40,7 @@ export function KanbanBoard({
 
   const getTasksForColumn = (column: Column): Task[] => {
     const tasksInColumn = column.taskIds
-      .map(taskId => allTasksForWorkflow.find(t => t.id === taskId)) // Renamed
+      .map(taskId => allTasksForWorkflow.find(t => t.id === taskId))
       .filter(Boolean) as Task[];
 
     return tasksInColumn.sort((a, b) => {
@@ -57,6 +57,7 @@ export function KanbanBoard({
     if (newColumnNameInput.trim()) {
       onAddColumn(newColumnNameInput.trim());
       setNewColumnNameInput('');
+      // setIsAddingColumn(false); // Moved to KanbanBoardView to handle after successful add or error
     }
   };
 
@@ -66,8 +67,8 @@ export function KanbanBoard({
   };
 
   return (
-    <div className="flex gap-4 p-4 h-full">
-      {workflowColumns.map((column: Column) => ( // Renamed
+    <div className="flex gap-4 px-4 pb-4 h-full">
+      {workflowColumns.map((column: Column) => (
         <KanbanColumn
           key={column.id}
           column={column}
