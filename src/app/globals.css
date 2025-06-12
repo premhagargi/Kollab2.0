@@ -71,7 +71,7 @@ body {
     --secondary: 0 0% 25%; /* Darker Gray */
     --secondary-foreground: 0 0% 90%; /* Light Gray */
 
-    --muted: 0 0% 20%; /* Dark Gray */
+    --muted: 0 0% 28%; /* Darker Gray, a bit lighter for list cards */
     --muted-foreground: 0 0% 60%; /* Mid-Light Gray */
 
     --accent: 0 0% 70%; /* Mid-Light Gray */
