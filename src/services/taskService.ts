@@ -72,6 +72,17 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
  * @returns A promise that resolves to an array of Task objects.
  */
 export const getTasksByWorkflow = async (workflowId: string, userId: string): Promise<Task[]> => {
+  if (!workflowId || typeof workflowId !== 'string' || workflowId.trim() === '') {
+    console.warn("[taskService] getTasksByWorkflow: Invalid workflowId provided. Aborting query.", { workflowId, userId });
+    return [];
+  }
+  if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+    console.warn("[taskService] getTasksByWorkflow: Invalid userId provided. Aborting query.", { workflowId, userId });
+    return [];
+  }
+
+  console.log(`[taskService] getTasksByWorkflow: Querying tasks with workflowId='${workflowId}', userId='${userId}'`);
+
   try {
     const q = query(
       collection(db, TASKS_COLLECTION), 
@@ -90,7 +101,7 @@ export const getTasksByWorkflow = async (workflowId: string, userId: string): Pr
       updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
     } as Task));
   } catch (error) {
-    console.error("Error fetching tasks by workflow:", error);
+    console.error("[taskService] Error fetching tasks by workflow:", error, { workflowId, userId });
     throw error;
   }
 };

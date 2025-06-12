@@ -41,17 +41,24 @@ export async function suggestSubtasksAction(input: SubtaskSuggestionsInput): Pro
 }
 
 export async function generateClientProgressSummaryAction(
-  userId: string, // Added userId
+  userId: string, 
   workflowId: string,
   workflowName: string,
   clientContext?: string,
   dateRangeContext?: string
 ): Promise<ClientProgressSummaryOutput> {
-  if (!userId) {
-    return { summaryText: "Error: User authentication is required to generate summaries." };
+  if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+    console.error("[aiAction] generateClientProgressSummaryAction: Invalid userId provided.", { userId });
+    return { summaryText: "Error: User authentication is required to generate summaries. Invalid user ID." };
   }
+  if (!workflowId || typeof workflowId !== 'string' || workflowId.trim() === '') {
+    console.error("[aiAction] generateClientProgressSummaryAction: Invalid workflowId provided.", { workflowId });
+    return { summaryText: "Error: Workflow information is missing. Invalid workflow ID." };
+  }
+
   try {
-    const tasksFromDb = await getTasksByWorkflow(workflowId, userId); // Pass userId
+    console.log(`[aiAction] generateClientProgressSummaryAction: Fetching tasks for workflowId='${workflowId}', userId='${userId}'`);
+    const tasksFromDb = await getTasksByWorkflow(workflowId, userId); 
     
     const tasksForAI: ClientProgressSummaryInput['tasks'] = tasksFromDb.map(task => ({
       id: task.id,
@@ -64,7 +71,6 @@ export async function generateClientProgressSummaryAction(
       columnId: task.columnId, 
       clientName: task.clientName, 
       isBillable: task.isBillable,
-      // ownerId is not directly needed by the AI prompt for summarization, but good to have in full task object
     }));
 
     const result = await runClientProgressSummaryFlow({
@@ -79,6 +85,7 @@ export async function generateClientProgressSummaryAction(
     }
     return result;
   } catch (error) {
+    console.error(`[aiAction] Error in generateClientProgressSummaryAction for workflowId='${workflowId}', userId='${userId}':`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error generating client progress summary.";
     return { summaryText: `Error: ${errorMessage}` };
   }
