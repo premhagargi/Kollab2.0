@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateClientProgressSummaryAction } from '@/actions/ai';
 import type { ClientProgressSummaryOutput } from '@/ai/flows/client-progress-summary-flow';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/hooks/useAuth'; // Added useAuth
 
 interface GenerateClientUpdateModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ interface GenerateClientUpdateModalProps {
 type DateRangeOption = "allTime" | "thisWeek" | "last7Days" | "last30Days" | "custom";
 
 export function GenerateClientUpdateModal({ isOpen, onClose, workflowId, workflowName }: GenerateClientUpdateModalProps) {
+  const { user } = useAuth(); // Get user from auth context
   const [summary, setSummary] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [clientContext, setClientContext] = useState('');
@@ -65,6 +67,10 @@ export function GenerateClientUpdateModal({ isOpen, onClose, workflowId, workflo
   };
 
   const handleGenerateSummary = async () => {
+    if (!user) {
+      toast({ title: "Authentication Error", description: "You must be logged in to generate summaries.", variant: "destructive"});
+      return;
+    }
     if (!workflowId || !workflowName) {
         toast({ title: "Error", description: "Workflow information is missing.", variant: "destructive"});
         return;
@@ -80,6 +86,7 @@ export function GenerateClientUpdateModal({ isOpen, onClose, workflowId, workflo
 
     try {
       const result: ClientProgressSummaryOutput = await generateClientProgressSummaryAction(
+        user.id, // Pass userId
         workflowId,
         workflowName,
         clientContext,
@@ -184,7 +191,7 @@ export function GenerateClientUpdateModal({ isOpen, onClose, workflowId, workflo
             </p>
           </div>
 
-          <Button onClick={handleGenerateSummary} disabled={isLoading || !workflowId} className="w-full bg-primary hover:bg-primary/90 mt-4">
+          <Button onClick={handleGenerateSummary} disabled={isLoading || !workflowId || !user} className="w-full bg-primary hover:bg-primary/90 mt-4">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {summary ? 'Regenerate Summary' : 'Generate Summary'}
           </Button>
@@ -216,4 +223,3 @@ export function GenerateClientUpdateModal({ isOpen, onClose, workflowId, workflo
     </Dialog>
   );
 }
-

@@ -31,10 +31,11 @@ const mapTimestampToISO = (timestampField: any): string => {
  * @param taskData The data for the new task, including workflowId, columnId, and creatorId.
  * @returns The created task object with its Firestore ID.
  */
-export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables'> & Partial<Pick<Task, 'clientName' | 'deliverables'>>): Promise<Task> => {
+export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables' | 'ownerId'> & Partial<Pick<Task, 'clientName' | 'deliverables' | 'isBillable'>>): Promise<Task> => {
   try {
     const newTaskData = {
       ...taskData,
+      ownerId: taskData.creatorId, // Denormalize ownerId from creatorId (assuming workflow owner is creator)
       isCompleted: false,
       isBillable: taskData.isBillable || false,
       clientName: taskData.clientName || '',
@@ -49,6 +50,7 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
     return {
       id: docRef.id,
       ...taskData,
+      ownerId: newTaskData.ownerId,
       isCompleted: false,
       isBillable: newTaskData.isBillable,
       clientName: newTaskData.clientName,
@@ -64,13 +66,18 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
 };
 
 /**
- * Fetches all tasks for a specific workflow.
+ * Fetches all tasks for a specific workflow, ensuring the user owns them.
  * @param workflowId The ID of the workflow.
+ * @param userId The ID of the authenticated user.
  * @returns A promise that resolves to an array of Task objects.
  */
-export const getTasksByWorkflow = async (workflowId: string): Promise<Task[]> => { // Renamed from getTasksByBoard
+export const getTasksByWorkflow = async (workflowId: string, userId: string): Promise<Task[]> => {
   try {
-    const q = query(collection(db, TASKS_COLLECTION), where('workflowId', '==', workflowId)); // Changed boardId to workflowId
+    const q = query(
+      collection(db, TASKS_COLLECTION), 
+      where('workflowId', '==', workflowId),
+      where('ownerId', '==', userId) // Ensure tasks belong to the user
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(docSnap => ({
       id: docSnap.id,
@@ -123,22 +130,19 @@ export const getTaskById = async (taskId: string): Promise<Task | null> => {
  * @param updates An object containing the fields to update.
  * @returns A promise that resolves when the update is complete.
  */
-export const updateTask = async (taskId: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'workflowId' | 'creatorId'>>): Promise<void> => { // Changed boardId to workflowId
+export const updateTask = async (taskId: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'workflowId' | 'creatorId' | 'ownerId'>>): Promise<void> => {
   try {
     const taskDocRef = doc(db, TASKS_COLLECTION, taskId);
-    // Ensure boolean false values are not stripped by spread operator if undefined in updates
     const dataToUpdate = { ...updates };
     if (updates.isBillable === false) dataToUpdate.isBillable = false;
     if (updates.isCompleted === false) dataToUpdate.isCompleted = false;
     if (updates.isArchived === false) dataToUpdate.isArchived = false;
 
-
     await updateDoc(taskDocRef, {
       ...dataToUpdate,
       updatedAt: serverTimestamp(),
     });
-  } catch (error)
-{
+  } catch (error) {
     console.error("Error updating task:", error);
     throw error;
   }

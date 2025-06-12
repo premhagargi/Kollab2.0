@@ -41,33 +41,37 @@ export async function suggestSubtasksAction(input: SubtaskSuggestionsInput): Pro
 }
 
 export async function generateClientProgressSummaryAction(
+  userId: string, // Added userId
   workflowId: string,
   workflowName: string,
   clientContext?: string,
-  dateRangeContext?: string // Added dateRangeContext
+  dateRangeContext?: string
 ): Promise<ClientProgressSummaryOutput> {
+  if (!userId) {
+    return { summaryText: "Error: User authentication is required to generate summaries." };
+  }
   try {
-    const tasksFromDb = await getTasksByWorkflow(workflowId);
+    const tasksFromDb = await getTasksByWorkflow(workflowId, userId); // Pass userId
     
-    // Map tasks from DB to the format expected by the AI flow's Zod schema
     const tasksForAI: ClientProgressSummaryInput['tasks'] = tasksFromDb.map(task => ({
       id: task.id,
       title: task.title,
       description: task.description,
       priority: task.priority,
       dueDate: task.dueDate,
-      updatedAt: task.updatedAt, // Pass updatedAt for AI context
+      updatedAt: task.updatedAt,
       isCompleted: task.isCompleted,
       columnId: task.columnId, 
       clientName: task.clientName, 
       isBillable: task.isBillable,
+      // ownerId is not directly needed by the AI prompt for summarization, but good to have in full task object
     }));
 
     const result = await runClientProgressSummaryFlow({
       workflowName,
       tasks: tasksForAI,
       clientContext: clientContext || "General progress update",
-      dateRangeContext: dateRangeContext, // Pass dateRangeContext
+      dateRangeContext: dateRangeContext,
     });
 
     if (!result || typeof result.summaryText !== 'string') {
@@ -79,4 +83,3 @@ export async function generateClientProgressSummaryAction(
     return { summaryText: `Error: ${errorMessage}` };
   }
 }
-

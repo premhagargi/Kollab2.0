@@ -47,6 +47,7 @@ export interface Task {
   workflowId: string; // Renamed from boardId, Workflow.id - which workflow this task belongs to
   columnId: string; // Column.id - which column this task is in
   creatorId: string; // UserProfile.id - who created the task
+  ownerId: string; // UserProfile.id - who owns this task (denormalized from workflow)
   order?: number; // Optional: for ordering within a column if not relying on taskIds array order
   isArchived?: boolean;
   archivedAt?: string; // ISO string, when the task was archived
