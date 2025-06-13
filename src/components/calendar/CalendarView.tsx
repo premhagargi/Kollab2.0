@@ -4,7 +4,7 @@
 "use client";
 import React, { useMemo } from 'react';
 import { Calendar } from "@/components/ui/calendar";
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Added buttonVariants
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { TaskPill } from './TaskPill';
@@ -147,3 +147,4 @@ export function CalendarSidebar({
     </div>
   );
 }
+
