@@ -9,11 +9,11 @@ import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SplitText } from 'gsap/SplitText';
+import { SplitText } from 'gsap/SplitText'; // Updated import
 import { LayoutGrid, ListChecks, Brain, CopyPlus, ChevronRight, Zap, BarChartBig, Users, MessageSquare, PlayCircle, Settings2, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-gsap.registerPlugin(ScrollTrigger, SplitText);
+gsap.registerPlugin(ScrollTrigger, SplitText); // Register SplitText
 
 const kollabMainFeatures = [
   {
@@ -22,7 +22,7 @@ const kollabMainFeatures = [
     description: "Organize tasks visually with customizable columns. Drag & drop to manage your projects with ease, track progress at a glance, and maintain clarity across all your initiatives.",
     linkText: "Explore Workflows",
     image: "https://placehold.co/500x350.png",
-    dataAiHint: "metallic abstract cube" // Updated for 3D metallic feel
+    dataAiHint: "metallic abstract cube"
   },
   {
     icon: ListChecks,
@@ -30,7 +30,7 @@ const kollabMainFeatures = [
     description: "Create, update, and manage tasks with details like client names, billable status, deliverables, priority, due dates, subtasks, and comments. Never miss a deadline.",
     linkText: "Manage Tasks Better",
     image: "https://placehold.co/500x350.png",
-    dataAiHint: "glossy 3d shapes" // Updated for 3D metallic feel
+    dataAiHint: "glossy 3d shapes"
   },
   {
     icon: Brain,
@@ -38,7 +38,7 @@ const kollabMainFeatures = [
     description: "Leverage Genkit for AI-generated client update drafts and task breakdown suggestions to enhance scope, planning, and communication. Save time and reduce manual effort.",
     linkText: "Discover AI Tools",
     image: "https://placehold.co/500x350.png",
-    dataAiHint: "futuristic metallic orb" // Updated for 3D metallic feel
+    dataAiHint: "futuristic metallic orb"
   },
 ];
 
@@ -54,9 +54,9 @@ const whyKollabPoints = [
     description: "Visualize your entire workload, track progress in real-time, and make data-driven decisions."
   },
   {
-    icon: Users,
-    title: "Seamless Collaboration",
-    description: "Designed for solo freelancers but ready for future team expansion with shared workflows and communication tools."
+    icon: Users, // Kept for general appeal, though focus is solo
+    title: "Built for You, Ready to Grow",
+    description: "Perfectly tailored for solo freelancers, with underlying capabilities for future team features if your needs evolve."
   }
 ];
 
@@ -105,6 +105,8 @@ const testimonials = [
 function LandingPageContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
+
+  const landingPageContainerRef = useRef<HTMLDivElement>(null); // Ref for the main container
 
   const headerRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -167,44 +169,69 @@ function LandingPageContent() {
     let testimonialsTitleSplit: SplitText | null = null;
     let finalCTATitleSplit: SplitText | null = null;
 
+    // Set initial states to prevent flash of unstyled/unanimaated content
+    if (landingPageContainerRef.current) {
+        gsap.set(landingPageContainerRef.current, { opacity: 0 });
+    }
+    gsap.set([
+        logoRef.current,
+        ...(navItemsRef.current.filter(el => el)),
+        authButtonsRef.current,
+        hiringBannerRef.current,
+        heroFormRef.current,
+        heroTitleRef.current, // Set parent of SplitText to autoAlpha: 0
+        heroParagraphRef.current // Set parent of SplitText to autoAlpha: 0
+      ], { autoAlpha: 0, y: 20 }); // autoAlpha includes visibility:hidden
+    
+    gsap.set(kanbanMockupCardRef.current, {autoAlpha:0, y: 50, scale: 0.95});
+
 
     const tlEntry = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
 
     if (headerRef.current) {
-      tlEntry.from(logoRef.current, { opacity: 0, y: -30, delay: 0.2 })
-        .from(navItemsRef.current.filter(el => el), { opacity: 0, y: -30, stagger: 0.15, duration: 0.5 }, "-=0.5")
-        .from(authButtonsRef.current, { opacity: 0, y: -30, duration: 0.5 }, "-=0.4");
+      tlEntry.to(logoRef.current, { autoAlpha: 1, y: 0, delay: 0.2 })
+        .to(navItemsRef.current.filter(el => el), { autoAlpha: 1, y: 0, stagger: 0.15, duration: 0.5 }, "-=0.5")
+        .to(authButtonsRef.current, { autoAlpha: 1, y: 0, duration: 0.5 }, "-=0.4");
     }
 
     if (heroSectionRef.current && heroTitleRef.current && heroParagraphRef.current) {
-      tlEntry.from(hiringBannerRef.current, { opacity: 0, y: 40, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
+      tlEntry.to(hiringBannerRef.current, { autoAlpha: 1, y: 0, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
       
+      // Make parent containers for SplitText visible right before their children animate
+      tlEntry.set([heroTitleRef.current, heroParagraphRef.current], {autoAlpha: 1}, ">-0.1");
+
       heroTitleSplit = new SplitText(heroTitleRef.current, { type: "chars,words" });
       tlEntry.from(heroTitleSplit.chars, {
-        duration: 0.8, opacity: 0, y: 30, ease: "power3.out", stagger: 0.03,
+        duration: 0.8, autoAlpha: 0, y: 30, ease: "power3.out", stagger: 0.03,
       }, "-=0.3");
 
       heroParagraphSplit = new SplitText(heroParagraphRef.current, { type: "lines" });
       tlEntry.from(heroParagraphSplit.lines, {
-        duration: 0.8, opacity: 0, y: 20, ease: "power3.out", stagger: 0.1,
+        duration: 0.8, autoAlpha: 0, y: 20, ease: "power3.out", stagger: 0.1,
       }, "-=0.6");
       
-      tlEntry.from(heroFormRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=0.5");
+      tlEntry.to(heroFormRef.current, { autoAlpha: 1, y: 0, duration: 0.8 }, "-=0.5");
+    }
+    
+    // Fade in the whole page after initial animations are set
+    if (landingPageContainerRef.current) {
+        tlEntry.to(landingPageContainerRef.current, { opacity: 1, duration: 0.3 }, ">-0.5"); 
     }
 
+
     if (kanbanMockupSectionRef.current && kanbanMockupCardRef.current) {
-      gsap.fromTo(kanbanMockupCardRef.current, 
-        { opacity: 0, y: 100, scale: 0.95 },
+      gsap.to(kanbanMockupCardRef.current, 
         { 
-          opacity: 1, y: 0, scale: 1, duration: 1, ease: "power3.out",
+          autoAlpha: 1, y: 0, scale: 1, duration: 1, ease: "power3.out",
           scrollTrigger: {
             trigger: kanbanMockupSectionRef.current,
             start: "top 80%", 
             toggleActions: "play none none none",
+            once: true,
             onEnter: () => {
               if (kanbanColumnsRef.current.length > 0) {
                 gsap.from(kanbanColumnsRef.current.filter(el => el), {
-                  opacity: 0, y: 50, duration: 0.6, stagger: 0.15, ease: "power3.out", delay: 0.2
+                  autoAlpha: 0, y: 50, duration: 0.6, stagger: 0.15, ease: "power3.out", delay: 0.2
                 });
               }
             }
@@ -217,12 +244,12 @@ function LandingPageContent() {
     if (whyKollabSectionRef.current && whyKollabTitleRef.current) {
       whyKollabTitleSplit = new SplitText(whyKollabTitleRef.current, { type: "words,chars" });
       gsap.from(whyKollabTitleSplit.chars, {
-        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
       });
       gsap.from(whyKollabItemsRef.current.filter(el => el), {
-        opacity: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
-        scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 70%", toggleActions: "play none none none" }
+        autoAlpha: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
+        scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 70%", toggleActions: "play none none none", once: true, }
       });
     }
 
@@ -230,12 +257,12 @@ function LandingPageContent() {
     if (howItWorksSectionRef.current && howItWorksTitleRef.current) {
       howItWorksTitleSplit = new SplitText(howItWorksTitleRef.current, { type: "words,chars" });
       gsap.from(howItWorksTitleSplit.chars, {
-        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
       });
       gsap.from(howItWorksStepsRef.current.filter(el => el), {
-        opacity: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
-        scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 65%", toggleActions: "play none none none" }
+        autoAlpha: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
+        scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 65%", toggleActions: "play none none none", once: true, }
       });
     }
 
@@ -243,28 +270,22 @@ function LandingPageContent() {
     if (featureSpotlightSectionRef.current && featureSpotlightTitleRef.current) {
       featureSpotlightTitleSplit = new SplitText(featureSpotlightTitleRef.current, { type: "words,chars" });
       gsap.from(featureSpotlightTitleSplit.chars, {
-        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: featureSpotlightSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: featureSpotlightSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
       });
       featureSpotlightItemsRef.current.filter(el => el).forEach((item, index) => {
-        const img = item.querySelector('img'); // Or a specific class for the 3D placeholder
+        const img = item.querySelector('img');
         const textContent = item.querySelector('.feature-text-content');
         const tlFeature = gsap.timeline({
-          scrollTrigger: { trigger: item, start: "top 80%", toggleActions: "play none none none" }
+          scrollTrigger: { trigger: item, start: "top 80%", toggleActions: "play none none none", once: true, }
         });
-        tlFeature.from(img, { opacity: 0, x: index % 2 === 0 ? -50 : 50, scale: 0.8, duration: 0.8, ease: "power3.out" })
-                 .from(textContent, { opacity: 0, y: 30, duration: 0.7, ease: "power3.out" }, "-=0.5");
+        tlFeature.from(img, { autoAlpha: 0, x: index % 2 === 0 ? -50 : 50, scale: 0.8, duration: 0.8, ease: "power3.out" })
+                 .from(textContent, { autoAlpha: 0, y: 30, duration: 0.7, ease: "power3.out" }, "-=0.5");
         
-        // Add subtle animation to the "3D" placeholder image if it's an image
         if (img) {
             gsap.to(img, {
-                rotationY: 5, // Subtle rotation
-                scale: 1.03, // Subtle scale
-                duration: 8,
-                ease: "sine.inOut",
-                yoyo: true,
-                repeat: -1,
-                delay: index * 0.5 // Stagger the start of these subtle animations
+                rotationY: 5, scale: 1.03, duration: 8, ease: "sine.inOut",
+                yoyo: true, repeat: -1, delay: index * 0.5 + 1 // Delay after entry
             });
         }
       });
@@ -274,12 +295,12 @@ function LandingPageContent() {
     if (testimonialsSectionRef.current && testimonialsTitleRef.current) {
       testimonialsTitleSplit = new SplitText(testimonialsTitleRef.current, { type: "words,chars" });
       gsap.from(testimonialsTitleSplit.chars, {
-        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
       });
       gsap.from(testimonialsItemsRef.current.filter(el => el), {
-        opacity: 0, y: 50, scale: 0.95, stagger: 0.2, duration: 0.7, ease: "back.out(1.4)",
-        scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 70%", toggleActions: "play none none none" }
+        autoAlpha: 0, y: 50, scale: 0.95, stagger: 0.2, duration: 0.7, ease: "back.out(1.4)",
+        scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 70%", toggleActions: "play none none none", once: true, }
       });
     }
     
@@ -287,17 +308,17 @@ function LandingPageContent() {
     if (finalCTASectionRef.current && finalCTATitleRef.current && finalCTAParagraphRef.current && finalCTAButtonRef.current) {
       finalCTATitleSplit = new SplitText(finalCTATitleRef.current, { type: "words,chars" });
       const ctaTimeline = gsap.timeline({
-        scrollTrigger: { trigger: finalCTASectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+        scrollTrigger: { trigger: finalCTASectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
       });
-      ctaTimeline.from(finalCTATitleSplit.chars, { opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out" })
-        .from(finalCTAParagraphRef.current, { opacity: 0, y: 20, duration: 0.5, ease: "power2.out" }, "-=0.3")
-        .from(finalCTAButtonRef.current, { opacity: 0, scale: 0.8, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
+      ctaTimeline.from(finalCTATitleSplit.chars, { autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out" })
+        .from(finalCTAParagraphRef.current, { autoAlpha: 0, y: 20, duration: 0.5, ease: "power2.out" }, "-=0.3")
+        .from(finalCTAButtonRef.current, { autoAlpha: 0, scale: 0.8, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
     }
 
     if (footerRef.current) {
         gsap.from(footerRef.current, {
-          opacity: 0, y: 50, duration: 0.8, ease: "power3.out",
-          scrollTrigger: { trigger: footerRef.current, start: "top 95%", toggleActions: "play none none none" }
+          autoAlpha: 0, y: 50, duration: 0.8, ease: "power3.out",
+          scrollTrigger: { trigger: footerRef.current, start: "top 95%", toggleActions: "play none none none", once: true, }
         });
     }
 
@@ -305,12 +326,17 @@ function LandingPageContent() {
     const updateScrollbar = () => {
       if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
-        if (scrollHeight <= clientHeight) { setIsScrollbarVisible(false); return; }
+        if (scrollHeight <= clientHeight) { 
+            if (isScrollbarVisible) {
+                gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
+            }
+            return;
+        }
         
-        const wasVisible = isScrollbarVisible;
-        setIsScrollbarVisible(true);
-        if(!wasVisible) gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
-
+        if(!isScrollbarVisible) {
+            gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
+            setIsScrollbarVisible(true);
+        }
 
         const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * clientHeight);
         const thumbPosition = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
@@ -328,7 +354,7 @@ function LandingPageContent() {
     const handleResize = () => updateScrollbar();
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize, { passive: true });
-    updateScrollbar();
+    updateScrollbar(); // Initial call
 
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
@@ -342,15 +368,13 @@ function LandingPageContent() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current]);
+      gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current, landingPageContainerRef.current]);
     };
-  }, [loading, user]); // Ensure animations only run when not loading and no user (i.e., on initial landing)
+  }, [loading, user]); // Ensure animations only run when not loading and no user
 
   if (loading || (!loading && user)) {
-    // This means auth state is being checked, or user is logged in (and will be redirected by parent effect)
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] flex items-center justify-center">
-        {/* You can add a more styled loader here if you wish */}
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -358,7 +382,7 @@ function LandingPageContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col">
+      <div ref={landingPageContainerRef} className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col" style={{ opacity: 0 }}> {/* Initially hidden */}
         <header 
           ref={headerRef}
           className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-8 py-5 bg-[#0a0a13]/80 backdrop-blur-md"
@@ -501,7 +525,7 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* Feature Spotlight Section (replaces old "Features") */}
+          {/* Feature Spotlight Section */}
           <section id="features" ref={featureSpotlightSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]">
             <div className="container mx-auto">
               <h2 ref={featureSpotlightTitleRef} className="text-3xl lg:text-4xl font-semibold text-center text-white mb-16">
@@ -513,7 +537,7 @@ function LandingPageContent() {
                   ref={el => featureSpotlightItemsRef.current[index] = el}
                   className={cn(
                     "flex flex-col lg:flex-row items-center gap-8 lg:gap-16 mb-16 lg:mb-24",
-                    index % 2 !== 0 && "lg:flex-row-reverse" // Alternate layout
+                    index % 2 !== 0 && "lg:flex-row-reverse" 
                   )}
                 >
                   <div className="lg:w-1/2">
@@ -523,7 +547,7 @@ function LandingPageContent() {
                       width={500}
                       height={350}
                       className="rounded-xl shadow-2xl border border-[#2c2c44]"
-                      data-ai-hint={feature.dataAiHint} // Using the updated hint for metallic/3D look
+                      data-ai-hint={feature.dataAiHint}
                     />
                   </div>
                   <div className="lg:w-1/2 feature-text-content">
@@ -610,18 +634,18 @@ function LandingPageContent() {
       </div>
       <div 
         ref={scrollbarTrackRef} 
-        className={cn("custom-scrollbar-track", scrollbarTrackRef.current && scrollbarTrackRef.current.style.opacity === '1' && "visible")}
+        className={cn("custom-scrollbar-track", isScrollbarVisible && "visible")}
         onMouseEnter={() => {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-            if (scrollbarTrackRef.current && scrollbarTrackRef.current.style.opacity !== '1') {
+            if (scrollbarTrackRef.current && !isScrollbarVisible) {
                  gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
-                 setIsScrollbarVisible(true); // Keep state in sync
+                 setIsScrollbarVisible(true);
             }
         }}
         onMouseLeave={() => {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
             scrollTimeoutRef.current = setTimeout(() => {
-                if (scrollbarTrackRef.current) {
+                if (scrollbarTrackRef.current && scrollbarTrackRef.current.matches(':hover') === false) { // Check hover again
                     gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
                 }
             }, 1500);
@@ -640,6 +664,4 @@ export default function LandingPage() {
     </AuthProvider>
   );
 }
-    
-
     
