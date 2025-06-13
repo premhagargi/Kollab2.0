@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Generates a client-ready progress summary for a workflow.
@@ -58,6 +57,7 @@ const ClientProgressSummaryInputSchema = z.object({
       columnId: z.string().optional(), // To infer status if not explicitly completed
       clientName: z.string().optional(),
       isBillable: z.boolean().optional().default(false),
+      ownerId: z.string().optional(),
     })
   ).describe('A list of tasks in the workflow.'),
    clientContext: z.string().optional().describe('Optional context for the client update, e.g., "weekly update", "project milestone". Default to general progress.'),
@@ -106,7 +106,7 @@ ${formatTaskForPrompt({
   columnId: (this as any).columnId,
   clientName: (this as any).clientName,
   isBillable: (this as any).isBillable,
-  // Add other required fields for Task if formatTaskForPrompt uses them
+  ownerId: (this as any).ownerId || '',
   subtasks: [], comments: [], createdAt: '', workflowId: '', creatorId: ''
 })}
 {{/each}}

@@ -1,4 +1,3 @@
-
 // src/actions/ai.ts
 'use server';
 
@@ -6,6 +5,7 @@ import { summarizeTask as runSummarizeTaskFlow, type TaskSummarizationInput, typ
 import { suggestSubtasks as runSuggestSubtasksFlow, type SubtaskSuggestionsInput, type SubtaskSuggestionsOutput } from '@/ai/flows/subtask-suggestions';
 import { generateClientProgressSummary as runClientProgressSummaryFlow, type ClientProgressSummaryInput, type ClientProgressSummaryOutput } from '@/ai/flows/client-progress-summary-flow';
 import { getTasksByWorkflow } from '@/services/taskService';
+import { getWorkflowById } from '@/services/workflowService';
 import type { Task } from '@/types';
 
 export async function summarizeTaskAction(input: TaskSummarizationInput): Promise<TaskSummarizationOutput> {
@@ -57,8 +57,23 @@ export async function generateClientProgressSummaryAction(
   }
 
   try {
+    console.log(`[aiAction] generateClientProgressSummaryAction: Starting summary generation for workflowId='${workflowId}', userId='${userId}'`);
+    
+    // First verify workflow ownership
+    const workflow = await getWorkflowById(workflowId);
+    if (!workflow) {
+      console.error(`[aiAction] generateClientProgressSummaryAction: Workflow not found. workflowId='${workflowId}'`);
+      return { summaryText: "Error: Workflow not found." };
+    }
+    if (workflow.ownerId !== userId) {
+      console.error(`[aiAction] generateClientProgressSummaryAction: User does not own this workflow. workflowId='${workflowId}', userId='${userId}', workflowOwnerId='${workflow.ownerId}'`);
+      return { summaryText: "Error: You don't have permission to generate summaries for this workflow." };
+    }
+
     console.log(`[aiAction] generateClientProgressSummaryAction: Fetching tasks for workflowId='${workflowId}', userId='${userId}'`);
     const tasksFromDb = await getTasksByWorkflow(workflowId, userId); 
+    
+    console.log(`[aiAction] generateClientProgressSummaryAction: Retrieved ${tasksFromDb.length} tasks`);
     
     const tasksForAI: ClientProgressSummaryInput['tasks'] = tasksFromDb.map(task => ({
       id: task.id,
@@ -73,6 +88,7 @@ export async function generateClientProgressSummaryAction(
       isBillable: task.isBillable,
     }));
 
+    console.log(`[aiAction] generateClientProgressSummaryAction: Generating summary with ${tasksForAI.length} tasks`);
     const result = await runClientProgressSummaryFlow({
       workflowName,
       tasks: tasksForAI,
@@ -81,8 +97,10 @@ export async function generateClientProgressSummaryAction(
     });
 
     if (!result || typeof result.summaryText !== 'string') {
+      console.error(`[aiAction] generateClientProgressSummaryAction: Invalid summary format from AI. workflowId='${workflowId}'`);
       throw new Error('Invalid summary format from AI for client update.');
     }
+    console.log(`[aiAction] generateClientProgressSummaryAction: Successfully generated summary for workflowId='${workflowId}'`);
     return result;
   } catch (error) {
     console.error(`[aiAction] Error in generateClientProgressSummaryAction for workflowId='${workflowId}', userId='${userId}':`, error);
