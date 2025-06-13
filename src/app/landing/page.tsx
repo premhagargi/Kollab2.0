@@ -1,45 +1,70 @@
 // src/app/landing/page.tsx
 "use client";
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import NextImage from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { motion, LazyMotion, domAnimation } from 'framer-motion';
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-};
-
-const navItemVariants = {
-  hidden: { opacity: 0, y: -10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
-};
-
+import { gsap } from 'gsap';
 
 function LandingPageContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  React.useEffect(() => {
+  const headerRef = useRef<HTMLElement>(null);
+  const logoRef = useRef<HTMLDivElement>(null);
+  const navItemsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const authButtonsRef = useRef<HTMLDivElement>(null);
+  
+  const heroSectionRef = useRef<HTMLElement>(null);
+  const hiringBannerRef = useRef<HTMLDivElement>(null);
+  const heroTitleRef = useRef<HTMLHeadingElement>(null);
+  const heroParagraphRef = useRef<HTMLParagraphElement>(null);
+  const heroFormRef = useRef<HTMLDivElement>(null);
+  
+  const kanbanMockupRef = useRef<HTMLElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
+
+
+  useEffect(() => {
     if (!loading && user) {
       router.replace('/'); 
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (loading || user) return; // Don't run animations if loading or user exists (will redirect)
+
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+    // Header animations
+    if (headerRef.current) {
+      tl.from(logoRef.current, { opacity: 0, y: -20, duration: 0.6, delay: 0.2 })
+        .from(navItemsRef.current.filter(el => el), { opacity: 0, y: -20, duration: 0.5, stagger: 0.1 }, "-=0.4")
+        .from(authButtonsRef.current, { opacity: 0, y: -20, duration: 0.5 }, "-=0.3");
+    }
+
+    // Hero section animations
+    if (heroSectionRef.current) {
+      tl.from(hiringBannerRef.current, { opacity: 0, y: 20, duration: 0.6 }, "-=0.2")
+        .from(heroTitleRef.current, { opacity: 0, y: 30, duration: 0.8 }, "-=0.4")
+        .from(heroParagraphRef.current, { opacity: 0, y: 30, duration: 0.7 }, "-=0.6")
+        .from(heroFormRef.current, { opacity: 0, y: 30, duration: 0.7 }, "-=0.5");
+    }
+
+    // Kanban mockup animation
+    if (kanbanMockupRef.current) {
+      tl.from(kanbanMockupRef.current, { opacity: 0, scale: 0.9, duration: 1, ease: "back.out(1.7)" }, "-=0.5");
+    }
+    
+    // Footer animation
+    if (footerRef.current) {
+        tl.from(footerRef.current, { opacity: 0, duration: 0.5 }, "-=0.3");
+    }
+
+  }, [loading, user]);
+
 
   if (loading || (!loading && user)) {
     return (
@@ -50,121 +75,88 @@ function LandingPageContent() {
   }
 
   return (
-    <LazyMotion features={domAnimation}>
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col">
         {/* Header */}
-        <motion.header 
+        <header 
+          ref={headerRef}
           className="flex items-center justify-between px-6 md:px-8 py-5"
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
         >
-          <motion.div variants={itemVariants} className="flex items-center space-x-3">
+          <div ref={logoRef} className="flex items-center space-x-3">
             <Link href="/landing" className="flex items-center space-x-3">
               <div className="bg-white rounded-md p-1.5">
                 <NextImage src="https://placehold.co/30x30.png" alt="Kollab Logo" width={30} height={30} data-ai-hint="modern logo" />
               </div>
               <span className="text-white text-xl font-bold">Kollab</span>
             </Link>
-          </motion.div>
+          </div>
           
-          <motion.nav 
-            className="hidden md:flex space-x-6 text-sm font-medium"
-            variants={containerVariants} // Stagger children
-          >
-            <motion.div variants={navItemVariants}>
+          <nav className="hidden md:flex space-x-6 text-sm font-medium">
+            <div ref={el => navItemsRef.current[0] = el}>
               <Link href="/landing" className="hover:text-[#6e6ef6] cursor-pointer">Home</Link>
-            </motion.div>
-            {/* <motion.div variants={navItemVariants} className="relative group">
-              <span className="hover:text-[#6e6ef6] cursor-pointer flex items-center">
-                Products
-                <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </motion.div>
-            <motion.div variants={navItemVariants}>
-              <span className="hover:text-[#6e6ef6] cursor-pointer">Resources</span>
-            </motion.div>
-            <motion.div variants={navItemVariants}>
-              <span className="hover:text-[#6e6ef6] cursor-pointer">Pricing</span>
-            </motion.div> */}
-          </motion.nav>
+            </div>
+            {/* Removed product dropdown, resources, pricing for brevity in animation setup for now */}
+          </nav>
 
-          <motion.div variants={itemVariants} className="flex items-center space-x-3">
+          <div ref={authButtonsRef} className="flex items-center space-x-3">
             <Link href="/auth?view=login" passHref>
-              <motion.button 
-                className="bg-transparent text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-white/10 transition"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <button className="bg-transparent text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-white/10 transition">
                 Sign in
-              </motion.button>
+              </button>
             </Link>
             <Link href="/auth?view=signup" passHref>
-              <motion.button 
-                className="bg-[#6e6ef6] text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-[#5757d1] transition"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <button className="bg-[#6e6ef6] text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-[#5757d1] transition">
                 Sign up
-              </motion.button>
+              </button>
             </Link>
-          </motion.div>
-        </motion.header>
+          </div>
+        </header>
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-10 lg:py-0">
           {/* Left: Hero Section */}
-          <motion.section 
+          <section 
+            ref={heroSectionRef}
             className="w-full lg:w-1/2 flex flex-col justify-center items-start space-y-6 text-center lg:text-left"
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants} // Stagger children
           >
-            {/* <motion.div variants={itemVariants} className="flex items-center space-x-3 mb-2 self-center lg:self-start">
+            <div ref={hiringBannerRef} className="flex items-center space-x-3 mb-2 self-center lg:self-start">
               <span className="bg-[#23233a] text-[#b3b3ff] px-3 py-1 rounded-full text-xs font-medium">We're hiring</span>
               <button className="bg-[#18182a] text-white px-3 py-1 rounded-full text-xs font-medium border border-[#23233a] hover:bg-[#23233a] transition">
                 Join our remote team →
               </button>
-            </motion.div> */}
-            <motion.h1 
-              variants={itemVariants} 
+            </div>
+            <h1 
+              ref={heroTitleRef}
               className="text-4xl lg:text-6xl font-normal text-white leading-tight tracking-tighter"
             >
               Manage All of Your <br /> Work In One Place <br /> Efficiently
-            </motion.h1>
-            <motion.p 
-              variants={itemVariants} 
+            </h1>
+            <p 
+              ref={heroParagraphRef}
               className="text-gray-400 text-base lg:text-lg max-w-md leading-relaxed tracking-tight"
             >
               Manage your work, timelines and team mates all at once. Set and follow timelines, assign tasks and keep your projects in check.
-            </motion.p>
+            </p>
 
-            <motion.div variants={itemVariants} className="flex w-full max-w-md mt-2 self-center lg:self-start">
+            <div ref={heroFormRef} className="flex w-full max-w-md mt-2 self-center lg:self-start">
               <input
                 type="email"
                 placeholder="Enter your email"
                 className="flex-1 px-5 py-3 rounded-l-full bg-[#23233a] text-white placeholder-[#b3b3ff] focus:outline-none border border-[#23233a] focus:border-[#6e6ef6] focus:ring-1 focus:ring-[#6e6ef6]"
               />
               <Link href="/auth?view=signup" passHref className="contents">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                <button
                   className="px-6 py-3 bg-white text-[#18182a] font-semibold rounded-r-full hover:bg-gray-200 transition"
                 >
                   Get started
-                </motion.button>
+                </button>
               </Link>
-            </motion.div>
-          </motion.section>
+            </div>
+          </section>
 
           {/* Right: Kanban Board Mockup */}
-          <motion.section 
+          <section 
+            ref={kanbanMockupRef}
             className="w-full lg:w-1/2 flex justify-center items-center mt-12 lg:mt-0"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
           >
             <div className="bg-[#18182a] rounded-2xl shadow-2xl p-5 w-full max-w-2xl border border-[#2c2c44]">
               <div className="flex items-center justify-between mb-4">
@@ -231,18 +223,15 @@ function LandingPageContent() {
                 </div>
               </div>
             </div>
-          </motion.section>
+          </section>
         </main>
-         <motion.footer 
+         <footer 
+          ref={footerRef}
           className="text-center py-6 text-gray-500 text-xs"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
         >
           &copy; {new Date().getFullYear()} Kollab. All rights reserved.
-        </motion.footer>
+        </footer>
       </div>
-    </LazyMotion>
   );
 }
 
