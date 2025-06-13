@@ -61,11 +61,8 @@ export function CalendarSidebar({
   const tasksForSelectedDateInSidebar = selectedDate ? tasksByDate.get(format(selectedDate, 'yyyy-MM-dd')) || [] : [];
 
   return (
-    <Card className={cn("h-full flex flex-col shadow-lg w-[350px] flex-shrink-0 border-r bg-sidebar text-sidebar-foreground", className)}>
+    <Card className={cn("h-full flex flex-col shadow-lg w-[250px] flex-shrink-0 border-r bg-sidebar text-sidebar-foreground", className)}>
       <CardHeader className="p-3 border-b border-sidebar-border flex-shrink-0">
-        <CardTitle className="text-base font-semibold flex items-center text-sidebar-primary">
-            <CalendarDays className="mr-2 h-4 w-4 text-sidebar-primary"/> Calendar
-        </CardTitle>
         <CardDescription className="text-xs text-sidebar-accent-foreground">
           Select a day to view tasks.
         </CardDescription>
