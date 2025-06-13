@@ -21,7 +21,7 @@ function LandingPageContent() {
 
   const headerRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
-  const navItemsRef = useRef<(HTMLAnchorElement | HTMLDivElement | null)[]>([]);
+  const navItemsRef = useRef<(HTMLAnchorElement | null)[]>([]);
   const authButtonsRef = useRef<HTMLDivElement>(null);
   
   const heroSectionRef = useRef<HTMLElement>(null);
@@ -30,8 +30,8 @@ function LandingPageContent() {
   const heroParagraphRef = useRef<HTMLParagraphElement>(null);
   const heroFormRef = useRef<HTMLDivElement>(null);
   
-  const kanbanMockupSectionRef = useRef<HTMLElement>(null);
-  const kanbanMockupCardRef = useRef<HTMLDivElement>(null);
+  const kanbanMockupSectionRef = useRef<HTMLElement>(null); // Ref for the section containing the card
+  const kanbanMockupCardRef = useRef<HTMLDivElement>(null); // Ref for the card itself
   const kanbanColumnsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   const featuresSectionRef = useRef<HTMLElement>(null);
@@ -128,18 +128,20 @@ function LandingPageContent() {
         { 
           opacity: 1, y: 0, scale: 1, duration: 1, ease: "power3.out",
           scrollTrigger: {
-            trigger: kanbanMockupSectionRef.current,
-            start: "top 80%", 
+            trigger: kanbanMockupSectionRef.current, // Use the section as trigger
+            start: "top 80%", // Animate when top of section hits 80% of viewport height
             toggleActions: "play none none none",
-            onEnter: () => {
+            // once: true, // Optional: only play once
+            onEnter: () => { // Callback when trigger enters
+              // Stagger animation for columns inside the card
               if (kanbanColumnsRef.current.length > 0) {
-                gsap.from(kanbanColumnsRef.current.filter(el => el), {
+                gsap.from(kanbanColumnsRef.current.filter(el => el), { // Filter out nulls
                   opacity: 0,
                   y: 50,
                   duration: 0.6,
-                  stagger: 0.15,
+                  stagger: 0.15, // Stagger amount between each column
                   ease: "power3.out",
-                  delay: 0.2 
+                  delay: 0.2 // Slight delay after card starts animating
                 });
               }
             }
@@ -162,15 +164,16 @@ function LandingPageContent() {
         }
       });
 
-      gsap.from(featureItemsRef.current.filter(el => el), {
+      // Stagger animation for feature items
+      gsap.from(featureItemsRef.current.filter(el => el), { // Filter out nulls if any ref wasn't set
         opacity: 0,
         y: 50,
         duration: 0.7,
         ease: "power3.out",
-        stagger: 0.2,
+        stagger: 0.2, // Stagger amount between each feature item
         scrollTrigger: {
-          trigger: featuresSectionRef.current,
-          start: "top 70%",
+          trigger: featuresSectionRef.current, // Could also use featuresTitleRef as trigger
+          start: "top 70%", // Adjust as needed
           toggleActions: "play none none none",
         }
       });
@@ -185,7 +188,7 @@ function LandingPageContent() {
           ease: "power3.out",
           scrollTrigger: {
             trigger: footerRef.current,
-            start: "top 95%",
+            start: "top 95%", // Animate when footer is almost in view
             toggleActions: "play none none none",
           }
         });
@@ -201,7 +204,7 @@ function LandingPageContent() {
           return;
         }
         
-        setIsScrollbarVisible(true);
+        setIsScrollbarVisible(true); // Show if scrollable
 
         const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * clientHeight); // Min height 20px
         const thumbPosition = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
@@ -244,20 +247,23 @@ function LandingPageContent() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      gsap.killTweensOf(scrollbarThumbRef.current);
+      gsap.killTweensOf(scrollbarThumbRef.current); // Kill specific tweens for the thumb
     };
 
-  }, [loading, user]);
+  }, [loading, user]); // Empty dependency array to run once on mount
 
 
   if (loading || (!loading && user)) {
+    // If auth is still loading, or if user is found (and redirect to '/' will happen), show loader.
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] flex items-center justify-center">
+        {/* You can add a more sophisticated loader here if desired */}
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
   }
 
+  // If not loading and no user, render the landing page content.
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col">
@@ -301,7 +307,7 @@ function LandingPageContent() {
           {/* Hero Section */}
           <section 
             ref={heroSectionRef}
-            className="flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-10 lg:py-16 min-h-[calc(100vh-80px)] lg:min-h-0"
+            className="flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-10 lg:py-16 min-h-[calc(100vh-80px)] lg:min-h-0" // Adjusted min-height for hero to not always take full screen
           >
             {/* Left: Hero Text */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center items-start space-y-6 text-center lg:text-left mb-12 lg:mb-0">
@@ -353,6 +359,7 @@ function LandingPageContent() {
                   </div>
                 </div>
                 <div className="flex space-x-3 overflow-x-auto pb-2">
+                  {/* Columns */}
                   <div ref={el => kanbanColumnsRef.current[0] = el} className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg kanban-column-mock">
                     <h3 className="text-[#b3b3ff] font-semibold text-sm mb-2">To Do <span className="text-gray-500 text-xs">3</span></h3>
                     <div className="space-y-2">
@@ -383,7 +390,7 @@ function LandingPageContent() {
           </section>
 
           {/* Features Section */}
-          <section id="features" ref={featuresSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]">
+          <section id="features" ref={featuresSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]"> {/* Slightly different bg for contrast */}
             <div className="container mx-auto">
               <h2 ref={featuresTitleRef} className="text-3xl lg:text-4xl font-semibold text-center text-white mb-12 lg:mb-16">
                 Powerful Features to Boost Your Productivity
@@ -395,8 +402,8 @@ function LandingPageContent() {
                     ref={el => featureItemsRef.current[index] = el}
                     className="bg-[#18182a] p-6 rounded-xl shadow-xl border border-[#2c2c44] flex flex-col items-start hover:shadow-2xl hover:border-[#6e6ef6]/50 transition-all duration-300 transform hover:-translate-y-1"
                   >
-                    <div className="p-3 rounded-lg bg-[#6e6ef6]/10 mb-4">
-                       <feature.icon className="h-7 w-7 text-[#8f8fff]" />
+                    <div className="p-3 rounded-lg bg-[#6e6ef6]/10 mb-4"> {/* Icon background */}
+                       <feature.icon className="h-7 w-7 text-[#8f8fff]" /> {/* Icon color */}
                     </div>
                     <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
                     <p className="text-gray-400 text-sm leading-relaxed mb-4 flex-grow">{feature.description}</p>
@@ -436,7 +443,7 @@ function LandingPageContent() {
         ref={scrollbarTrackRef} 
         className={cn(
           "custom-scrollbar-track",
-          isScrollbarVisible && "visible"
+          isScrollbarVisible && "visible" // Toggle visibility based on state
         )}
         onMouseEnter={() => { // Keep visible if mouse is over track
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
