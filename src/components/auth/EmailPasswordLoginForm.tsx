@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Not used directly if using FormField
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -21,10 +21,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface EmailPasswordLoginFormProps {
   onSuccess?: () => void;
-  onSwitchToSignup?: () => void;
+  // onSwitchToSignup prop removed
 }
 
-export function EmailPasswordLoginForm({ onSuccess, onSwitchToSignup }: EmailPasswordLoginFormProps) {
+export function EmailPasswordLoginForm({ onSuccess }: EmailPasswordLoginFormProps) {
   const { loginWithEmailAndPassword, loading } = useAuth();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -37,9 +37,8 @@ export function EmailPasswordLoginForm({ onSuccess, onSwitchToSignup }: EmailPas
   const onSubmit = async (data: LoginFormValues) => {
     try {
       await loginWithEmailAndPassword(data.email, data.password);
-      onSuccess?.(); // Callback on successful login attempt (AuthContext handles actual success toast)
+      onSuccess?.(); 
     } catch (error) {
-      // Error is handled by AuthContext, which shows a toast
       console.error("Login form submission error:", error);
     }
   };
@@ -52,9 +51,15 @@ export function EmailPasswordLoginForm({ onSuccess, onSwitchToSignup }: EmailPas
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel className="text-gray-300">Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} disabled={loading} />
+                <Input 
+                  type="email" 
+                  placeholder="you@example.com" 
+                  {...field} 
+                  disabled={loading} 
+                  className="bg-[#23233a] border-[#2c2c44] text-white placeholder-gray-500 focus:border-[#6e6ef6] focus:ring-[#6e6ef6]"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -65,26 +70,25 @@ export function EmailPasswordLoginForm({ onSuccess, onSwitchToSignup }: EmailPas
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel className="text-gray-300">Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
+                <Input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  {...field} 
+                  disabled={loading} 
+                  className="bg-[#23233a] border-[#2c2c44] text-white placeholder-gray-500 focus:border-[#6e6ef6] focus:ring-[#6e6ef6]"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full bg-[#6e6ef6] hover:bg-[#5757d1] text-white" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Sign In
         </Button>
-        {onSwitchToSignup && (
-          <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Button variant="link" type="button" onClick={onSwitchToSignup} className="p-0 h-auto font-semibold text-primary" disabled={loading}>
-              Sign Up
-            </Button>
-          </p>
-        )}
+        {/* onSwitchToSignup button removed */}
       </form>
     </Form>
   );
