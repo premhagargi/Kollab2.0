@@ -22,7 +22,7 @@ const kollabMainFeatures = [
     description: "Organize tasks visually with customizable columns. Drag & drop to manage your projects with ease, track progress at a glance, and maintain clarity across all your initiatives.",
     linkText: "Explore Workflows",
     image: "https://placehold.co/500x350.png",
-    dataAiHint: "kanban board interface"
+    dataAiHint: "metallic abstract cube" // Updated for 3D metallic feel
   },
   {
     icon: ListChecks,
@@ -30,7 +30,7 @@ const kollabMainFeatures = [
     description: "Create, update, and manage tasks with details like client names, billable status, deliverables, priority, due dates, subtasks, and comments. Never miss a deadline.",
     linkText: "Manage Tasks Better",
     image: "https://placehold.co/500x350.png",
-    dataAiHint: "task detail screen"
+    dataAiHint: "glossy 3d shapes" // Updated for 3D metallic feel
   },
   {
     icon: Brain,
@@ -38,7 +38,7 @@ const kollabMainFeatures = [
     description: "Leverage Genkit for AI-generated client update drafts and task breakdown suggestions to enhance scope, planning, and communication. Save time and reduce manual effort.",
     linkText: "Discover AI Tools",
     image: "https://placehold.co/500x350.png",
-    dataAiHint: "ai assistant interface"
+    dataAiHint: "futuristic metallic orb" // Updated for 3D metallic feel
   },
 ];
 
@@ -158,6 +158,7 @@ function LandingPageContent() {
   useEffect(() => {
     if (loading || user) return; 
 
+    gsap.registerPlugin(ScrollTrigger, SplitText);
     let heroTitleSplit: SplitText | null = null;
     let heroParagraphSplit: SplitText | null = null;
     let whyKollabTitleSplit: SplitText | null = null;
@@ -246,13 +247,26 @@ function LandingPageContent() {
         scrollTrigger: { trigger: featureSpotlightSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
       });
       featureSpotlightItemsRef.current.filter(el => el).forEach((item, index) => {
-        const img = item.querySelector('img');
+        const img = item.querySelector('img'); // Or a specific class for the 3D placeholder
         const textContent = item.querySelector('.feature-text-content');
         const tlFeature = gsap.timeline({
           scrollTrigger: { trigger: item, start: "top 80%", toggleActions: "play none none none" }
         });
-        tlFeature.from(img, { opacity: 0, x: index % 2 === 0 ? -50 : 50, duration: 0.8, ease: "power3.out" })
+        tlFeature.from(img, { opacity: 0, x: index % 2 === 0 ? -50 : 50, scale: 0.8, duration: 0.8, ease: "power3.out" })
                  .from(textContent, { opacity: 0, y: 30, duration: 0.7, ease: "power3.out" }, "-=0.5");
+        
+        // Add subtle animation to the "3D" placeholder image if it's an image
+        if (img) {
+            gsap.to(img, {
+                rotationY: 5, // Subtle rotation
+                scale: 1.03, // Subtle scale
+                duration: 8,
+                ease: "sine.inOut",
+                yoyo: true,
+                repeat: -1,
+                delay: index * 0.5 // Stagger the start of these subtle animations
+            });
+        }
       });
     }
     
@@ -292,14 +306,20 @@ function LandingPageContent() {
       if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
         if (scrollHeight <= clientHeight) { setIsScrollbarVisible(false); return; }
+        
+        const wasVisible = isScrollbarVisible;
         setIsScrollbarVisible(true);
+        if(!wasVisible) gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
+
+
         const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * clientHeight);
         const thumbPosition = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
         gsap.to(scrollbarThumbRef.current, { height: thumbHeight, y: thumbPosition, duration: 0.1, ease: "power1.out" });
+        
         if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
         scrollTimeoutRef.current = setTimeout(() => {
             if (scrollbarTrackRef.current && !scrollbarTrackRef.current.matches(':hover')) {
-                setIsScrollbarVisible(false);
+                 gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
             }
         }, 1500);
       }
@@ -322,13 +342,15 @@ function LandingPageContent() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      gsap.killTweensOf(scrollbarThumbRef.current);
+      gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current]);
     };
-  }, [loading, user]);
+  }, [loading, user]); // Ensure animations only run when not loading and no user (i.e., on initial landing)
 
   if (loading || (!loading && user)) {
+    // This means auth state is being checked, or user is logged in (and will be redirected by parent effect)
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] flex items-center justify-center">
+        {/* You can add a more styled loader here if you wish */}
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -501,7 +523,7 @@ function LandingPageContent() {
                       width={500}
                       height={350}
                       className="rounded-xl shadow-2xl border border-[#2c2c44]"
-                      data-ai-hint={feature.dataAiHint}
+                      data-ai-hint={feature.dataAiHint} // Using the updated hint for metallic/3D look
                     />
                   </div>
                   <div className="lg:w-1/2 feature-text-content">
@@ -588,14 +610,21 @@ function LandingPageContent() {
       </div>
       <div 
         ref={scrollbarTrackRef} 
-        className={cn("custom-scrollbar-track", isScrollbarVisible && "visible")}
+        className={cn("custom-scrollbar-track", scrollbarTrackRef.current && scrollbarTrackRef.current.style.opacity === '1' && "visible")}
         onMouseEnter={() => {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-            setIsScrollbarVisible(true);
+            if (scrollbarTrackRef.current && scrollbarTrackRef.current.style.opacity !== '1') {
+                 gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
+                 setIsScrollbarVisible(true); // Keep state in sync
+            }
         }}
         onMouseLeave={() => {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-            scrollTimeoutRef.current = setTimeout(() => setIsScrollbarVisible(false), 1500);
+            scrollTimeoutRef.current = setTimeout(() => {
+                if (scrollbarTrackRef.current) {
+                    gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
+                }
+            }, 1500);
         }}
       >
         <div ref={scrollbarThumbRef} className="custom-scrollbar-thumb"></div>
@@ -611,4 +640,6 @@ export default function LandingPage() {
     </AuthProvider>
   );
 }
+    
+
     
