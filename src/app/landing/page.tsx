@@ -5,8 +5,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import NextImage from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
@@ -125,7 +125,7 @@ function LandingPageContent() {
 
   const whyKollabSectionRef = useRef<HTMLElement>(null);
   const whyKollabTitleRef = useRef<HTMLHeadingElement>(null);
-  const whyKollabItemsRef = useRef<(HTMLDivElement | null)[]>(([]);
+  const whyKollabItemsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   const howItWorksSectionRef = useRef<HTMLElement>(null);
   const howItWorksTitleRef = useRef<HTMLHeadingElement>(null);
@@ -160,7 +160,6 @@ function LandingPageContent() {
   useEffect(() => {
     if (loading || user) return; 
 
-    gsap.registerPlugin(ScrollTrigger, SplitText);
     let heroTitleSplit: SplitText | null = null;
     let heroParagraphSplit: SplitText | null = null;
     let whyKollabTitleSplit: SplitText | null = null;
@@ -169,20 +168,17 @@ function LandingPageContent() {
     let testimonialsTitleSplit: SplitText | null = null;
     let finalCTATitleSplit: SplitText | null = null;
 
-    // Set initial states for elements animated on page load to prevent FOUC
     gsap.set([
         logoRef.current,
         ...(navItemsRef.current.filter(el => el)),
         authButtonsRef.current,
         hiringBannerRef.current,
         heroFormRef.current,
-        heroTitleRef.current, 
-        heroParagraphRef.current 
-      ], { autoAlpha: 0, y: 20 });
+        heroTitleRef.current, // Set initial state for parent of split text
+        heroParagraphRef.current // Set initial state for parent of split text
+      ], { autoAlpha: 0 });
     
-    // Set initial state for the Kanban mockup card (scroll-triggered)
     gsap.set(kanbanMockupCardRef.current, {autoAlpha:0, y: 50, scale: 0.95});
-
 
     const tlEntry = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
 
@@ -195,22 +191,29 @@ function LandingPageContent() {
     if (heroSectionRef.current && heroTitleRef.current && heroParagraphRef.current) {
       tlEntry.to(hiringBannerRef.current, { autoAlpha: 1, y: 0, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
       
-      tlEntry.set([heroTitleRef.current, heroParagraphRef.current], {autoAlpha: 1}, ">-0.1");
-
-      heroTitleSplit = new SplitText(heroTitleRef.current, { type: "chars,words" });
-      tlEntry.from(heroTitleSplit.chars, {
-        duration: 0.8, autoAlpha: 0, y: 30, ease: "power3.out", stagger: 0.03,
-      }, "-=0.3");
-
-      heroParagraphSplit = new SplitText(heroParagraphRef.current, { type: "lines" });
-      tlEntry.from(heroParagraphSplit.lines, {
-        duration: 0.8, autoAlpha: 0, y: 20, ease: "power3.out", stagger: 0.1,
-      }, "-=0.6");
+      tlEntry.to(heroTitleRef.current, { autoAlpha: 1 }, ">-0.1"); // Make parent visible before split
+      if (heroTitleRef.current) {
+        heroTitleSplit = new SplitText(heroTitleRef.current, { type: "chars,words" });
+        if (heroTitleSplit) { // Guard access to .chars
+            tlEntry.from(heroTitleSplit.chars, {
+            duration: 0.8, autoAlpha: 0, y: 30, ease: "power3.out", stagger: 0.03,
+            }, "-=0.3");
+        }
+      }
+      
+      tlEntry.to(heroParagraphRef.current, { autoAlpha: 1 }, ">-0.6"); // Make parent visible
+      if (heroParagraphRef.current) {
+        heroParagraphSplit = new SplitText(heroParagraphRef.current, { type: "lines" });
+        if (heroParagraphSplit) { // Guard access to .lines
+            tlEntry.from(heroParagraphSplit.lines, {
+            duration: 0.8, autoAlpha: 0, y: 20, ease: "power3.out", stagger: 0.1,
+            }, "-=0.6");
+        }
+      }
       
       tlEntry.to(heroFormRef.current, { autoAlpha: 1, y: 0, duration: 0.8 }, "-=0.5");
     }
     
-    // Kanban Mockup Animation (Scroll-triggered)
     if (kanbanMockupSectionRef.current && kanbanMockupCardRef.current) {
       gsap.to(kanbanMockupCardRef.current, 
         { 
@@ -232,82 +235,91 @@ function LandingPageContent() {
       );
     }
 
-    // Why Kollab Section Animation
     if (whyKollabSectionRef.current && whyKollabTitleRef.current) {
       whyKollabTitleSplit = new SplitText(whyKollabTitleRef.current, { type: "words,chars" });
-      gsap.from(whyKollabTitleSplit.chars, {
-        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
-      });
+      if (whyKollabTitleSplit) { // Guard
+        gsap.from(whyKollabTitleSplit.chars, {
+          autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+          scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
+        });
+      }
       gsap.from(whyKollabItemsRef.current.filter(el => el), {
         autoAlpha: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
         scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 70%", toggleActions: "play none none none", once: true, }
       });
     }
 
-    // How It Works Section Animation
     if (howItWorksSectionRef.current && howItWorksTitleRef.current) {
       howItWorksTitleSplit = new SplitText(howItWorksTitleRef.current, { type: "words,chars" });
-      gsap.from(howItWorksTitleSplit.chars, {
-        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
-      });
+      if (howItWorksTitleSplit) { // Guard
+        gsap.from(howItWorksTitleSplit.chars, {
+          autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+          scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
+        });
+      }
       gsap.from(howItWorksStepsRef.current.filter(el => el), {
         autoAlpha: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
         scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 65%", toggleActions: "play none none none", once: true, }
       });
     }
 
-    // Feature Spotlight Section Animation
     if (featureSpotlightSectionRef.current && featureSpotlightTitleRef.current) {
       featureSpotlightTitleSplit = new SplitText(featureSpotlightTitleRef.current, { type: "words,chars" });
-      gsap.from(featureSpotlightTitleSplit.chars, {
-        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: featureSpotlightSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
-      });
-      featureSpotlightItemsRef.current.filter(el => el).forEach((item, index) => {
-        const img = item.querySelector('img');
-        const textContent = item.querySelector('.feature-text-content');
-        const tlFeature = gsap.timeline({
-          scrollTrigger: { trigger: item, start: "top 80%", toggleActions: "play none none none", once: true, }
+      if (featureSpotlightTitleSplit) { // Guard
+        gsap.from(featureSpotlightTitleSplit.chars, {
+          autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+          scrollTrigger: { trigger: featureSpotlightSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
         });
-        tlFeature.from(img, { autoAlpha: 0, x: index % 2 === 0 ? -50 : 50, scale: 0.8, duration: 0.8, ease: "power3.out" })
-                 .from(textContent, { autoAlpha: 0, y: 30, duration: 0.7, ease: "power3.out" }, "-=0.5");
-        
-        if (img) {
-            gsap.to(img, {
-                rotationY: 5, scale: 1.03, duration: 8, ease: "sine.inOut",
-                yoyo: true, repeat: -1, delay: index * 0.5 + 1 
-            });
+      }
+      featureSpotlightItemsRef.current.filter(el => el).forEach((item, index) => {
+        if (item) { // item is already guaranteed to be non-null by filter
+          const img = item.querySelector('img');
+          const textContent = item.querySelector('.feature-text-content');
+          const tlFeature = gsap.timeline({
+            scrollTrigger: { trigger: item, start: "top 80%", toggleActions: "play none none none", once: true, }
+          });
+          if (img) {
+            tlFeature.from(img, { autoAlpha: 0, x: index % 2 === 0 ? -50 : 50, scale: 0.8, duration: 0.8, ease: "power3.out" });
+          }
+          if (textContent) {
+            tlFeature.from(textContent, { autoAlpha: 0, y: 30, duration: 0.7, ease: "power3.out" }, img ? "-=0.5" : ">");
+          }
+          if (img) {
+              gsap.to(img, {
+                  rotationY: 5, scale: 1.03, duration: 8, ease: "sine.inOut",
+                  yoyo: true, repeat: -1, delay: index * 0.5 + 1 
+              });
+          }
         }
       });
     }
     
-    // Testimonials Section Animation
     if (testimonialsSectionRef.current && testimonialsTitleRef.current) {
       testimonialsTitleSplit = new SplitText(testimonialsTitleRef.current, { type: "words,chars" });
-      gsap.from(testimonialsTitleSplit.chars, {
-        autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
-        scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
-      });
+      if (testimonialsTitleSplit) { // Guard
+        gsap.from(testimonialsTitleSplit.chars, {
+          autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+          scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
+        });
+      }
       gsap.from(testimonialsItemsRef.current.filter(el => el), {
         autoAlpha: 0, y: 50, scale: 0.95, stagger: 0.2, duration: 0.7, ease: "back.out(1.4)",
         scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 70%", toggleActions: "play none none none", once: true, }
       });
     }
     
-    // Final CTA Section Animation
     if (finalCTASectionRef.current && finalCTATitleRef.current && finalCTAParagraphRef.current && finalCTAButtonRef.current) {
       finalCTATitleSplit = new SplitText(finalCTATitleRef.current, { type: "words,chars" });
       const ctaTimeline = gsap.timeline({
         scrollTrigger: { trigger: finalCTASectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
       });
-      ctaTimeline.from(finalCTATitleSplit.chars, { autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out" })
-        .from(finalCTAParagraphRef.current, { autoAlpha: 0, y: 20, duration: 0.5, ease: "power2.out" }, "-=0.3")
+      if (finalCTATitleSplit) { // Guard
+        ctaTimeline.from(finalCTATitleSplit.chars, { autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out" });
+      }
+      ctaTimeline.from(finalCTAParagraphRef.current, { autoAlpha: 0, y: 20, duration: 0.5, ease: "power2.out" }, "-=0.3")
         .from(finalCTAButtonRef.current, { autoAlpha: 0, scale: 0.8, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
     }
 
-    // Footer Animation
     if (footerRef.current) {
         gsap.from(footerRef.current, {
           autoAlpha: 0, y: 50, duration: 0.8, ease: "power3.out",
@@ -315,7 +327,6 @@ function LandingPageContent() {
         });
     }
 
-    // Custom Scrollbar Logic
     const scrollableElement = document.documentElement;
     const updateScrollbar = () => {
       if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
@@ -362,9 +373,11 @@ function LandingPageContent() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current]);
+      if (scrollbarThumbRef.current && scrollbarTrackRef.current) { // Check refs before killing tweens
+        gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current]);
+      }
     };
-  }, [loading, user, isScrollbarVisible]); // Added isScrollbarVisible to dep array for scrollbar logic
+  }, [loading, user, isScrollbarVisible, router]);
 
 
   if (loading || (!loading && user)) {
@@ -480,7 +493,6 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* Why Kollab Section */}
           <section id="why-kollab" ref={whyKollabSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]">
             <div className="container mx-auto text-center">
               <h2 ref={whyKollabTitleRef} className="text-3xl lg:text-4xl font-semibold text-white mb-12 lg:mb-16">
@@ -500,7 +512,6 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* How It Works Section */}
           <section ref={howItWorksSectionRef} className="py-16 lg:py-24 px-6 lg:px-16">
             <div className="container mx-auto text-center">
               <h2 ref={howItWorksTitleRef} className="text-3xl lg:text-4xl font-semibold text-white mb-12 lg:mb-16">
@@ -520,7 +531,6 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* Feature Spotlight Section */}
           <section id="features" ref={featureSpotlightSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]">
             <div className="container mx-auto">
               <h2 ref={featureSpotlightTitleRef} className="text-3xl lg:text-4xl font-semibold text-center text-white mb-16">
@@ -561,7 +571,6 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* Testimonials Section */}
           <section ref={testimonialsSectionRef} className="py-16 lg:py-24 px-6 lg:px-16">
             <div className="container mx-auto">
               <h2 ref={testimonialsTitleRef} className="text-3xl lg:text-4xl font-semibold text-center text-white mb-12 lg:mb-16">
@@ -586,7 +595,6 @@ function LandingPageContent() {
             </div>
           </section>
           
-          {/* Final CTA Section */}
           <section ref={finalCTASectionRef} className="py-20 lg:py-32 text-center bg-[#18182a] border-t border-b border-[#2c2c44] mt-10">
             <div className="container mx-auto px-6">
               <h2 ref={finalCTATitleRef} className="text-4xl lg:text-5xl font-semibold text-white mb-6">
