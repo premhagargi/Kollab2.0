@@ -109,3 +109,45 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide native scrollbar for Webkit browsers */
+html::-webkit-scrollbar {
+  display: none;
+}
+/* Hide native scrollbar for Firefox */
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none; /* For IE and Edge */
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar-track {
+  position: fixed;
+  right: 5px;
+  top: 0;
+  width: 8px;
+  height: 100vh;
+  /* background-color: rgba(200, 200, 200, 0.1); For dark theme, might be too light */
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.custom-scrollbar-thumb {
+  position: absolute;
+  right: 0;
+  width: 8px;
+  background-color: var(--accent); /* Use accent color from theme */
+  border-radius: 4px; /* Rounded corners */
+  opacity: 0.7;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.custom-scrollbar-track:hover .custom-scrollbar-thumb,
+.custom-scrollbar-thumb:hover {
+  opacity: 1;
+}
+
+.custom-scrollbar-track.visible {
+  opacity: 1;
+}

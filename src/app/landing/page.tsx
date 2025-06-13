@@ -1,7 +1,7 @@
 
 // src/app/landing/page.tsx
 "use client";
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import NextImage from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +11,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 import { LayoutGrid, ListChecks, Brain, CopyPlus, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
 
@@ -29,8 +30,8 @@ function LandingPageContent() {
   const heroParagraphRef = useRef<HTMLParagraphElement>(null);
   const heroFormRef = useRef<HTMLDivElement>(null);
   
-  const kanbanMockupSectionRef = useRef<HTMLElement>(null); // Renamed for clarity
-  const kanbanMockupCardRef = useRef<HTMLDivElement>(null); // Ref for the card itself
+  const kanbanMockupSectionRef = useRef<HTMLElement>(null);
+  const kanbanMockupCardRef = useRef<HTMLDivElement>(null);
   const kanbanColumnsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   const featuresSectionRef = useRef<HTMLElement>(null);
@@ -38,6 +39,13 @@ function LandingPageContent() {
   const featureItemsRef = useRef<(HTMLDivElement | null)[]>([]);
   
   const footerRef = useRef<HTMLElement>(null);
+
+  // Custom scrollbar refs and state
+  const scrollbarTrackRef = useRef<HTMLDivElement>(null);
+  const scrollbarThumbRef = useRef<HTMLDivElement>(null);
+  const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const kollabFeatures = [
     {
@@ -76,9 +84,10 @@ function LandingPageContent() {
   useEffect(() => {
     if (loading || user) return; 
 
-    const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
     let heroTitleSplit: SplitText | null = null;
     let heroParagraphSplit: SplitText | null = null;
+
+    const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
 
     // Header animations
     if (headerRef.current) {
@@ -119,7 +128,7 @@ function LandingPageContent() {
         { 
           opacity: 1, y: 0, scale: 1, duration: 1, ease: "power3.out",
           scrollTrigger: {
-            trigger: kanbanMockupSectionRef.current, // Trigger based on the section
+            trigger: kanbanMockupSectionRef.current,
             start: "top 80%", 
             toggleActions: "play none none none",
             onEnter: () => {
@@ -161,7 +170,7 @@ function LandingPageContent() {
         stagger: 0.2,
         scrollTrigger: {
           trigger: featuresSectionRef.current,
-          start: "top 70%", // Start a bit later than the title
+          start: "top 70%",
           toggleActions: "play none none none",
         }
       });
@@ -182,10 +191,60 @@ function LandingPageContent() {
         });
     }
 
+    // Custom Scrollbar Logic
+    const scrollableElement = document.documentElement; // Full page scroll
+    const updateScrollbar = () => {
+      if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
+        if (scrollHeight <= clientHeight) { // No scroll needed
+          setIsScrollbarVisible(false);
+          return;
+        }
+        
+        setIsScrollbarVisible(true);
+
+        const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * clientHeight); // Min height 20px
+        const thumbPosition = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
+
+        gsap.to(scrollbarThumbRef.current, {
+          height: thumbHeight,
+          y: thumbPosition,
+          duration: 0.1, // Quick update
+          ease: "power1.out"
+        });
+        
+        // Hide scrollbar after a delay if not scrolling
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = setTimeout(() => {
+            // Check if mouse is over the track before hiding
+            if (scrollbarTrackRef.current && !scrollbarTrackRef.current.matches(':hover')) {
+                setIsScrollbarVisible(false);
+            }
+        }, 1500);
+      }
+    };
+
+    const handleScroll = () => {
+      updateScrollbar();
+    };
+    
+    const handleResize = () => {
+      updateScrollbar();
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    updateScrollbar(); // Initial check
+
+
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
       if (heroTitleSplit) heroTitleSplit.revert();
       if (heroParagraphSplit) heroParagraphSplit.revert();
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      gsap.killTweensOf(scrollbarThumbRef.current);
     };
 
   }, [loading, user]);
@@ -200,6 +259,7 @@ function LandingPageContent() {
   }
 
   return (
+    <>
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col">
         {/* Header */}
         <header 
@@ -281,7 +341,7 @@ function LandingPageContent() {
 
             {/* Right: Kanban Board Mockup */}
             <div 
-              ref={kanbanMockupSectionRef} // Outer container for scroll trigger
+              ref={kanbanMockupSectionRef} 
               className="w-full lg:w-1/2 flex justify-center items-center mt-12 lg:mt-0"
             >
               <div ref={kanbanMockupCardRef} className="bg-[#18182a] rounded-2xl shadow-2xl p-5 w-full max-w-2xl border border-[#2c2c44]">
@@ -371,6 +431,25 @@ function LandingPageContent() {
           </div>
         </footer>
       </div>
+      {/* Custom Scrollbar */}
+      <div 
+        ref={scrollbarTrackRef} 
+        className={cn(
+          "custom-scrollbar-track",
+          isScrollbarVisible && "visible"
+        )}
+        onMouseEnter={() => { // Keep visible if mouse is over track
+            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+            setIsScrollbarVisible(true);
+        }}
+        onMouseLeave={() => { // Resume auto-hide when mouse leaves track
+            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+            scrollTimeoutRef.current = setTimeout(() => setIsScrollbarVisible(false), 1500);
+        }}
+      >
+        <div ref={scrollbarThumbRef} className="custom-scrollbar-thumb"></div>
+      </div>
+    </>
   );
 }
 
