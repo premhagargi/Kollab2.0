@@ -74,7 +74,7 @@ export function CalendarSidebar({
               id="billable-toggle-sidebar"
               checked={showBillableOnly}
               onCheckedChange={onToggleBillable}
-              size="sm"
+              // size="sm" // Switch does not have size prop by default in shadcn
             />
             <Label htmlFor="billable-toggle-sidebar" className="text-xs font-normal text-sidebar-accent-foreground">Show Billable Only</Label>
         </div>
@@ -88,7 +88,7 @@ export function CalendarSidebar({
           month={currentMonth}
           onMonthChange={setCurrentMonth}
           className="rounded-md p-0 w-full"
-          classNames={{ // Using sidebar theme variables for calendar parts
+          classNames={{ 
             caption_label: "text-sm font-medium text-sidebar-primary",
             head_cell: "w-full text-sidebar-accent-foreground text-[10px] uppercase tracking-wide",
             cell: "h-9 w-9 text-center text-xs p-0 relative first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
@@ -99,7 +99,7 @@ export function CalendarSidebar({
             day_selected: "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground focus:bg-sidebar-primary focus:text-sidebar-primary-foreground",
             day_today: "bg-sidebar-accent text-sidebar-accent-foreground",
             day_outside: "text-sidebar-accent-foreground opacity-30 aria-selected:bg-sidebar-accent/30 aria-selected:text-sidebar-accent-foreground",
-            nav_button: cn(buttonVariants({ variant: "outline" }), "h-6 w-6 bg-transparent p-0 opacity-70 hover:opacity-100 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"),
+            nav_button: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"),
           }}
           modifiers={modifiers}
           modifiersClassNames={modifierClassNames}
@@ -120,11 +120,11 @@ export function CalendarSidebar({
         />
       </CardContent>
       
-      <div className="flex-grow min-h-0 px-2 pt-1 pb-2 flex flex-col"> {/* Changed p-2 to px-2 pt-1 pb-2 */}
+      <div className="flex-grow min-h-0 px-2 pt-1 pb-2 flex flex-col">
         <Label className="text-[10px] uppercase text-sidebar-accent-foreground font-semibold px-1 flex-shrink-0">
             Tasks for {selectedDate ? format(selectedDate, 'MMM d') : 'Selected Day'}
         </Label>
-        <ScrollArea className="flex-grow mt-0 pr-1"> {/* Changed mt-1 to mt-0 */}
+        <ScrollArea className="flex-grow mt-0 pr-1">
           {selectedDate && tasksForSelectedDateInSidebar.length > 0 ? (
             <ul className="space-y-1.5">
               {tasksForSelectedDateInSidebar.map(task => (
@@ -132,13 +132,13 @@ export function CalendarSidebar({
               ))}
             </ul>
           ) : selectedDate ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-sidebar-accent-foreground p-2 mt-4">
+            <div className="flex flex-col items-center text-center text-sidebar-accent-foreground p-4">
                 <Info className="w-5 h-5 mb-2 text-sidebar-primary/40" />
                 <p className="text-[11px] font-medium">No tasks for this day.</p>
                 {showBillableOnly && <p className="text-[10px]">Try turning off 'Billable Only'.</p>}
             </div>
           ) : (
-             <div className="flex flex-col items-center justify-center h-full text-center text-sidebar-accent-foreground p-2 mt-4">
+             <div className="flex flex-col items-center text-center text-sidebar-accent-foreground p-4">
                 <CalendarDays className="w-5 h-5 mb-2 text-sidebar-primary/40" />
                 <p className="text-[11px] font-medium">Select a day</p>
                 <p className="text-[10px]">to see its tasks here.</p>
