@@ -10,10 +10,97 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
-import { LayoutGrid, ListChecks, Brain, CopyPlus, ChevronRight } from 'lucide-react';
+import { LayoutGrid, ListChecks, Brain, CopyPlus, ChevronRight, Zap, BarChartBig, Users, MessageSquare, PlayCircle, Settings2, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
+
+const kollabMainFeatures = [
+  {
+    icon: LayoutGrid,
+    title: "Visual Kanban Workflows",
+    description: "Organize tasks visually with customizable columns. Drag & drop to manage your projects with ease, track progress at a glance, and maintain clarity across all your initiatives.",
+    linkText: "Explore Workflows",
+    image: "https://placehold.co/500x350.png",
+    dataAiHint: "kanban board interface"
+  },
+  {
+    icon: ListChecks,
+    title: "Comprehensive Task Management",
+    description: "Create, update, and manage tasks with details like client names, billable status, deliverables, priority, due dates, subtasks, and comments. Never miss a deadline.",
+    linkText: "Manage Tasks Better",
+    image: "https://placehold.co/500x350.png",
+    dataAiHint: "task detail screen"
+  },
+  {
+    icon: Brain,
+    title: "AI-Powered Clarity Tools",
+    description: "Leverage Genkit for AI-generated client update drafts and task breakdown suggestions to enhance scope, planning, and communication. Save time and reduce manual effort.",
+    linkText: "Discover AI Tools",
+    image: "https://placehold.co/500x350.png",
+    dataAiHint: "ai assistant interface"
+  },
+];
+
+const whyKollabPoints = [
+  {
+    icon: Zap,
+    title: "Boost Productivity",
+    description: "Streamline your processes and focus on what matters most with intuitive tools designed for efficiency."
+  },
+  {
+    icon: BarChartBig,
+    title: "Gain Clarity",
+    description: "Visualize your entire workload, track progress in real-time, and make data-driven decisions."
+  },
+  {
+    icon: Users,
+    title: "Seamless Collaboration",
+    description: "Designed for solo freelancers but ready for future team expansion with shared workflows and communication tools."
+  }
+];
+
+const howItWorksSteps = [
+  {
+    icon: PlayCircle,
+    title: "1. Create Your Workflow",
+    description: "Start with a template or a blank canvas. Define columns that match your project stages or personal system."
+  },
+  {
+    icon: ListChecks,
+    title: "2. Add & Organize Tasks",
+    description: "Break down projects into manageable tasks. Add details, set priorities, due dates, and assign them as needed."
+  },
+  {
+    icon: Settings2,
+    title: "3. Manage & Track",
+    description: "Drag tasks between columns, update progress, utilize AI tools for clarity, and keep everything on schedule."
+  },
+  {
+    icon: ShieldCheck,
+    title: "4. Achieve Your Goals",
+    description: "Deliver projects efficiently, meet deadlines, and gain insights into your productivity."
+  }
+];
+
+const testimonials = [
+  {
+    quote: "Kollab has transformed how I manage my freelance projects. The AI tools are a game-changer for client updates!",
+    name: "Alex P.",
+    title: "Freelance Developer"
+  },
+  {
+    quote: "Finally, a task manager that's both powerful and beautiful. The workflow templates saved me so much time.",
+    name: "Sarah M.",
+    title: "Content Creator"
+  },
+  {
+    quote: "I love the clarity Kollab brings to my week. Seeing all my tasks and their progress in one place is invaluable.",
+    name: "David K.",
+    title: "Solo Entrepreneur"
+  }
+];
+
 
 function LandingPageContent() {
   const { user, loading } = useAuth();
@@ -30,50 +117,37 @@ function LandingPageContent() {
   const heroParagraphRef = useRef<HTMLParagraphElement>(null);
   const heroFormRef = useRef<HTMLDivElement>(null);
   
-  const kanbanMockupSectionRef = useRef<HTMLElement>(null); // Ref for the section containing the card
-  const kanbanMockupCardRef = useRef<HTMLDivElement>(null); // Ref for the card itself
+  const kanbanMockupSectionRef = useRef<HTMLElement>(null);
+  const kanbanMockupCardRef = useRef<HTMLDivElement>(null);
   const kanbanColumnsRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  const featuresSectionRef = useRef<HTMLElement>(null);
-  const featuresTitleRef = useRef<HTMLHeadingElement>(null);
-  const featureItemsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const whyKollabSectionRef = useRef<HTMLElement>(null);
+  const whyKollabTitleRef = useRef<HTMLHeadingElement>(null);
+  const whyKollabItemsRef = useRef<(HTMLDivElement | null)[]>([]);
+
+  const howItWorksSectionRef = useRef<HTMLElement>(null);
+  const howItWorksTitleRef = useRef<HTMLHeadingElement>(null);
+  const howItWorksStepsRef = useRef<(HTMLDivElement | null)[]>([]);
   
+  const featureSpotlightSectionRef = useRef<HTMLElement>(null);
+  const featureSpotlightTitleRef = useRef<HTMLHeadingElement>(null);
+  const featureSpotlightItemsRef = useRef<(HTMLDivElement | null)[]>([]);
+  
+  const testimonialsSectionRef = useRef<HTMLElement>(null);
+  const testimonialsTitleRef = useRef<HTMLHeadingElement>(null);
+  const testimonialsItemsRef = useRef<(HTMLDivElement | null)[]>([]);
+
+  const finalCTASectionRef = useRef<HTMLElement>(null);
+  const finalCTATitleRef = useRef<HTMLHeadingElement>(null);
+  const finalCTAParagraphRef = useRef<HTMLParagraphElement>(null);
+  const finalCTAButtonRef = useRef<HTMLAnchorElement>(null);
+
   const footerRef = useRef<HTMLElement>(null);
 
-  // Custom scrollbar refs and state
   const scrollbarTrackRef = useRef<HTMLDivElement>(null);
   const scrollbarThumbRef = useRef<HTMLDivElement>(null);
   const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-
-  const kollabFeatures = [
-    {
-      icon: LayoutGrid,
-      title: "Visual Kanban Workflows",
-      description: "Organize tasks visually with customizable columns. Drag & drop to manage your projects with ease.",
-      linkText: "Explore Workflows",
-    },
-    {
-      icon: ListChecks,
-      title: "Comprehensive Task Management",
-      description: "Create, update, and manage tasks with details like client names, billable status, deliverables, priority, and due dates.",
-      linkText: "Manage Tasks Better",
-    },
-    {
-      icon: Brain,
-      title: "AI-Powered Clarity Tools",
-      description: "Leverage Genkit for AI-generated client update drafts and task breakdown suggestions to enhance scope and planning.",
-      linkText: "Discover AI Tools",
-    },
-    {
-      icon: CopyPlus,
-      title: "Workflow Templates",
-      description: "Kickstart your projects quickly with predefined templates for freelance work, content creation, and more.",
-      linkText: "Use Templates",
-    },
-  ];
-
 
   useEffect(() => {
     if (!loading && user) {
@@ -86,62 +160,50 @@ function LandingPageContent() {
 
     let heroTitleSplit: SplitText | null = null;
     let heroParagraphSplit: SplitText | null = null;
+    let whyKollabTitleSplit: SplitText | null = null;
+    let howItWorksTitleSplit: SplitText | null = null;
+    let featureSpotlightTitleSplit: SplitText | null = null;
+    let testimonialsTitleSplit: SplitText | null = null;
+    let finalCTATitleSplit: SplitText | null = null;
 
-    const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
 
-    // Header animations
+    const tlEntry = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
+
     if (headerRef.current) {
-      tl.from(logoRef.current, { opacity: 0, y: -30, delay: 0.2 })
+      tlEntry.from(logoRef.current, { opacity: 0, y: -30, delay: 0.2 })
         .from(navItemsRef.current.filter(el => el), { opacity: 0, y: -30, stagger: 0.15, duration: 0.5 }, "-=0.5")
         .from(authButtonsRef.current, { opacity: 0, y: -30, duration: 0.5 }, "-=0.4");
     }
 
-    // Hero section animations
     if (heroSectionRef.current && heroTitleRef.current && heroParagraphRef.current) {
-      tl.from(hiringBannerRef.current, { opacity: 0, y: 40, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
+      tlEntry.from(hiringBannerRef.current, { opacity: 0, y: 40, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
       
-      heroTitleSplit = new SplitText(heroTitleRef.current, { type: "lines,words,chars" });
-      tl.from(heroTitleSplit.chars, {
-        duration: 0.8,
-        opacity: 0,
-        y: 30,
-        ease: "power3.out",
-        stagger: 0.03,
+      heroTitleSplit = new SplitText(heroTitleRef.current, { type: "chars,words" });
+      tlEntry.from(heroTitleSplit.chars, {
+        duration: 0.8, opacity: 0, y: 30, ease: "power3.out", stagger: 0.03,
       }, "-=0.3");
 
       heroParagraphSplit = new SplitText(heroParagraphRef.current, { type: "lines" });
-      tl.from(heroParagraphSplit.lines, {
-        duration: 0.8,
-        opacity: 0,
-        y: 20,
-        ease: "power3.out",
-        stagger: 0.1,
+      tlEntry.from(heroParagraphSplit.lines, {
+        duration: 0.8, opacity: 0, y: 20, ease: "power3.out", stagger: 0.1,
       }, "-=0.6");
       
-      tl.from(heroFormRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=0.5");
+      tlEntry.from(heroFormRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=0.5");
     }
 
-    // Scroll-triggered animation for Kanban mockup section
     if (kanbanMockupSectionRef.current && kanbanMockupCardRef.current) {
       gsap.fromTo(kanbanMockupCardRef.current, 
         { opacity: 0, y: 100, scale: 0.95 },
         { 
           opacity: 1, y: 0, scale: 1, duration: 1, ease: "power3.out",
           scrollTrigger: {
-            trigger: kanbanMockupSectionRef.current, // Use the section as trigger
-            start: "top 80%", // Animate when top of section hits 80% of viewport height
+            trigger: kanbanMockupSectionRef.current,
+            start: "top 80%", 
             toggleActions: "play none none none",
-            // once: true, // Optional: only play once
-            onEnter: () => { // Callback when trigger enters
-              // Stagger animation for columns inside the card
+            onEnter: () => {
               if (kanbanColumnsRef.current.length > 0) {
-                gsap.from(kanbanColumnsRef.current.filter(el => el), { // Filter out nulls
-                  opacity: 0,
-                  y: 50,
-                  duration: 0.6,
-                  stagger: 0.15, // Stagger amount between each column
-                  ease: "power3.out",
-                  delay: 0.2 // Slight delay after card starts animating
+                gsap.from(kanbanColumnsRef.current.filter(el => el), {
+                  opacity: 0, y: 50, duration: 0.6, stagger: 0.15, ease: "power3.out", delay: 0.2
                 });
               }
             }
@@ -150,124 +212,131 @@ function LandingPageContent() {
       );
     }
 
-    // Scroll-triggered animation for Features Section
-    if (featuresSectionRef.current && featuresTitleRef.current) {
-      gsap.from(featuresTitleRef.current, {
-        opacity: 0,
-        y: 50,
-        duration: 0.8,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: featuresSectionRef.current,
-          start: "top 80%",
-          toggleActions: "play none none none",
-        }
+    // Why Kollab Section Animation
+    if (whyKollabSectionRef.current && whyKollabTitleRef.current) {
+      whyKollabTitleSplit = new SplitText(whyKollabTitleRef.current, { type: "words,chars" });
+      gsap.from(whyKollabTitleSplit.chars, {
+        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
       });
+      gsap.from(whyKollabItemsRef.current.filter(el => el), {
+        opacity: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
+        scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 70%", toggleActions: "play none none none" }
+      });
+    }
 
-      // Stagger animation for feature items
-      gsap.from(featureItemsRef.current.filter(el => el), { // Filter out nulls if any ref wasn't set
-        opacity: 0,
-        y: 50,
-        duration: 0.7,
-        ease: "power3.out",
-        stagger: 0.2, // Stagger amount between each feature item
-        scrollTrigger: {
-          trigger: featuresSectionRef.current, // Could also use featuresTitleRef as trigger
-          start: "top 70%", // Adjust as needed
-          toggleActions: "play none none none",
-        }
+    // How It Works Section Animation
+    if (howItWorksSectionRef.current && howItWorksTitleRef.current) {
+      howItWorksTitleSplit = new SplitText(howItWorksTitleRef.current, { type: "words,chars" });
+      gsap.from(howItWorksTitleSplit.chars, {
+        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+      });
+      gsap.from(howItWorksStepsRef.current.filter(el => el), {
+        opacity: 0, y: 50, stagger: 0.2, duration: 0.7, ease: "power3.out",
+        scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 65%", toggleActions: "play none none none" }
+      });
+    }
+
+    // Feature Spotlight Section Animation
+    if (featureSpotlightSectionRef.current && featureSpotlightTitleRef.current) {
+      featureSpotlightTitleSplit = new SplitText(featureSpotlightTitleRef.current, { type: "words,chars" });
+      gsap.from(featureSpotlightTitleSplit.chars, {
+        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: featureSpotlightSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+      });
+      featureSpotlightItemsRef.current.filter(el => el).forEach((item, index) => {
+        const img = item.querySelector('img');
+        const textContent = item.querySelector('.feature-text-content');
+        const tlFeature = gsap.timeline({
+          scrollTrigger: { trigger: item, start: "top 80%", toggleActions: "play none none none" }
+        });
+        tlFeature.from(img, { opacity: 0, x: index % 2 === 0 ? -50 : 50, duration: 0.8, ease: "power3.out" })
+                 .from(textContent, { opacity: 0, y: 30, duration: 0.7, ease: "power3.out" }, "-=0.5");
       });
     }
     
-    // Scroll-triggered animation for Footer
+    // Testimonials Section Animation
+    if (testimonialsSectionRef.current && testimonialsTitleRef.current) {
+      testimonialsTitleSplit = new SplitText(testimonialsTitleRef.current, { type: "words,chars" });
+      gsap.from(testimonialsTitleSplit.chars, {
+        opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
+        scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+      });
+      gsap.from(testimonialsItemsRef.current.filter(el => el), {
+        opacity: 0, y: 50, scale: 0.95, stagger: 0.2, duration: 0.7, ease: "back.out(1.4)",
+        scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 70%", toggleActions: "play none none none" }
+      });
+    }
+    
+    // Final CTA Section Animation
+    if (finalCTASectionRef.current && finalCTATitleRef.current && finalCTAParagraphRef.current && finalCTAButtonRef.current) {
+      finalCTATitleSplit = new SplitText(finalCTATitleRef.current, { type: "words,chars" });
+      const ctaTimeline = gsap.timeline({
+        scrollTrigger: { trigger: finalCTASectionRef.current, start: "top 80%", toggleActions: "play none none none" }
+      });
+      ctaTimeline.from(finalCTATitleSplit.chars, { opacity: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out" })
+        .from(finalCTAParagraphRef.current, { opacity: 0, y: 20, duration: 0.5, ease: "power2.out" }, "-=0.3")
+        .from(finalCTAButtonRef.current, { opacity: 0, scale: 0.8, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
+    }
+
     if (footerRef.current) {
         gsap.from(footerRef.current, {
-          opacity: 0,
-          y: 50,
-          duration: 0.8,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: footerRef.current,
-            start: "top 95%", // Animate when footer is almost in view
-            toggleActions: "play none none none",
-          }
+          opacity: 0, y: 50, duration: 0.8, ease: "power3.out",
+          scrollTrigger: { trigger: footerRef.current, start: "top 95%", toggleActions: "play none none none" }
         });
     }
 
-    // Custom Scrollbar Logic
-    const scrollableElement = document.documentElement; // Full page scroll
+    const scrollableElement = document.documentElement;
     const updateScrollbar = () => {
       if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
-        if (scrollHeight <= clientHeight) { // No scroll needed
-          setIsScrollbarVisible(false);
-          return;
-        }
-        
-        setIsScrollbarVisible(true); // Show if scrollable
-
-        const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * clientHeight); // Min height 20px
+        if (scrollHeight <= clientHeight) { setIsScrollbarVisible(false); return; }
+        setIsScrollbarVisible(true);
+        const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * clientHeight);
         const thumbPosition = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
-
-        gsap.to(scrollbarThumbRef.current, {
-          height: thumbHeight,
-          y: thumbPosition,
-          duration: 0.1, // Quick update
-          ease: "power1.out"
-        });
-        
-        // Hide scrollbar after a delay if not scrolling
+        gsap.to(scrollbarThumbRef.current, { height: thumbHeight, y: thumbPosition, duration: 0.1, ease: "power1.out" });
         if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
         scrollTimeoutRef.current = setTimeout(() => {
-            // Check if mouse is over the track before hiding
             if (scrollbarTrackRef.current && !scrollbarTrackRef.current.matches(':hover')) {
                 setIsScrollbarVisible(false);
             }
         }, 1500);
       }
     };
-
-    const handleScroll = () => {
-      updateScrollbar();
-    };
-    
-    const handleResize = () => {
-      updateScrollbar();
-    }
-
+    const handleScroll = () => updateScrollbar();
+    const handleResize = () => updateScrollbar();
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize, { passive: true });
-    updateScrollbar(); // Initial check
-
+    updateScrollbar();
 
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
       if (heroTitleSplit) heroTitleSplit.revert();
       if (heroParagraphSplit) heroParagraphSplit.revert();
+      if (whyKollabTitleSplit) whyKollabTitleSplit.revert();
+      if (howItWorksTitleSplit) howItWorksTitleSplit.revert();
+      if (featureSpotlightTitleSplit) featureSpotlightTitleSplit.revert();
+      if (testimonialsTitleSplit) testimonialsTitleSplit.revert();
+      if (finalCTATitleSplit) finalCTATitleSplit.revert();
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      gsap.killTweensOf(scrollbarThumbRef.current); // Kill specific tweens for the thumb
+      gsap.killTweensOf(scrollbarThumbRef.current);
     };
-
-  }, [loading, user]); // Empty dependency array to run once on mount
-
+  }, [loading, user]);
 
   if (loading || (!loading && user)) {
-    // If auth is still loading, or if user is found (and redirect to '/' will happen), show loader.
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] flex items-center justify-center">
-        {/* You can add a more sophisticated loader here if desired */}
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
   }
 
-  // If not loading and no user, render the landing page content.
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col">
-        {/* Header */}
         <header 
           ref={headerRef}
           className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-8 py-5 bg-[#0a0a13]/80 backdrop-blur-md"
@@ -280,14 +349,12 @@ function LandingPageContent() {
               <span className="text-white text-xl font-bold">Kollab</span>
             </Link>
           </div>
-          
           <nav className="hidden md:flex space-x-6 text-sm font-medium text-gray-300">
             <Link href="/landing" ref={el => navItemsRef.current[0] = el} className="hover:text-white transition-colors">Home</Link>
-            <Link href="#features" ref={el => navItemsRef.current[1] = el} className="hover:text-white transition-colors">Features</Link>
-            <Link href="#pricing" ref={el => navItemsRef.current[2] = el} className="hover:text-white transition-colors">Pricing</Link>
-            <Link href="#contact" ref={el => navItemsRef.current[3] = el} className="hover:text-white transition-colors">Contact</Link>
+            <Link href="#why-kollab" ref={el => navItemsRef.current[1] = el} className="hover:text-white transition-colors">Why Kollab?</Link>
+            <Link href="#features" ref={el => navItemsRef.current[2] = el} className="hover:text-white transition-colors">Features</Link>
+            <Link href="#pricing" ref={el => navItemsRef.current[3] = el} className="hover:text-white transition-colors">Pricing</Link>
           </nav>
-
           <div ref={authButtonsRef} className="flex items-center space-x-3">
             <Link href="/auth?view=login" passHref>
               <button className="bg-transparent text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-white/10 transition-colors">
@@ -302,14 +369,11 @@ function LandingPageContent() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="flex-1">
-          {/* Hero Section */}
           <section 
             ref={heroSectionRef}
-            className="flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-10 lg:py-16 min-h-[calc(100vh-80px)] lg:min-h-0" // Adjusted min-height for hero to not always take full screen
+            className="flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-10 lg:py-16 min-h-[calc(100vh-80px)] lg:min-h-0"
           >
-            {/* Left: Hero Text */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center items-start space-y-6 text-center lg:text-left mb-12 lg:mb-0">
               <div ref={hiringBannerRef} className="flex items-center space-x-3 mb-2 self-center lg:self-start">
                 <span className="bg-[#23233a] text-[#b3b3ff] px-3 py-1 rounded-full text-xs font-medium">We&apos;re hiring</span>
@@ -317,16 +381,10 @@ function LandingPageContent() {
                   Join our remote team →
                 </button>
               </div>
-              <h1 
-                ref={heroTitleRef}
-                className="text-4xl lg:text-6xl font-normal text-white leading-tight tracking-tighter"
-              >
-                Manage All of Your <br /> Work In One Place <br /> Efficiently
+              <h1 ref={heroTitleRef} className="text-4xl lg:text-6xl font-normal text-white leading-tight tracking-tighter">
+                Manage All of Your Work In One Place Efficiently
               </h1>
-              <p 
-                ref={heroParagraphRef}
-                className="text-gray-400 text-base lg:text-lg max-w-md leading-relaxed tracking-tight"
-              >
+              <p ref={heroParagraphRef} className="text-gray-400 text-base lg:text-lg max-w-md leading-relaxed tracking-tight">
                 Manage your work, timelines and team mates all at once. Set and follow timelines, assign tasks and keep your projects in check.
               </p>
               <div ref={heroFormRef} className="flex w-full max-w-md mt-2 self-center lg:self-start">
@@ -336,20 +394,13 @@ function LandingPageContent() {
                   className="flex-1 px-5 py-3 rounded-l-full bg-[#23233a] text-white placeholder-[#b3b3ff] focus:outline-none border border-[#23233a] focus:border-[#6e6ef6] focus:ring-1 focus:ring-[#6e6ef6]"
                 />
                 <Link href="/auth?view=signup" passHref className="contents">
-                  <button
-                    className="px-6 py-3 bg-white text-[#18182a] font-semibold rounded-r-full hover:bg-gray-200 transition-colors"
-                  >
+                  <button className="px-6 py-3 bg-white text-[#18182a] font-semibold rounded-r-full hover:bg-gray-200 transition-colors">
                     Get started
                   </button>
                 </Link>
               </div>
             </div>
-
-            {/* Right: Kanban Board Mockup */}
-            <div 
-              ref={kanbanMockupSectionRef} 
-              className="w-full lg:w-1/2 flex justify-center items-center mt-12 lg:mt-0"
-            >
+            <div ref={kanbanMockupSectionRef} className="w-full lg:w-1/2 flex justify-center items-center mt-12 lg:mt-0">
               <div ref={kanbanMockupCardRef} className="bg-[#18182a] rounded-2xl shadow-2xl p-5 w-full max-w-2xl border border-[#2c2c44]">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-white font-semibold text-base">Project UI/UX</span>
@@ -359,7 +410,6 @@ function LandingPageContent() {
                   </div>
                 </div>
                 <div className="flex space-x-3 overflow-x-auto pb-2">
-                  {/* Columns */}
                   <div ref={el => kanbanColumnsRef.current[0] = el} className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg kanban-column-mock">
                     <h3 className="text-[#b3b3ff] font-semibold text-sm mb-2">To Do <span className="text-gray-500 text-xs">3</span></h3>
                     <div className="space-y-2">
@@ -389,33 +439,131 @@ function LandingPageContent() {
             </div>
           </section>
 
-          {/* Features Section */}
-          <section id="features" ref={featuresSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]"> {/* Slightly different bg for contrast */}
-            <div className="container mx-auto">
-              <h2 ref={featuresTitleRef} className="text-3xl lg:text-4xl font-semibold text-center text-white mb-12 lg:mb-16">
-                Powerful Features to Boost Your Productivity
+          {/* Why Kollab Section */}
+          <section id="why-kollab" ref={whyKollabSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]">
+            <div className="container mx-auto text-center">
+              <h2 ref={whyKollabTitleRef} className="text-3xl lg:text-4xl font-semibold text-white mb-12 lg:mb-16">
+                Why Choose Kollab?
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {kollabFeatures.map((feature, index) => (
-                  <div
-                    key={index}
-                    ref={el => featureItemsRef.current[index] = el}
-                    className="bg-[#18182a] p-6 rounded-xl shadow-xl border border-[#2c2c44] flex flex-col items-start hover:shadow-2xl hover:border-[#6e6ef6]/50 transition-all duration-300 transform hover:-translate-y-1"
-                  >
-                    <div className="p-3 rounded-lg bg-[#6e6ef6]/10 mb-4"> {/* Icon background */}
-                       <feature.icon className="h-7 w-7 text-[#8f8fff]" /> {/* Icon color */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+                {whyKollabPoints.map((point, index) => (
+                  <div key={index} ref={el => whyKollabItemsRef.current[index] = el} className="flex flex-col items-center bg-[#18182a] p-8 rounded-xl shadow-xl border border-[#2c2c44] hover:border-[#6e6ef6]/50 transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="p-4 rounded-full bg-[#6e6ef6]/10 mb-5">
+                      <point.icon className="h-8 w-8 text-[#8f8fff]" />
                     </div>
-                    <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed mb-4 flex-grow">{feature.description}</p>
-                    <Link href="/auth?view=signup" className="text-sm font-medium text-[#8f8fff] hover:text-white flex items-center group">
-                      {feature.linkText}
-                      <ChevronRight className="ml-1 h-4 w-4 transform transition-transform duration-200 group-hover:translate-x-1" />
-                    </Link>
+                    <h3 className="text-xl font-semibold text-white mb-3">{point.title}</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">{point.description}</p>
                   </div>
                 ))}
               </div>
             </div>
           </section>
+
+          {/* How It Works Section */}
+          <section ref={howItWorksSectionRef} className="py-16 lg:py-24 px-6 lg:px-16">
+            <div className="container mx-auto text-center">
+              <h2 ref={howItWorksTitleRef} className="text-3xl lg:text-4xl font-semibold text-white mb-12 lg:mb-16">
+                Streamlined Workflow, Amplified Results
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {howItWorksSteps.map((step, index) => (
+                  <div key={index} ref={el => howItWorksStepsRef.current[index] = el} className="bg-[#18182a] p-6 rounded-xl shadow-xl border border-[#2c2c44] flex flex-col items-start text-left hover:shadow-2xl hover:border-[#6e6ef6]/50 transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="p-3 rounded-lg bg-[#6e6ef6]/10 mb-4">
+                       <step.icon className="h-7 w-7 text-[#8f8fff]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">{step.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Feature Spotlight Section (replaces old "Features") */}
+          <section id="features" ref={featureSpotlightSectionRef} className="py-16 lg:py-24 px-6 lg:px-16 bg-[#11111e]">
+            <div className="container mx-auto">
+              <h2 ref={featureSpotlightTitleRef} className="text-3xl lg:text-4xl font-semibold text-center text-white mb-16">
+                Everything You Need to Succeed
+              </h2>
+              {kollabMainFeatures.map((feature, index) => (
+                <div
+                  key={index}
+                  ref={el => featureSpotlightItemsRef.current[index] = el}
+                  className={cn(
+                    "flex flex-col lg:flex-row items-center gap-8 lg:gap-16 mb-16 lg:mb-24",
+                    index % 2 !== 0 && "lg:flex-row-reverse" // Alternate layout
+                  )}
+                >
+                  <div className="lg:w-1/2">
+                    <NextImage
+                      src={feature.image}
+                      alt={feature.title}
+                      width={500}
+                      height={350}
+                      className="rounded-xl shadow-2xl border border-[#2c2c44]"
+                      data-ai-hint={feature.dataAiHint}
+                    />
+                  </div>
+                  <div className="lg:w-1/2 feature-text-content">
+                    <div className="p-3 rounded-lg bg-[#6e6ef6]/10 mb-4 inline-block">
+                       <feature.icon className="h-7 w-7 text-[#8f8fff]" />
+                    </div>
+                    <h3 className="text-3xl font-semibold text-white mb-4">{feature.title}</h3>
+                    <p className="text-gray-400 text-base leading-relaxed mb-6">{feature.description}</p>
+                    <Link href="/auth?view=signup" className="text-base font-medium text-[#8f8fff] hover:text-white flex items-center group bg-[#23233a] px-6 py-3 rounded-lg transition-colors hover:bg-[#2c2c44]">
+                      {feature.linkText}
+                      <ChevronRight className="ml-2 h-5 w-5 transform transition-transform duration-200 group-hover:translate-x-1" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Testimonials Section */}
+          <section ref={testimonialsSectionRef} className="py-16 lg:py-24 px-6 lg:px-16">
+            <div className="container mx-auto">
+              <h2 ref={testimonialsTitleRef} className="text-3xl lg:text-4xl font-semibold text-center text-white mb-12 lg:mb-16">
+                Loved by Freelancers & Creators
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {testimonials.map((testimonial, index) => (
+                  <div
+                    key={index}
+                    ref={el => testimonialsItemsRef.current[index] = el}
+                    className="bg-[#18182a] p-8 rounded-xl shadow-xl border border-[#2c2c44] flex flex-col text-left hover:shadow-2xl transition-all duration-300"
+                  >
+                    <MessageSquare className="h-8 w-8 text-[#6e6ef6] mb-6" />
+                    <p className="text-gray-300 text-base leading-relaxed mb-6 flex-grow">&quot;{testimonial.quote}&quot;</p>
+                    <div>
+                      <p className="text-white font-semibold">{testimonial.name}</p>
+                      <p className="text-sm text-[#8f8fff]">{testimonial.title}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+          
+          {/* Final CTA Section */}
+          <section ref={finalCTASectionRef} className="py-20 lg:py-32 text-center bg-[#18182a] border-t border-b border-[#2c2c44] mt-10">
+            <div className="container mx-auto px-6">
+              <h2 ref={finalCTATitleRef} className="text-4xl lg:text-5xl font-semibold text-white mb-6">
+                Ready to Supercharge Your Workflow?
+              </h2>
+              <p ref={finalCTAParagraphRef} className="text-gray-400 text-lg max-w-2xl mx-auto mb-10">
+                Join Kollab today and experience a new level of organization and productivity. Sign up for free!
+              </p>
+              <Link
+                href="/auth?view=signup"
+                ref={finalCTAButtonRef}
+                className="inline-block bg-[#6e6ef6] text-white text-lg font-semibold px-10 py-4 rounded-lg hover:bg-[#5757d1] transition-colors transform hover:scale-105"
+              >
+                Get Started for Free
+              </Link>
+            </div>
+          </section>
+
         </main>
          
         <footer 
@@ -432,24 +580,20 @@ function LandingPageContent() {
             &copy; {new Date().getFullYear()} Kollab. All rights reserved. A Project IDX Demo.
           </p>
            <div className="mt-4 space-x-4 text-xs">
-            <Link href="/landing#features" className="text-gray-400 hover:text-white">Features</Link>
+            <Link href="#features" className="text-gray-400 hover:text-white">Features</Link>
             <Link href="#" className="text-gray-400 hover:text-white">Privacy Policy</Link>
             <Link href="#" className="text-gray-400 hover:text-white">Terms of Service</Link>
           </div>
         </footer>
       </div>
-      {/* Custom Scrollbar */}
       <div 
         ref={scrollbarTrackRef} 
-        className={cn(
-          "custom-scrollbar-track",
-          isScrollbarVisible && "visible" // Toggle visibility based on state
-        )}
-        onMouseEnter={() => { // Keep visible if mouse is over track
+        className={cn("custom-scrollbar-track", isScrollbarVisible && "visible")}
+        onMouseEnter={() => {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
             setIsScrollbarVisible(true);
         }}
-        onMouseLeave={() => { // Resume auto-hide when mouse leaves track
+        onMouseLeave={() => {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
             scrollTimeoutRef.current = setTimeout(() => setIsScrollbarVisible(false), 1500);
         }}
@@ -467,3 +611,4 @@ export default function LandingPage() {
     </AuthProvider>
   );
 }
+    
