@@ -1,13 +1,14 @@
-
 // src/app/landing/page.tsx
 "use client";
 import React from 'react';
 import NextImage from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation'; // Changed from 'next/navigation'
+import { useRouter } from 'next/navigation';
+import { AuthProvider } from '@/contexts/AuthContext'; // Import AuthProvider
 
-export default function LandingPage() {
+// Define an inner component that uses the useAuth hook
+function LandingPageContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -166,5 +167,14 @@ export default function LandingPage() {
         &copy; {new Date().getFullYear()} Kollab. All rights reserved.
       </footer>
     </div>
+  );
+}
+
+// Default export wraps the content component with AuthProvider
+export default function LandingPage() {
+  return (
+    <AuthProvider>
+      <LandingPageContent />
+    </AuthProvider>
   );
 }
