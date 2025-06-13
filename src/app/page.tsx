@@ -16,6 +16,7 @@ import { CalendarSidebar } from '@/components/calendar/CalendarView';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card'; // Added import for Card
 
 function DashboardContent() {
   const { user, loading: authLoading } = useAuth();
@@ -199,7 +200,7 @@ function DashboardContent() {
             onToggleCalendarSidebar={toggleCalendarSidebar}
             isCalendarSidebarVisible={isCalendarSidebarVisible}
         />
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-16"> {/* pt-16 for AppHeader height */}
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-16 p-4"> {/* pt-16 for AppHeader height, p-4 for overall spacing */}
           {user && ( // Only show calendar sidebar if user is logged in
             <CalendarSidebar
               className={cn(
@@ -214,7 +215,10 @@ function DashboardContent() {
               onToggleBillable={setShowBillableOnlyCalendar}
             />
           )}
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0"> {/* This div ensures KanbanBoardView takes remaining space and handles its own scrolling */}
+          <Card className={cn(
+            "flex-1 flex flex-col overflow-hidden min-h-0 rounded-xl shadow-lg", // Card styles for Kanban area
+            isCalendarSidebarVisible && user && "ml-4" // Margin when calendar is visible and user is logged in
+          )}>
             {authLoading || (isLoadingWorkflows && user) ? (
                 <div className="flex flex-1 items-center justify-center h-full">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -240,7 +244,7 @@ function DashboardContent() {
                 <p className="text-muted-foreground mb-4">Please log in to manage your workflows and tasks.</p>
               </div>
             )}
-          </div>
+          </Card>
         </main>
         {selectedTaskForModal && user && (
           <TaskDetailsModal
