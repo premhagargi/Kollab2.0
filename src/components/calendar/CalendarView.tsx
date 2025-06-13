@@ -1,4 +1,3 @@
-
 // src/components/calendar/CalendarSidebar.tsx
 // Renamed from CalendarView.tsx to reflect its new role
 "use client";
@@ -81,7 +80,7 @@ export function CalendarSidebar({
         </div>
       </CardHeader>
 
-      <CardContent className="p-2 border-b border-sidebar-border flex-shrink-0">
+      <CardContent className="px-2 pt-2 pb-0 border-b border-sidebar-border flex-shrink-0">
         <Calendar
           mode="single"
           selected={selectedDate}
@@ -121,11 +120,11 @@ export function CalendarSidebar({
         />
       </CardContent>
       
-      <div className="flex-grow min-h-0 p-2 flex flex-col"> {/* Changed to flex-col and min-h-0 */}
+      <div className="flex-grow min-h-0 px-2 pt-1 pb-2 flex flex-col"> {/* Changed p-2 to px-2 pt-1 pb-2 */}
         <Label className="text-[10px] uppercase text-sidebar-accent-foreground font-semibold px-1 flex-shrink-0">
             Tasks for {selectedDate ? format(selectedDate, 'MMM d') : 'Selected Day'}
         </Label>
-        <ScrollArea className="flex-grow mt-1 pr-1"> {/* Changed to flex-grow */}
+        <ScrollArea className="flex-grow mt-0 pr-1"> {/* Changed mt-1 to mt-0 */}
           {selectedDate && tasksForSelectedDateInSidebar.length > 0 ? (
             <ul className="space-y-1.5">
               {tasksForSelectedDateInSidebar.map(task => (
