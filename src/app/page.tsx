@@ -12,7 +12,7 @@ import type { Workflow, Task } from '@/types';
 import { Loader2, LayoutGrid, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { siteConfig } from '@/config/site';
-import { CalendarSidebar } from '@/components/calendar/CalendarView'; // Corrected import path
+import { CalendarSidebar } from '@/components/calendar/CalendarView';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -199,11 +199,11 @@ function DashboardContent() {
             onToggleCalendarSidebar={toggleCalendarSidebar}
             isCalendarSidebarVisible={isCalendarSidebarVisible}
         />
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-16"> 
-          {isCalendarSidebarVisible && user && (
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-16"> {/* pt-16 for AppHeader height */}
+          {user && ( // Only show calendar sidebar if user is logged in
             <CalendarSidebar
               className={cn(
-                "transition-all duration-300 ease-in-out",
+                "transition-all duration-300 ease-in-out transform", // Added transform for smoother transition with margin
                 isCalendarSidebarVisible ? "w-[350px] opacity-100" : "w-0 opacity-0 -ml-[350px]"
               )}
               selectedDate={selectedDateForCalendar}
@@ -214,7 +214,7 @@ function DashboardContent() {
               onToggleBillable={setShowBillableOnlyCalendar}
             />
           )}
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0"> {/* This div ensures KanbanBoardView takes remaining space and handles its own scrolling */}
             {authLoading || (isLoadingWorkflows && user) ? (
                 <div className="flex flex-1 items-center justify-center h-full">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
