@@ -20,6 +20,7 @@ import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { AuthProvider } from '@/contexts/AuthContext'; // Added import
 
 function CalendarPageContent() {
   const { user, loading: authLoading } = useAuth();
