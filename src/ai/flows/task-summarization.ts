@@ -3,9 +3,9 @@
 'use server';
 
 /**
- * @fileOverview Summarizes tasks using AI to manage large projects more easily.
+ * @fileOverview Generates a status update for a given task using its details.
  *
- * - summarizeTask - A function that summarizes a given task.
+ * - summarizeTask - A function that generates a status update for a given task.
  * - TaskSummarizationInput - The input type for the summarizeTask function.
  * - TaskSummarizationOutput - The return type for the summarizeTask function.
  */
@@ -14,12 +14,22 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const TaskSummarizationInputSchema = z.object({
-  taskText: z.string().describe('The text content of the task to be summarized.'),
+  title: z.string().describe('The title of the task.'),
+  description: z.string().optional().describe('The detailed description of the task.'),
+  isCompleted: z.boolean().describe('Whether the task is marked as complete.'),
+  priority: z.string().describe('The priority of the task (e.g., low, medium, high, urgent).'),
+  dueDate: z.string().optional().describe('The due date of the task (ISO format).'),
+  subtasks: z.array(z.object({
+    text: z.string(),
+    completed: z.boolean(),
+  })).optional().describe('A list of subtasks associated with the main task.'),
+  clientName: z.string().optional().describe('The name of the client associated with this task, if any.'),
+  deliverables: z.array(z.string()).optional().describe('A list of deliverables for this task, if any.'),
 });
 export type TaskSummarizationInput = z.infer<typeof TaskSummarizationInputSchema>;
 
 const TaskSummarizationOutputSchema = z.object({
-  summary: z.string().describe('A concise summary of the task, ideally around 50 words. If no summary can be made, this will indicate so.'),
+  summary: z.string().describe('A concise status update for the task, suitable for a client. If no meaningful update can be made, this will indicate so.'),
 });
 export type TaskSummarizationOutput = z.infer<typeof TaskSummarizationOutputSchema>;
 
@@ -31,19 +41,44 @@ const taskSummarizationPrompt = ai.definePrompt({
   name: 'taskSummarizationPrompt',
   input: {schema: TaskSummarizationInputSchema},
   output: {schema: TaskSummarizationOutputSchema},
-  prompt: `You are an AI assistant. Your task is to summarize the given task text in 50 words or less.
-You MUST respond in JSON format. The JSON object must have a single key "summary", and its value should be the summary string.
+  prompt: `You are an AI assistant helping a freelancer draft a status update for a specific task, potentially for a client.
+Task Title: "{{title}}"
+{{#if description}}Description: {{{description}}}{{/if}}
+Status: {{#if isCompleted}}Completed{{else}}In Progress/Pending{{/if}}
+Priority: {{priority}}
+{{#if dueDate}}Due Date: {{dueDate}}{{/if}}
+{{#if clientName}}Client: {{clientName}}{{/if}}
+
+{{#if subtasks.length}}
+Subtasks:
+{{#each subtasks}}
+- {{text}} ({{#if completed}}Completed{{else}}Pending{{/if}})
+{{/each}}
+{{/if}}
+
+{{#if deliverables.length}}
+Deliverables:
+{{#each deliverables}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+Based on ALL the information provided above, generate a concise status update for this task.
+- If the task is completed, state that clearly and mention the completion.
+- If it's in progress, highlight what has been done (based on completed subtasks) and what's likely pending or next.
+- If deliverables are mentioned, consider them in the update.
+- Frame the update in a professional and informative tone.
+- Aim for a brief paragraph, 2-4 sentences long.
+
+You MUST respond in JSON format. The JSON object must have a single key "summary", and its value should be the status update string.
 
 Example of a valid response:
-{"summary": "This is an example summary of the task."}
+{"summary": "The 'Create Homepage Mockup' task is currently in progress. The initial wireframes are complete, and we are now working on the high-fidelity design. The next step is to incorporate client feedback on the color palette. This is a high priority item due by Friday."}
 
-If the task text is too short, unclear, or insufficient to create a meaningful summary, provide a JSON response like this:
-{"summary": "No summary available due to insufficient content."}
+If the task details are too sparse to create a meaningful update (e.g., only a title with no description or subtasks), provide a JSON response like this:
+{"summary": "The task '{{title}}' is currently {{#if isCompleted}}completed{{else}}pending/in progress{{/if}}. More details would be needed for a comprehensive update."}
 
-Task text to summarize:
-{{taskText}}
-
-Remember to always provide your response in the specified JSON format.`,
+Generate the status update now.`,
 });
 
 const summarizeTaskFlow = ai.defineFlow(
@@ -52,21 +87,14 @@ const summarizeTaskFlow = ai.defineFlow(
     inputSchema: TaskSummarizationInputSchema,
     outputSchema: TaskSummarizationOutputSchema,
   },
-  async input => {
-    // Add a bit more context if the input is very short, to help the model.
-    let processedTaskText = input.taskText;
-    if (input.taskText.length < 20) {
-      processedTaskText = `The task is: "${input.taskText}". Please summarize this brief task. If it's too brief, indicate that.`;
-    }
-
-    const response = await taskSummarizationPrompt({ taskText: processedTaskText });
+  async (input: TaskSummarizationInput) => {
+    const response = await taskSummarizationPrompt(input);
     
     if (!response.output) {
-      // This case should ideally be handled by the prompt guiding the LLM to return a specific string for unsummarizable content.
-      // However, if the output structure is missing entirely, we provide a default error.
       return { summary: "Error: AI did not return a valid summary structure." };
     }
     return response.output;
   }
 );
 
+```

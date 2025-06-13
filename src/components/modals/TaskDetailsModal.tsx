@@ -24,6 +24,7 @@ import { format, parseISO, isEqual, set } from 'date-fns';
 import type { Task, Subtask, Comment, TaskPriority, AISummary, AISubtaskSuggestion } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { summarizeTaskAction, suggestSubtasksAction } from '@/actions/ai';
+import type { TaskSummarizationInput } from '@/ai/flows/task-summarization';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -181,15 +182,30 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   };
 
   const handleGenerateSummary = async () => {
+    if (!task) {
+        toast({ title: "Error", description: "No task data available to generate summary.", variant: "destructive" });
+        return;
+    }
     if (!task.description && !task.title) {
       toast({ title: "Cannot Summarize", description: "Task title and details are empty.", variant: "destructive" });
       return;
     }
     setIsSummarizing(true);
     setAiSummary(null);
+
+    const summarizationInput: TaskSummarizationInput = {
+        title: task.title,
+        description: task.description || undefined,
+        isCompleted: task.isCompleted,
+        priority: task.priority,
+        dueDate: task.dueDate || undefined,
+        subtasks: task.subtasks.map(st => ({ text: st.text, completed: st.completed })),
+        clientName: task.clientName || undefined,
+        deliverables: task.deliverables || undefined,
+    };
+
     try {
-      // TODO: Consider a more client-focused prompt if desired
-      const result = await summarizeTaskAction({ taskText: task.title + (task.description ? `\n${task.description}` : '') });
+      const result = await summarizeTaskAction(summarizationInput);
       if (result.summary.startsWith('Error:')) {
         toast({ title: "Draft Failed", description: result.summary, variant: "destructive" });
         setAiSummary(null);
@@ -212,7 +228,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     setIsSuggestingSubtasks(true);
     setAiSubtaskSuggestions([]);
     try {
-      // TODO: Consider a more planning-focused prompt
       const result = await suggestSubtasksAction({ taskDescription: task.title + (task.description ? `\n${task.description}` : '') });
       if (result.subtaskSuggestions.length > 0 && result.subtaskSuggestions[0].startsWith('Error:')) {
         toast({ title: "Suggestion Failed", description: result.subtaskSuggestions[0], variant: "destructive" });
@@ -655,3 +670,4 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   );
 }
 
+```
