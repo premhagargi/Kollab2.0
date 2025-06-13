@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserCircle, LogOut, Settings, Users, LogInIcon, Mail, KeyRound, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive, Share2, FileText, CalendarDays } from 'lucide-react'; // Added CalendarDays
+import { UserCircle, LogOut, Settings, LogInIcon, Mail, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive, Share2, FileText, CalendarDays } from 'lucide-react'; // Added CalendarDays
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -50,6 +50,8 @@ interface AppHeaderProps {
   onSelectWorkflow: (workflowId: string) => void;
   onWorkflowCreated: (newWorkflowName: string, templateName?: string) => Promise<string | null>;
   isLoadingWorkflows: boolean;
+  onToggleCalendarSidebar?: () => void; // New prop to toggle calendar
+  isCalendarSidebarVisible?: boolean; // New prop to indicate calendar visibility
 }
 
 const workflowTemplates = [
@@ -60,7 +62,7 @@ const workflowTemplates = [
   { value: "Weekly Solo Sprint", label: "Weekly Solo Sprint" },
 ];
 
-export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWorkflowCreated, isLoadingWorkflows }: AppHeaderProps) {
+export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWorkflowCreated, isLoadingWorkflows, onToggleCalendarSidebar, isCalendarSidebarVisible }: AppHeaderProps) {
   const pathname = usePathname();
   const { user, loginWithGoogle, logout, loading: authLoading } = useAuth();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -104,12 +106,20 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
               <Button variant={pathname === '/' ? "secondary" : "ghost"} size="sm" asChild>
                 <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
               </Button>
-               <Button variant={pathname === '/calendar' ? "secondary" : "ghost"} size="sm" asChild>
-                <Link href="/calendar"><CalendarDays className="mr-2 h-4 w-4" />Calendar</Link>
-              </Button>
               <Button variant={pathname === '/analytics' ? "secondary" : "ghost"} size="sm" asChild>
                 <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />My Insights</Link>
               </Button>
+
+              {onToggleCalendarSidebar && (
+                <Button 
+                  variant={isCalendarSidebarVisible ? "secondary" : "ghost"} 
+                  size="sm" 
+                  onClick={onToggleCalendarSidebar}
+                  title={isCalendarSidebarVisible ? "Hide Calendar Sidebar" : "Show Calendar Sidebar"}
+                >
+                  <CalendarDays className="mr-2 h-4 w-4" /> Calendar
+                </Button>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -183,9 +193,11 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
                    <DropdownMenuItem asChild>
                      <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
                    </DropdownMenuItem>
-                   <DropdownMenuItem asChild>
-                     <Link href="/calendar"><CalendarDays className="mr-2 h-4 w-4" />Calendar</Link>
-                   </DropdownMenuItem>
+                   {onToggleCalendarSidebar && (
+                      <DropdownMenuItem onClick={onToggleCalendarSidebar}>
+                        <CalendarDays className="mr-2 h-4 w-4" /> {isCalendarSidebarVisible ? "Hide Calendar" : "Show Calendar"}
+                      </DropdownMenuItem>
+                    )}
                    <DropdownMenuItem asChild>
                      <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />My Insights</Link>
                    </DropdownMenuItem>
