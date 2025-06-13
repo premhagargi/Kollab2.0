@@ -9,11 +9,11 @@ import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SplitText } from 'gsap/SplitText'; // Updated import
+import { SplitText } from 'gsap/SplitText';
 import { LayoutGrid, ListChecks, Brain, CopyPlus, ChevronRight, Zap, BarChartBig, Users, MessageSquare, PlayCircle, Settings2, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-gsap.registerPlugin(ScrollTrigger, SplitText); // Register SplitText
+gsap.registerPlugin(ScrollTrigger, SplitText);
 
 const kollabMainFeatures = [
   {
@@ -106,7 +106,7 @@ function LandingPageContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  const landingPageContainerRef = useRef<HTMLDivElement>(null); // Ref for the main container
+  const landingPageContainerRef = useRef<HTMLDivElement>(null);
 
   const headerRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -125,7 +125,7 @@ function LandingPageContent() {
 
   const whyKollabSectionRef = useRef<HTMLElement>(null);
   const whyKollabTitleRef = useRef<HTMLHeadingElement>(null);
-  const whyKollabItemsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const whyKollabItemsRef = useRef<(HTMLDivElement | null)[]>(([]);
 
   const howItWorksSectionRef = useRef<HTMLElement>(null);
   const howItWorksTitleRef = useRef<HTMLHeadingElement>(null);
@@ -169,20 +169,18 @@ function LandingPageContent() {
     let testimonialsTitleSplit: SplitText | null = null;
     let finalCTATitleSplit: SplitText | null = null;
 
-    // Set initial states to prevent flash of unstyled/unanimaated content
-    if (landingPageContainerRef.current) {
-        gsap.set(landingPageContainerRef.current, { opacity: 0 });
-    }
+    // Set initial states for elements animated on page load to prevent FOUC
     gsap.set([
         logoRef.current,
         ...(navItemsRef.current.filter(el => el)),
         authButtonsRef.current,
         hiringBannerRef.current,
         heroFormRef.current,
-        heroTitleRef.current, // Set parent of SplitText to autoAlpha: 0
-        heroParagraphRef.current // Set parent of SplitText to autoAlpha: 0
-      ], { autoAlpha: 0, y: 20 }); // autoAlpha includes visibility:hidden
+        heroTitleRef.current, 
+        heroParagraphRef.current 
+      ], { autoAlpha: 0, y: 20 });
     
+    // Set initial state for the Kanban mockup card (scroll-triggered)
     gsap.set(kanbanMockupCardRef.current, {autoAlpha:0, y: 50, scale: 0.95});
 
 
@@ -197,7 +195,6 @@ function LandingPageContent() {
     if (heroSectionRef.current && heroTitleRef.current && heroParagraphRef.current) {
       tlEntry.to(hiringBannerRef.current, { autoAlpha: 1, y: 0, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
       
-      // Make parent containers for SplitText visible right before their children animate
       tlEntry.set([heroTitleRef.current, heroParagraphRef.current], {autoAlpha: 1}, ">-0.1");
 
       heroTitleSplit = new SplitText(heroTitleRef.current, { type: "chars,words" });
@@ -213,12 +210,7 @@ function LandingPageContent() {
       tlEntry.to(heroFormRef.current, { autoAlpha: 1, y: 0, duration: 0.8 }, "-=0.5");
     }
     
-    // Fade in the whole page after initial animations are set
-    if (landingPageContainerRef.current) {
-        tlEntry.to(landingPageContainerRef.current, { opacity: 1, duration: 0.3 }, ">-0.5"); 
-    }
-
-
+    // Kanban Mockup Animation (Scroll-triggered)
     if (kanbanMockupSectionRef.current && kanbanMockupCardRef.current) {
       gsap.to(kanbanMockupCardRef.current, 
         { 
@@ -285,7 +277,7 @@ function LandingPageContent() {
         if (img) {
             gsap.to(img, {
                 rotationY: 5, scale: 1.03, duration: 8, ease: "sine.inOut",
-                yoyo: true, repeat: -1, delay: index * 0.5 + 1 // Delay after entry
+                yoyo: true, repeat: -1, delay: index * 0.5 + 1 
             });
         }
       });
@@ -315,6 +307,7 @@ function LandingPageContent() {
         .from(finalCTAButtonRef.current, { autoAlpha: 0, scale: 0.8, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
     }
 
+    // Footer Animation
     if (footerRef.current) {
         gsap.from(footerRef.current, {
           autoAlpha: 0, y: 50, duration: 0.8, ease: "power3.out",
@@ -322,6 +315,7 @@ function LandingPageContent() {
         });
     }
 
+    // Custom Scrollbar Logic
     const scrollableElement = document.documentElement;
     const updateScrollbar = () => {
       if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
@@ -354,7 +348,7 @@ function LandingPageContent() {
     const handleResize = () => updateScrollbar();
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize, { passive: true });
-    updateScrollbar(); // Initial call
+    updateScrollbar(); 
 
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
@@ -368,9 +362,10 @@ function LandingPageContent() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current, landingPageContainerRef.current]);
+      gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current]);
     };
-  }, [loading, user]); // Ensure animations only run when not loading and no user
+  }, [loading, user, isScrollbarVisible]); // Added isScrollbarVisible to dep array for scrollbar logic
+
 
   if (loading || (!loading && user)) {
     return (
@@ -382,7 +377,7 @@ function LandingPageContent() {
 
   return (
     <>
-      <div ref={landingPageContainerRef} className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col" style={{ opacity: 0 }}> {/* Initially hidden */}
+      <div ref={landingPageContainerRef} className="min-h-screen bg-gradient-to-br from-[#0a0a13] via-[#18182a] to-[#6e6ef6] text-white flex flex-col">
         <header 
           ref={headerRef}
           className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-8 py-5 bg-[#0a0a13]/80 backdrop-blur-md"
@@ -645,7 +640,7 @@ function LandingPageContent() {
         onMouseLeave={() => {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
             scrollTimeoutRef.current = setTimeout(() => {
-                if (scrollbarTrackRef.current && scrollbarTrackRef.current.matches(':hover') === false) { // Check hover again
+                if (scrollbarTrackRef.current && scrollbarTrackRef.current.matches(':hover') === false) { 
                     gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
                 }
             }, 1500);
