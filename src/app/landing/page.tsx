@@ -54,7 +54,7 @@ const whyKollabPoints = [
     description: "Visualize your entire workload, track progress in real-time, and make data-driven decisions."
   },
   {
-    icon: Users, // Kept for general appeal, though focus is solo
+    icon: Users, 
     title: "Built for You, Ready to Grow",
     description: "Perfectly tailored for solo freelancers, with underlying capabilities for future team features if your needs evolve."
   }
@@ -157,8 +157,21 @@ function LandingPageContent() {
     }
   }, [user, loading, router]);
 
+  // Main animation setup useEffect
   useEffect(() => {
     if (loading || user) return; 
+
+    gsap.set([
+        logoRef.current,
+        ...(navItemsRef.current.filter(el => el)),
+        authButtonsRef.current,
+        hiringBannerRef.current,
+        heroFormRef.current,
+        heroTitleRef.current,
+        heroParagraphRef.current
+      ], { autoAlpha: 0 });
+    
+    gsap.set(kanbanMockupCardRef.current, {autoAlpha:0, y: 50, scale: 0.95});
 
     let heroTitleSplit: SplitText | null = null;
     let heroParagraphSplit: SplitText | null = null;
@@ -167,18 +180,6 @@ function LandingPageContent() {
     let featureSpotlightTitleSplit: SplitText | null = null;
     let testimonialsTitleSplit: SplitText | null = null;
     let finalCTATitleSplit: SplitText | null = null;
-
-    gsap.set([
-        logoRef.current,
-        ...(navItemsRef.current.filter(el => el)),
-        authButtonsRef.current,
-        hiringBannerRef.current,
-        heroFormRef.current,
-        heroTitleRef.current, // Set initial state for parent of split text
-        heroParagraphRef.current // Set initial state for parent of split text
-      ], { autoAlpha: 0 });
-    
-    gsap.set(kanbanMockupCardRef.current, {autoAlpha:0, y: 50, scale: 0.95});
 
     const tlEntry = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
 
@@ -191,20 +192,20 @@ function LandingPageContent() {
     if (heroSectionRef.current && heroTitleRef.current && heroParagraphRef.current) {
       tlEntry.to(hiringBannerRef.current, { autoAlpha: 1, y: 0, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
       
-      tlEntry.to(heroTitleRef.current, { autoAlpha: 1 }, ">-0.1"); // Make parent visible before split
+      tlEntry.to(heroTitleRef.current, { autoAlpha: 1 }, ">-0.1"); 
       if (heroTitleRef.current) {
         heroTitleSplit = new SplitText(heroTitleRef.current, { type: "chars,words" });
-        if (heroTitleSplit) { // Guard access to .chars
+        if (heroTitleSplit.chars) {
             tlEntry.from(heroTitleSplit.chars, {
             duration: 0.8, autoAlpha: 0, y: 30, ease: "power3.out", stagger: 0.03,
             }, "-=0.3");
         }
       }
       
-      tlEntry.to(heroParagraphRef.current, { autoAlpha: 1 }, ">-0.6"); // Make parent visible
+      tlEntry.to(heroParagraphRef.current, { autoAlpha: 1 }, ">-0.6"); 
       if (heroParagraphRef.current) {
         heroParagraphSplit = new SplitText(heroParagraphRef.current, { type: "lines" });
-        if (heroParagraphSplit) { // Guard access to .lines
+        if (heroParagraphSplit.lines) { 
             tlEntry.from(heroParagraphSplit.lines, {
             duration: 0.8, autoAlpha: 0, y: 20, ease: "power3.out", stagger: 0.1,
             }, "-=0.6");
@@ -237,7 +238,7 @@ function LandingPageContent() {
 
     if (whyKollabSectionRef.current && whyKollabTitleRef.current) {
       whyKollabTitleSplit = new SplitText(whyKollabTitleRef.current, { type: "words,chars" });
-      if (whyKollabTitleSplit) { // Guard
+      if (whyKollabTitleSplit.chars) { 
         gsap.from(whyKollabTitleSplit.chars, {
           autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
           scrollTrigger: { trigger: whyKollabSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
@@ -251,7 +252,7 @@ function LandingPageContent() {
 
     if (howItWorksSectionRef.current && howItWorksTitleRef.current) {
       howItWorksTitleSplit = new SplitText(howItWorksTitleRef.current, { type: "words,chars" });
-      if (howItWorksTitleSplit) { // Guard
+      if (howItWorksTitleSplit.chars) { 
         gsap.from(howItWorksTitleSplit.chars, {
           autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
           scrollTrigger: { trigger: howItWorksSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
@@ -265,14 +266,14 @@ function LandingPageContent() {
 
     if (featureSpotlightSectionRef.current && featureSpotlightTitleRef.current) {
       featureSpotlightTitleSplit = new SplitText(featureSpotlightTitleRef.current, { type: "words,chars" });
-      if (featureSpotlightTitleSplit) { // Guard
+      if (featureSpotlightTitleSplit.chars) { 
         gsap.from(featureSpotlightTitleSplit.chars, {
           autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
           scrollTrigger: { trigger: featureSpotlightSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
         });
       }
       featureSpotlightItemsRef.current.filter(el => el).forEach((item, index) => {
-        if (item) { // item is already guaranteed to be non-null by filter
+        if (item) { 
           const img = item.querySelector('img');
           const textContent = item.querySelector('.feature-text-content');
           const tlFeature = gsap.timeline({
@@ -280,15 +281,14 @@ function LandingPageContent() {
           });
           if (img) {
             tlFeature.from(img, { autoAlpha: 0, x: index % 2 === 0 ? -50 : 50, scale: 0.8, duration: 0.8, ease: "power3.out" });
+            gsap.to(img, {
+                rotationY: 5, scale: 1.03, duration: 8, ease: "sine.inOut",
+                yoyo: true, repeat: -1, delay: index * 0.5 + 1,
+                scrollTrigger: { trigger: img, start: "top bottom", toggleActions: "play pause resume pause" } 
+            });
           }
           if (textContent) {
             tlFeature.from(textContent, { autoAlpha: 0, y: 30, duration: 0.7, ease: "power3.out" }, img ? "-=0.5" : ">");
-          }
-          if (img) {
-              gsap.to(img, {
-                  rotationY: 5, scale: 1.03, duration: 8, ease: "sine.inOut",
-                  yoyo: true, repeat: -1, delay: index * 0.5 + 1 
-              });
           }
         }
       });
@@ -296,7 +296,7 @@ function LandingPageContent() {
     
     if (testimonialsSectionRef.current && testimonialsTitleRef.current) {
       testimonialsTitleSplit = new SplitText(testimonialsTitleRef.current, { type: "words,chars" });
-      if (testimonialsTitleSplit) { // Guard
+      if (testimonialsTitleSplit.chars) { 
         gsap.from(testimonialsTitleSplit.chars, {
           autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out",
           scrollTrigger: { trigger: testimonialsSectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
@@ -313,7 +313,7 @@ function LandingPageContent() {
       const ctaTimeline = gsap.timeline({
         scrollTrigger: { trigger: finalCTASectionRef.current, start: "top 80%", toggleActions: "play none none none", once: true, }
       });
-      if (finalCTATitleSplit) { // Guard
+      if (finalCTATitleSplit.chars) { 
         ctaTimeline.from(finalCTATitleSplit.chars, { autoAlpha: 0, y: 20, stagger: 0.03, duration: 0.6, ease: "power2.out" });
       }
       ctaTimeline.from(finalCTAParagraphRef.current, { autoAlpha: 0, y: 20, duration: 0.5, ease: "power2.out" }, "-=0.3")
@@ -327,40 +327,6 @@ function LandingPageContent() {
         });
     }
 
-    const scrollableElement = document.documentElement;
-    const updateScrollbar = () => {
-      if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
-        if (scrollHeight <= clientHeight) { 
-            if (isScrollbarVisible) {
-                gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
-            }
-            return;
-        }
-        
-        if(!isScrollbarVisible) {
-            gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
-            setIsScrollbarVisible(true);
-        }
-
-        const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * clientHeight);
-        const thumbPosition = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
-        gsap.to(scrollbarThumbRef.current, { height: thumbHeight, y: thumbPosition, duration: 0.1, ease: "power1.out" });
-        
-        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-        scrollTimeoutRef.current = setTimeout(() => {
-            if (scrollbarTrackRef.current && !scrollbarTrackRef.current.matches(':hover')) {
-                 gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
-            }
-        }, 1500);
-      }
-    };
-    const handleScroll = () => updateScrollbar();
-    const handleResize = () => updateScrollbar();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleResize, { passive: true });
-    updateScrollbar(); 
-
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
       if (heroTitleSplit) heroTitleSplit.revert();
@@ -370,14 +336,77 @@ function LandingPageContent() {
       if (featureSpotlightTitleSplit) featureSpotlightTitleSplit.revert();
       if (testimonialsTitleSplit) testimonialsTitleSplit.revert();
       if (finalCTATitleSplit) finalCTATitleSplit.revert();
+      gsap.killTweensOf([ // Kill any remaining tweens on common elements
+        logoRef.current, ...(navItemsRef.current.filter(el => el)), authButtonsRef.current,
+        hiringBannerRef.current, heroFormRef.current, kanbanMockupCardRef.current,
+        footerRef.current
+      ]);
+    };
+  }, [loading, user, router]); // Removed isScrollbarVisible
+
+
+  // useEffect for custom scrollbar logic
+  useEffect(() => {
+    if (loading || user) return; // Don't run scrollbar logic if loading or user logged in
+
+    const scrollableElement = document.documentElement;
+    let scrollbarUpdateRAF: number;
+
+    const updateScrollbar = () => {
+      cancelAnimationFrame(scrollbarUpdateRAF); // Ensure only one update runs per frame
+      scrollbarUpdateRAF = requestAnimationFrame(() => {
+        if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
+          const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
+          
+          if (scrollHeight <= clientHeight) { 
+              if (isScrollbarVisible) {
+                  gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
+              }
+              return;
+          }
+          
+          if (!isScrollbarVisible) {
+              gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
+              setIsScrollbarVisible(true);
+          }
+
+          const thumbHeight = Math.max(30, (clientHeight / scrollHeight) * clientHeight); // Min height for thumb
+          const thumbPosition = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight);
+          
+          gsap.to(scrollbarThumbRef.current, { 
+            height: thumbHeight, 
+            y: thumbPosition, 
+            duration: 0.15, // Slightly smoother duration
+            ease: "power1.out" 
+          });
+          
+          if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+          scrollTimeoutRef.current = setTimeout(() => {
+              if (scrollbarTrackRef.current && !scrollbarTrackRef.current.matches(':hover')) {
+                   gsap.to(scrollbarTrackRef.current, {opacity: 0, duration: 0.3, onComplete: () => setIsScrollbarVisible(false) });
+              }
+          }, 1500);
+        }
+      });
+    };
+
+    const handleScroll = () => updateScrollbar();
+    const handleResize = () => updateScrollbar();
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    updateScrollbar(); // Initial call
+
+    return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      if (scrollbarThumbRef.current && scrollbarTrackRef.current) { // Check refs before killing tweens
+      cancelAnimationFrame(scrollbarUpdateRAF);
+      if (scrollbarThumbRef.current && scrollbarTrackRef.current) {
         gsap.killTweensOf([scrollbarThumbRef.current, scrollbarTrackRef.current]);
       }
     };
-  }, [loading, user, isScrollbarVisible, router]);
+  }, [loading, user, isScrollbarVisible]); // isScrollbarVisible is needed here for its own logic
 
 
   if (loading || (!loading && user)) {
@@ -642,7 +671,7 @@ function LandingPageContent() {
             if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
             if (scrollbarTrackRef.current && !isScrollbarVisible) {
                  gsap.to(scrollbarTrackRef.current, {opacity: 1, duration: 0.3});
-                 setIsScrollbarVisible(true);
+                 // No direct setIsScrollbarVisible here, opacity tween handles visibility
             }
         }}
         onMouseLeave={() => {
