@@ -48,7 +48,7 @@ export function TaskPill({ task, onClick }: TaskPillProps) {
           {task.title}
         </h4>
         <div className="flex items-center space-x-2 flex-shrink-0">
-            {task.isBillable && <DollarSign className="h-3.5 w-3.5 text-primary/70" titleAccess="Billable Task"/>}
+            {task.isBillable && <DollarSign className="h-3.5 w-3.5 text-primary/70" title="Billable Task"/>}
             {task.isCompleted && <CheckSquare className="h-4 w-4 text-green-600 dark:text-green-400" />}
         </div>
       </div>
