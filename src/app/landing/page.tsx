@@ -1,3 +1,4 @@
+
 // src/app/landing/page.tsx
 "use client";
 import React, { useEffect, useRef } from 'react';
@@ -8,9 +9,9 @@ import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { TextPlugin } from 'gsap/TextPlugin';
+import { SplitText } from 'gsap/SplitText'; // Import SplitText
 
-gsap.registerPlugin(ScrollTrigger, TextPlugin);
+gsap.registerPlugin(ScrollTrigger, SplitText); // Register SplitText
 
 function LandingPageContent() {
   const { user, loading } = useAuth();
@@ -28,6 +29,7 @@ function LandingPageContent() {
   const heroFormRef = useRef<HTMLDivElement>(null);
   
   const kanbanMockupRef = useRef<HTMLElement>(null);
+  const kanbanColumnsRef = useRef<(HTMLDivElement | null)[]>([]);
   const footerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -40,25 +42,41 @@ function LandingPageContent() {
     if (loading || user) return; 
 
     const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
+    let heroTitleSplit: SplitText | null = null;
+    let heroParagraphSplit: SplitText | null = null;
 
     // Header animations
     if (headerRef.current) {
       tl.from(logoRef.current, { opacity: 0, y: -30, delay: 0.2 })
-        .from(navItemsRef.current.filter(el => el), { opacity: 0, y: -30, stagger: 0.15 }, "-=0.5")
-        .from(authButtonsRef.current, { opacity: 0, y: -30 }, "-=0.4");
+        .from(navItemsRef.current.filter(el => el), { opacity: 0, y: -30, stagger: 0.15, duration: 0.5 }, "-=0.5")
+        .from(authButtonsRef.current, { opacity: 0, y: -30, duration: 0.5 }, "-=0.4");
     }
 
     // Hero section animations
-    if (heroSectionRef.current && heroTitleRef.current) {
-      tl.from(hiringBannerRef.current, { opacity: 0, y: 40, duration: 0.6 }, "-=0.2")
-        // TextPlugin for hero title
-        .from(heroTitleRef.current, {
-          duration: 1.5,
-          text: { value: "", speed: 0.5 }, // Clears existing text, then animates in
-          ease: "power2.inOut"
-        }, "-=0.3")
-        .from(heroParagraphRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=1.2") // Overlap with title animation
-        .from(heroFormRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=1.0"); // Overlap
+    if (heroSectionRef.current && heroTitleRef.current && heroParagraphRef.current) {
+      tl.from(hiringBannerRef.current, { opacity: 0, y: 40, duration: 0.6, ease: "back.out(1.7)" }, "-=0.2");
+      
+      // Hero Title with SplitText
+      heroTitleSplit = new SplitText(heroTitleRef.current, { type: "lines,words,chars" });
+      tl.from(heroTitleSplit.chars, {
+        duration: 0.8,
+        opacity: 0,
+        y: 30,
+        ease: "power3.out",
+        stagger: 0.03,
+      }, "-=0.3");
+
+      // Hero Paragraph with SplitText
+      heroParagraphSplit = new SplitText(heroParagraphRef.current, { type: "lines" });
+      tl.from(heroParagraphSplit.lines, {
+        duration: 0.8,
+        opacity: 0,
+        y: 20,
+        ease: "power3.out",
+        stagger: 0.1,
+      }, "-=0.6");
+      
+      tl.from(heroFormRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=0.5");
     }
 
     // Scroll-triggered animation for Kanban mockup
@@ -69,8 +87,21 @@ function LandingPageContent() {
           opacity: 1, y: 0, scale: 1, duration: 1, ease: "power3.out",
           scrollTrigger: {
             trigger: kanbanMockupRef.current,
-            start: "top 85%", // Trigger when 85% of the element is visible from the top
-            toggleActions: "play none none none", // Play animation once on enter
+            start: "top 85%", 
+            toggleActions: "play none none none",
+            onEnter: () => {
+              // Stagger animation for Kanban columns
+              if (kanbanColumnsRef.current.length > 0) {
+                gsap.from(kanbanColumnsRef.current.filter(el => el), {
+                  opacity: 0,
+                  y: 50,
+                  duration: 0.6,
+                  stagger: 0.15,
+                  ease: "power3.out",
+                  delay: 0.2 // Small delay after the main card animates in
+                });
+              }
+            }
           }
         }
       );
@@ -91,9 +122,11 @@ function LandingPageContent() {
         );
     }
 
-    // Cleanup ScrollTriggers on component unmount
+    // Cleanup ScrollTriggers and SplitText on component unmount
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+      if (heroTitleSplit) heroTitleSplit.revert();
+      if (heroParagraphSplit) heroParagraphSplit.revert();
     };
 
   }, [loading, user]);
@@ -201,7 +234,7 @@ function LandingPageContent() {
               </div>
               <div className="flex space-x-3 overflow-x-auto pb-2">
                 {/* To Do Column */}
-                <div className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg">
+                <div ref={el => kanbanColumnsRef.current[0] = el} className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg kanban-column-mock">
                   <h3 className="text-[#b3b3ff] font-semibold text-sm mb-2">To Do <span className="text-gray-500 text-xs">3</span></h3>
                   <div className="space-y-2">
                     <div className="bg-[#23233a] rounded-lg p-3 text-white text-xs shadow-md">
@@ -226,7 +259,7 @@ function LandingPageContent() {
                   </div>
                 </div>
                 {/* In Progress Column */}
-                <div className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg">
+                <div ref={el => kanbanColumnsRef.current[1] = el} className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg kanban-column-mock">
                   <h3 className="text-[#b3b3ff] font-semibold text-sm mb-2">In Progress <span className="text-gray-500 text-xs">2</span></h3>
                   <div className="space-y-2">
                     <div className="bg-[#23233a] rounded-lg p-3 text-white text-xs shadow-md">
@@ -242,7 +275,7 @@ function LandingPageContent() {
                   </div>
                 </div>
                 {/* In Review Column */}
-                <div className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg">
+                <div ref={el => kanbanColumnsRef.current[2] = el} className="min-w-[180px] bg-[#0F0F1A] p-3 rounded-lg kanban-column-mock">
                   <h3 className="text-[#b3b3ff] font-semibold text-sm mb-2">In Review <span className="text-gray-500 text-xs">1</span></h3>
                   <div className="space-y-2">
                     <div className="bg-[#23233a] rounded-lg p-3 text-white text-xs shadow-md">
