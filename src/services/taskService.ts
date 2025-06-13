@@ -81,7 +81,7 @@ export const getTasksByWorkflow = async (workflowId: string, userId: string): Pr
     return [];
   }
 
-  console.log(`[taskService] getTasksByWorkflow: Querying tasks with workflowId='${workflowId}', userId='${userId}'`);
+  // console.log(`[taskService] getTasksByWorkflow: Querying tasks with workflowId='${workflowId}', userId='${userId}'`);
 
   try {
     const q = query(
@@ -101,10 +101,46 @@ export const getTasksByWorkflow = async (workflowId: string, userId: string): Pr
       updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
     } as Task));
   } catch (error) {
-    console.error("[taskService] Error fetching tasks by workflow:", error, { workflowId, userId });
+    // console.error("[taskService] Error fetching tasks by workflow:", error, { workflowId, userId });
     throw error;
   }
 };
+
+/**
+ * Fetches all non-archived tasks owned by a specific user.
+ * @param userId The ID of the authenticated user.
+ * @returns A promise that resolves to an array of Task objects.
+ */
+export const getAllTasksByOwner = async (userId: string): Promise<Task[]> => {
+  if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+    console.warn("[taskService] getAllTasksByOwner: Invalid userId provided. Aborting query.", { userId });
+    return [];
+  }
+
+  // console.log(`[taskService] getAllTasksByOwner: Querying all tasks for userId='${userId}'`);
+  try {
+    const q = query(
+      collection(db, TASKS_COLLECTION),
+      where('ownerId', '==', userId),
+      where('isArchived', '==', false) // Only fetch non-archived tasks
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+      isCompleted: docSnap.data().isCompleted || false,
+      isBillable: docSnap.data().isBillable || false,
+      clientName: docSnap.data().clientName || '',
+      deliverables: docSnap.data().deliverables || [],
+      createdAt: mapTimestampToISO(docSnap.data().createdAt),
+      updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
+    } as Task));
+  } catch (error) {
+    // console.error("[taskService] Error fetching all tasks by owner:", error, { userId });
+    throw error;
+  }
+};
+
 
 /**
  * Fetches a single task by its ID.
@@ -209,3 +245,4 @@ export const deleteTask = async (taskId: string): Promise<void> => {
     throw error;
   }
 };
+

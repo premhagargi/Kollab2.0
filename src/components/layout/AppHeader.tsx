@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserCircle, LogOut, Settings, Users, LogInIcon, Mail, KeyRound, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive, Share2, FileText } from 'lucide-react'; // Added Share2, FileText
+import { UserCircle, LogOut, Settings, Users, LogInIcon, Mail, KeyRound, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive, Share2, FileText, CalendarDays } from 'lucide-react'; // Added CalendarDays
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,18 +21,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { siteConfig } from '@/config/site';
-import { ShareWorkflowModal } from '@/components/modals/ShareWorkflowModal'; // Renamed
+import { ShareWorkflowModal } from '@/components/modals/ShareWorkflowModal';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Added Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { EmailPasswordLoginForm } from '@/components/auth/EmailPasswordLoginForm';
 import { EmailPasswordSignupForm } from '@/components/auth/EmailPasswordSignupForm';
-import type { Workflow } from '@/types'; // Renamed
+import type { Workflow } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Label } from '@/components/ui/label'; // Added Label
-import { ThemeToggleButton } from '@/components/layout/ThemeToggleButton'; // Added import
+import { Label } from '@/components/ui/label';
+import { ThemeToggleButton } from '@/components/layout/ThemeToggleButton';
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18px" height="18px" className="mr-2">
@@ -45,11 +45,11 @@ const GoogleIcon = () => (
 );
 
 interface AppHeaderProps {
-  workflows: Workflow[]; // Renamed
-  currentWorkflowId: string | null; // Renamed
-  onSelectWorkflow: (workflowId: string) => void; // Renamed
-  onWorkflowCreated: (newWorkflowName: string, templateName?: string) => Promise<string | null>; // Renamed, added templateName
-  isLoadingWorkflows: boolean; // Renamed
+  workflows: Workflow[];
+  currentWorkflowId: string | null;
+  onSelectWorkflow: (workflowId: string) => void;
+  onWorkflowCreated: (newWorkflowName: string, templateName?: string) => Promise<string | null>;
+  isLoadingWorkflows: boolean;
 }
 
 const workflowTemplates = [
@@ -63,26 +63,26 @@ const workflowTemplates = [
 export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWorkflowCreated, isLoadingWorkflows }: AppHeaderProps) {
   const pathname = usePathname();
   const { user, loginWithGoogle, logout, loading: authLoading } = useAuth();
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false); // Renamed
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [authView, setAuthView] = useState<'google' | 'emailLogin' | 'emailSignup'>('google');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isCreateWorkflowModalOpen, setIsCreateWorkflowModalOpen] = useState(false); // Renamed
-  const [newWorkflowName, setNewWorkflowName] = useState(''); // Renamed
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(workflowTemplates[0].value); // New state for template
-  const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false); // Renamed
+  const [isCreateWorkflowModalOpen, setIsCreateWorkflowModalOpen] = useState(false);
+  const [newWorkflowName, setNewWorkflowName] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(workflowTemplates[0].value);
+  const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
 
   const handleLoginSuccess = () => {
     setIsLoginModalOpen(false); 
     setAuthView('google'); 
   };
 
-  const handleCreateWorkflow = async () => { // Renamed
+  const handleCreateWorkflow = async () => {
     if (!newWorkflowName.trim()) return;
     setIsCreatingWorkflow(true);
-    const newWorkflowId = await onWorkflowCreated(newWorkflowName, selectedTemplate); // Pass template
+    const newWorkflowId = await onWorkflowCreated(newWorkflowName, selectedTemplate);
     if (newWorkflowId) {
       setNewWorkflowName('');
-      setSelectedTemplate(workflowTemplates[0].value); // Reset template
+      setSelectedTemplate(workflowTemplates[0].value);
       setIsCreateWorkflowModalOpen(false);
     }
     setIsCreatingWorkflow(false);
@@ -103,6 +103,9 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
             <nav className="hidden md:flex items-center space-x-1">
               <Button variant={pathname === '/' ? "secondary" : "ghost"} size="sm" asChild>
                 <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
+              </Button>
+               <Button variant={pathname === '/calendar' ? "secondary" : "ghost"} size="sm" asChild>
+                <Link href="/calendar"><CalendarDays className="mr-2 h-4 w-4" />Calendar</Link>
               </Button>
               <Button variant={pathname === '/analytics' ? "secondary" : "ghost"} size="sm" asChild>
                 <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />My Insights</Link>
@@ -149,7 +152,7 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
         <div className="flex-grow" />
 
         <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-          <ThemeToggleButton /> {/* Added Theme Toggle Button */}
+          <ThemeToggleButton />
           {authLoading && !user ? ( 
             <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
           ) : user ? (
@@ -179,6 +182,9 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
                 <DropdownMenuGroup className="md:hidden">
                    <DropdownMenuItem asChild>
                      <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem asChild>
+                     <Link href="/calendar"><CalendarDays className="mr-2 h-4 w-4" />Calendar</Link>
                    </DropdownMenuItem>
                    <DropdownMenuItem asChild>
                      <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />My Insights</Link>
@@ -352,3 +358,4 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
     </header>
   );
 }
+

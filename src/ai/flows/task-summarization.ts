@@ -96,5 +96,3 @@ const summarizeTaskFlow = ai.defineFlow(
     return response.output;
   }
 );
-
-```

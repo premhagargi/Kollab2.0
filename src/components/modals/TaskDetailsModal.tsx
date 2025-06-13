@@ -669,5 +669,3 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     </Dialog>
   );
 }
-
-```
