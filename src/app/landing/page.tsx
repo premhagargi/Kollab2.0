@@ -7,6 +7,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { TextPlugin } from 'gsap/TextPlugin';
+
+gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
 function LandingPageContent() {
   const { user, loading } = useAuth();
@@ -14,7 +18,7 @@ function LandingPageContent() {
 
   const headerRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
-  const navItemsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const navItemsRef = useRef<(HTMLAnchorElement | HTMLDivElement | null)[]>([]);
   const authButtonsRef = useRef<HTMLDivElement>(null);
   
   const heroSectionRef = useRef<HTMLElement>(null);
@@ -26,7 +30,6 @@ function LandingPageContent() {
   const kanbanMockupRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLElement>(null);
 
-
   useEffect(() => {
     if (!loading && user) {
       router.replace('/'); 
@@ -34,34 +37,64 @@ function LandingPageContent() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (loading || user) return; // Don't run animations if loading or user exists (will redirect)
+    if (loading || user) return; 
 
-    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 0.7 } });
 
     // Header animations
     if (headerRef.current) {
-      tl.from(logoRef.current, { opacity: 0, y: -20, duration: 0.6, delay: 0.2 })
-        .from(navItemsRef.current.filter(el => el), { opacity: 0, y: -20, duration: 0.5, stagger: 0.1 }, "-=0.4")
-        .from(authButtonsRef.current, { opacity: 0, y: -20, duration: 0.5 }, "-=0.3");
+      tl.from(logoRef.current, { opacity: 0, y: -30, delay: 0.2 })
+        .from(navItemsRef.current.filter(el => el), { opacity: 0, y: -30, stagger: 0.15 }, "-=0.5")
+        .from(authButtonsRef.current, { opacity: 0, y: -30 }, "-=0.4");
     }
 
     // Hero section animations
-    if (heroSectionRef.current) {
-      tl.from(hiringBannerRef.current, { opacity: 0, y: 20, duration: 0.6 }, "-=0.2")
-        .from(heroTitleRef.current, { opacity: 0, y: 30, duration: 0.8 }, "-=0.4")
-        .from(heroParagraphRef.current, { opacity: 0, y: 30, duration: 0.7 }, "-=0.6")
-        .from(heroFormRef.current, { opacity: 0, y: 30, duration: 0.7 }, "-=0.5");
+    if (heroSectionRef.current && heroTitleRef.current) {
+      tl.from(hiringBannerRef.current, { opacity: 0, y: 40, duration: 0.6 }, "-=0.2")
+        // TextPlugin for hero title
+        .from(heroTitleRef.current, {
+          duration: 1.5,
+          text: { value: "", speed: 0.5 }, // Clears existing text, then animates in
+          ease: "power2.inOut"
+        }, "-=0.3")
+        .from(heroParagraphRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=1.2") // Overlap with title animation
+        .from(heroFormRef.current, { opacity: 0, y: 40, duration: 0.8 }, "-=1.0"); // Overlap
     }
 
-    // Kanban mockup animation
+    // Scroll-triggered animation for Kanban mockup
     if (kanbanMockupRef.current) {
-      tl.from(kanbanMockupRef.current, { opacity: 0, scale: 0.9, duration: 1, ease: "back.out(1.7)" }, "-=0.5");
+      gsap.fromTo(kanbanMockupRef.current, 
+        { opacity: 0, y: 100, scale: 0.95 },
+        { 
+          opacity: 1, y: 0, scale: 1, duration: 1, ease: "power3.out",
+          scrollTrigger: {
+            trigger: kanbanMockupRef.current,
+            start: "top 85%", // Trigger when 85% of the element is visible from the top
+            toggleActions: "play none none none", // Play animation once on enter
+          }
+        }
+      );
     }
     
-    // Footer animation
+    // Scroll-triggered animation for Footer
     if (footerRef.current) {
-        tl.from(footerRef.current, { opacity: 0, duration: 0.5 }, "-=0.3");
+        gsap.fromTo(footerRef.current,
+            { opacity: 0, y: 50 },
+            {
+                opacity: 1, y: 0, duration: 0.8, ease: "power3.out",
+                scrollTrigger: {
+                    trigger: footerRef.current,
+                    start: "top 95%",
+                    toggleActions: "play none none none",
+                }
+            }
+        );
     }
+
+    // Cleanup ScrollTriggers on component unmount
+    return () => {
+      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    };
 
   }, [loading, user]);
 
@@ -84,27 +117,27 @@ function LandingPageContent() {
           <div ref={logoRef} className="flex items-center space-x-3">
             <Link href="/landing" className="flex items-center space-x-3">
               <div className="bg-white rounded-md p-1.5">
-                <NextImage src="https://placehold.co/30x30.png" alt="Kollab Logo" width={30} height={30} data-ai-hint="modern logo" />
+                <NextImage src="https://placehold.co/30x30.png" alt="Kollab Logo" width={30} height={30} data-ai-hint="modern logo"/>
               </div>
               <span className="text-white text-xl font-bold">Kollab</span>
             </Link>
           </div>
           
-          <nav className="hidden md:flex space-x-6 text-sm font-medium">
-            <div ref={el => navItemsRef.current[0] = el}>
-              <Link href="/landing" className="hover:text-[#6e6ef6] cursor-pointer">Home</Link>
-            </div>
-            {/* Removed product dropdown, resources, pricing for brevity in animation setup for now */}
+          <nav className="hidden md:flex space-x-6 text-sm font-medium text-gray-300">
+            <Link href="/landing" ref={el => navItemsRef.current[0] = el} className="hover:text-white transition-colors">Home</Link>
+            <Link href="/landing#features" ref={el => navItemsRef.current[1] = el} className="hover:text-white transition-colors">Features</Link>
+            <Link href="/landing#pricing" ref={el => navItemsRef.current[2] = el} className="hover:text-white transition-colors">Pricing</Link>
+            <Link href="/landing#contact" ref={el => navItemsRef.current[3] = el} className="hover:text-white transition-colors">Contact</Link>
           </nav>
 
           <div ref={authButtonsRef} className="flex items-center space-x-3">
             <Link href="/auth?view=login" passHref>
-              <button className="bg-transparent text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-white/10 transition">
+              <button className="bg-transparent text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-white/10 transition-colors">
                 Sign in
               </button>
             </Link>
             <Link href="/auth?view=signup" passHref>
-              <button className="bg-[#6e6ef6] text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-[#5757d1] transition">
+              <button className="bg-[#6e6ef6] text-white px-4 py-1.5 rounded-full font-semibold text-sm hover:bg-[#5757d1] transition-colors">
                 Sign up
               </button>
             </Link>
@@ -116,11 +149,11 @@ function LandingPageContent() {
           {/* Left: Hero Section */}
           <section 
             ref={heroSectionRef}
-            className="w-full lg:w-1/2 flex flex-col justify-center items-start space-y-6 text-center lg:text-left"
+            className="w-full lg:w-1/2 flex flex-col justify-center items-start space-y-6 text-center lg:text-left mb-12 lg:mb-0"
           >
             <div ref={hiringBannerRef} className="flex items-center space-x-3 mb-2 self-center lg:self-start">
-              <span className="bg-[#23233a] text-[#b3b3ff] px-3 py-1 rounded-full text-xs font-medium">We're hiring</span>
-              <button className="bg-[#18182a] text-white px-3 py-1 rounded-full text-xs font-medium border border-[#23233a] hover:bg-[#23233a] transition">
+              <span className="bg-[#23233a] text-[#b3b3ff] px-3 py-1 rounded-full text-xs font-medium">We&apos;re hiring</span>
+              <button className="bg-[#18182a] text-white px-3 py-1 rounded-full text-xs font-medium border border-[#23233a] hover:bg-[#23233a] transition-colors">
                 Join our remote team →
               </button>
             </div>
@@ -145,7 +178,7 @@ function LandingPageContent() {
               />
               <Link href="/auth?view=signup" passHref className="contents">
                 <button
-                  className="px-6 py-3 bg-white text-[#18182a] font-semibold rounded-r-full hover:bg-gray-200 transition"
+                  className="px-6 py-3 bg-white text-[#18182a] font-semibold rounded-r-full hover:bg-gray-200 transition-colors"
                 >
                   Get started
                 </button>
@@ -162,8 +195,8 @@ function LandingPageContent() {
               <div className="flex items-center justify-between mb-4">
                 <span className="text-white font-semibold text-base">Project UI/UX</span>
                 <div className="flex space-x-2">
-                  <button className="bg-[#23233a] text-[#b3b3ff] px-3 py-1 rounded-full text-xs font-medium hover:bg-[#2c2c44] transition">Import</button>
-                  <button className="bg-[#6e6ef6] text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-[#5757d1] transition">+ New Board</button>
+                  <button className="bg-[#23233a] text-[#b3b3ff] px-3 py-1 rounded-full text-xs font-medium hover:bg-[#2c2c44] transition-colors">Import</button>
+                  <button className="bg-[#6e6ef6] text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-[#5757d1] transition-colors">+ New Board</button>
                 </div>
               </div>
               <div className="flex space-x-3 overflow-x-auto pb-2">
@@ -189,7 +222,7 @@ function LandingPageContent() {
                          <span>Due: Next Week</span>
                       </div>
                     </div>
-                    <div className="text-[#6e6ef6] mt-2 text-xs cursor-pointer hover:text-[#8f8fff] transition">+ Add new</div>
+                    <div className="text-[#6e6ef6] mt-2 text-xs cursor-pointer hover:text-[#8f8fff] transition-colors">+ Add new</div>
                   </div>
                 </div>
                 {/* In Progress Column */}
@@ -205,7 +238,7 @@ function LandingPageContent() {
                     <div className="bg-[#23233a] rounded-lg p-3 text-white text-xs shadow-md">
                       <p>Copywriting for FAQ page</p>
                     </div>
-                    <div className="text-[#6e6ef6] mt-2 text-xs cursor-pointer hover:text-[#8f8fff] transition">+ Add new</div>
+                    <div className="text-[#6e6ef6] mt-2 text-xs cursor-pointer hover:text-[#8f8fff] transition-colors">+ Add new</div>
                   </div>
                 </div>
                 {/* In Review Column */}
@@ -218,7 +251,7 @@ function LandingPageContent() {
                          <span>Waiting for Lead</span>
                       </div>
                     </div>
-                    <div className="text-[#6e6ef6] mt-2 text-xs cursor-pointer hover:text-[#8f8fff] transition">+ Add new</div>
+                    <div className="text-[#6e6ef6] mt-2 text-xs cursor-pointer hover:text-[#8f8fff] transition-colors">+ Add new</div>
                   </div>
                 </div>
               </div>
@@ -227,9 +260,9 @@ function LandingPageContent() {
         </main>
          <footer 
           ref={footerRef}
-          className="text-center py-6 text-gray-500 text-xs"
+          className="text-center py-8 text-gray-500 text-xs"
         >
-          &copy; {new Date().getFullYear()} Kollab. All rights reserved.
+          &copy; {new Date().getFullYear()} Kollab. All rights reserved. A Project IDX Demo.
         </footer>
       </div>
   );
