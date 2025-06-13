@@ -5,7 +5,8 @@ import React, { useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation'; // Changed from 'next/navigation'
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { EmailPasswordLoginForm } from '@/components/auth/EmailPasswordLoginForm';
 import { EmailPasswordSignupForm } from '@/components/auth/EmailPasswordSignupForm';
 import { Button } from '@/components/ui/button';
