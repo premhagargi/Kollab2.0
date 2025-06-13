@@ -3,7 +3,7 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { AppHeader } from '@/components/layout/AppHeader';
-import { CalendarSidebar } from '@/components/calendar/CalendarSidebar';
+import { CalendarSidebar } from '@/components/calendar/CalendarView'; // Changed import path
 import type { Task, Workflow } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { getAllTasksByOwner, updateTask, archiveTask as archiveTaskService } from '@/services/taskService';
