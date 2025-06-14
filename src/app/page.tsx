@@ -28,7 +28,7 @@ function DashboardContentInternal() {
   const { toast } = useToast();
 
   // Calendar State
-  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true);
+  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(false); // Default to hidden on mobile
   const [allUserTasks, setAllUserTasks] = useState<Task[]>([]);
   const [isLoadingAllTasks, setIsLoadingAllTasks] = useState(false);
   const [selectedDateForCalendar, setSelectedDateForCalendar] = useState<Date | undefined>(new Date());
@@ -38,6 +38,13 @@ function DashboardContentInternal() {
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const provisionalNewTaskIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsCalendarSidebarVisible(window.innerWidth >= 768); // md breakpoint
+    }
+  }, []);
+
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -200,12 +207,15 @@ function DashboardContentInternal() {
             onToggleCalendarSidebar={toggleCalendarSidebar}
             isCalendarSidebarVisible={isCalendarSidebarVisible}
         />
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-16 p-4">
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-16 p-2 sm:p-4">
           {user && (
             <CalendarSidebar
               className={cn(
-                "transition-all duration-300 ease-in-out transform", 
-                isCalendarSidebarVisible ? "w-[350px] opacity-100" : "w-0 opacity-0 -ml-[350px]"
+                "transition-all duration-300 ease-in-out transform absolute md:static z-20 md:z-auto h-[calc(100%-4rem)] md:h-full top-16 md:top-auto left-0 md:left-auto",
+                "bg-sidebar-background border-r border-sidebar-border rounded-r-lg md:rounded-lg",
+                isCalendarSidebarVisible 
+                  ? "w-[calc(100%-2rem)] sm:w-4/5 md:w-[300px] lg:w-[350px] opacity-100 translate-x-0 shadow-xl md:shadow-lg" 
+                  : "w-0 opacity-0 -translate-x-full md:translate-x-0 md:w-0 md:opacity-0 md:-ml-[300px] lg:-ml-[350px]"
               )}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
@@ -215,9 +225,9 @@ function DashboardContentInternal() {
               onToggleBillable={setShowBillableOnlyCalendar}
             />
           )}
-          <Card className={cn(
-            "flex-1 flex flex-col overflow-hidden min-h-0 rounded-xl shadow-lg", 
-            isCalendarSidebarVisible && user && "ml-4" 
+           <Card className={cn(
+            "flex-1 flex flex-col overflow-hidden min-h-0 rounded-xl shadow-lg transition-all duration-300 ease-in-out", 
+            isCalendarSidebarVisible && user && "md:ml-4" // Only apply margin on medium screens and up if sidebar is visible
           )}>
             {isLoadingWorkflows && user ? (
                 <div className="flex flex-1 items-center justify-center h-full">

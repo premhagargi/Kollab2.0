@@ -291,15 +291,15 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
       )}
       {currentWorkflow && (
         <>
-          <div className="sticky top-0 z-30 flex items-center justify-between px-3 bg-background shadow-sm flex-shrink-0">
-            <h1 className="text-lg font-medium truncate pr-2 py-3">{currentWorkflow.name}</h1>
-            <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="sticky top-0 z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-2 sm:py-3 bg-background shadow-sm flex-shrink-0">
+            <h1 className="text-lg font-medium truncate w-full sm:w-auto order-1 sm:order-none">{currentWorkflow.name}</h1>
+            <div className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto justify-end order-none sm:order-1">
               <Button
                 size="sm"
                 onClick={() => setIsClientUpdateModalOpen(true)}
                 disabled={workflowTasks.length === 0 || isLoadingWorkflow}
                 variant="outline"
-                className="border-border/70 hover:bg-muted/50"
+                className="border-border/70 hover:bg-muted/50 text-xs sm:text-sm flex-1 sm:flex-none"
               >
                 <MessageSquareText className="mr-1 h-3 w-3" /> Client Update
               </Button>
@@ -308,7 +308,7 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
                 onClick={() => handleAddTask(currentWorkflow.columns[0]?.id ?? '')}
                 disabled={currentWorkflow.columns.length === 0 || isLoadingWorkflow}
                 variant="default"
-                className="bg-primary hover:bg-primary/90"
+                className="bg-primary hover:bg-primary/90 text-xs sm:text-sm flex-1 sm:flex-none"
               >
                 <Plus className="mr-1 h-3 w-3" /> New Task
               </Button>
@@ -344,3 +344,4 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
     </div>
   );
 }
+

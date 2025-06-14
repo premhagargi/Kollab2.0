@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserCircle, LogOut, Settings, LogInIcon, Mail, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive, Share2, FileText, CalendarDays } from 'lucide-react';
+import { UserCircle, LogOut, Settings, LogInIcon, Mail, LayoutDashboard, BarChart3, ChevronDown, PlusCircle, Loader2, HardDrive, Share2, FileText, CalendarDays, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,14 +26,11 @@ import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, D
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-// Login/Signup forms are no longer imported here
 import type { Workflow } from '@/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from '@/components/ui/label';
 import { ThemeToggleButton } from '@/components/layout/ThemeToggleButton';
-
-// GoogleIcon is no longer needed here as login modal is removed.
 
 interface AppHeaderProps {
   workflows: Workflow[];
@@ -55,15 +52,12 @@ const workflowTemplates = [
 
 export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWorkflowCreated, isLoadingWorkflows, onToggleCalendarSidebar, isCalendarSidebarVisible }: AppHeaderProps) {
   const pathname = usePathname();
-  const { user, logout, loading: authLoading } = useAuth(); // loginWithGoogle and authView state removed
+  const { user, logout, loading: authLoading } = useAuth();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  // isLoginModalOpen state removed
   const [isCreateWorkflowModalOpen, setIsCreateWorkflowModalOpen] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>(workflowTemplates[0].value);
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
-
-  // handleLoginSuccess function removed
 
   const handleCreateWorkflow = async () => {
     if (!newWorkflowName.trim()) return;
@@ -76,28 +70,25 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
     }
     setIsCreatingWorkflow(false);
   };
-
-  // If auth is loading or user is not present (which shouldn't happen if this header is on protected routes),
-  // you might want to render a loading state or null, but for now, it assumes user is present if this header is shown.
-  if (!user && !authLoading) {
-     // This should ideally not be hit if routing is correct (AppHeader on protected routes)
-     // Or if on a public page that can show this header conditionally
-    return null; // Or a minimal public header
+  
+  if (!user && !authLoading && pathname !== '/landing' && pathname !== '/auth') {
+     return null; 
   }
 
+  const currentWorkflow = workflows.find(w => w.id === currentWorkflowId);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-16 flex-shrink-0">
-      <div className="container mx-auto flex h-full items-center px-4">
-        <div className="flex items-center space-x-4">
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-16 flex-shrink-0 border-b">
+      <div className="container mx-auto flex h-full items-center px-2 sm:px-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <Link href="/" className="flex items-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-primary">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
             </svg>
-            <span className="font-bold font-headline text-xl">{siteConfig.name}</span>
+            <span className="font-bold font-headline text-xl hidden sm:inline">{siteConfig.name}</span>
           </Link>
           
-          {user && ( // This check is somewhat redundant if header is only for authenticated users
+          {user && (
             <nav className="hidden md:flex items-center space-x-1">
               <Button variant={pathname === '/' ? "secondary" : "ghost"} size="sm" asChild>
                 <Link href="/"><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
@@ -106,7 +97,7 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
                 <Link href="/analytics"><BarChart3 className="mr-2 h-4 w-4" />My Insights</Link>
               </Button>
 
-              {onToggleCalendarSidebar && pathname === '/' && ( // Only show calendar toggle on dashboard
+              {onToggleCalendarSidebar && pathname === '/' && (
                 <Button 
                   variant={isCalendarSidebarVisible ? "secondary" : "ghost"} 
                   size="sm" 
@@ -119,8 +110,10 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <HardDrive className="mr-2 h-4 w-4" /> Workflows <ChevronDown className="ml-1 h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="min-w-[120px] justify-start">
+                    <HardDrive className="mr-2 h-4 w-4 flex-shrink-0" /> 
+                    <span className="truncate max-w-[150px]">{currentWorkflow ? currentWorkflow.name : "Workflows"}</span>
+                    <ChevronDown className="ml-auto h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
@@ -138,7 +131,7 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
                         <DropdownMenuItem 
                           key={workflow.id} 
                           onClick={() => onSelectWorkflow(workflow.id)}
-                          className={cn(currentWorkflowId === workflow.id && "bg-accent text-accent-foreground")}
+                          className={cn("truncate",currentWorkflowId === workflow.id && "bg-accent text-accent-foreground")}
                         >
                           {workflow.name}
                         </DropdownMenuItem>
@@ -157,20 +150,20 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
 
         <div className="flex-grow" />
 
-        <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+        <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
           <ThemeToggleButton />
           {authLoading && !user ? ( 
-            <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div> // Loading placeholder for user section
+            <div className="h-9 w-20 sm:w-24 animate-pulse rounded-md bg-muted"></div> 
           ) : user ? (
             <>
-            <Button variant="ghost" onClick={() => setIsShareModalOpen(true)} disabled={authLoading} size="sm" className="hidden sm:inline-flex">
-              <Share2 className="mr-2 h-4 w-4" /> Share
+            <Button variant="ghost" onClick={() => setIsShareModalOpen(true)} disabled={authLoading || !currentWorkflowId} size="sm" className="hidden sm:inline-flex">
+              <Share2 className="mr-1 sm:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Share</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled={authLoading}>
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar" />
+                    <AvatarImage src={user.avatarUrl || undefined} alt={user.name || 'User'} data-ai-hint="user avatar"/>
                     <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : <UserCircle />}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -179,7 +172,7 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className="text-xs leading-none text-muted-foreground truncate">
                       {user.email}
                     </p>
                   </div>
@@ -213,7 +206,7 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
                                <ScrollArea className="max-h-48">
                                 {workflows.map(workflow => (
                                   <DropdownMenuItem key={workflow.id} onClick={() => onSelectWorkflow(workflow.id)}
-                                   className={cn(currentWorkflowId === workflow.id && "bg-accent text-accent-foreground")}>
+                                   className={cn("truncate", currentWorkflowId === workflow.id && "bg-accent text-accent-foreground")}>
                                     {workflow.name}
                                   </DropdownMenuItem>
                                 ))}
@@ -226,8 +219,8 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
                         </DropdownMenuSubContent>
                       </DropdownMenuPortal>
                     </DropdownMenuSub>
-                   <DropdownMenuItem className="sm:hidden" onClick={() => setIsShareModalOpen(true)}>
-                        <Share2 className="mr-2 h-4 w-4" /> Share
+                   <DropdownMenuItem className="sm:hidden" onClick={() => setIsShareModalOpen(true)} disabled={!currentWorkflowId}>
+                        <Share2 className="mr-2 h-4 w-4" /> Share Workflow
                     </DropdownMenuItem>
                   <DropdownMenuSeparator className="md:hidden"/>
                 </DropdownMenuGroup>
@@ -244,11 +237,6 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
             </DropdownMenu>
             </>
           ) : ( 
-            // This block is for when user is null AND auth is not loading.
-            // Given the new /landing and /auth pages, this specific "Login" button here might become obsolete
-            // if AppHeader is strictly for authenticated views.
-            // However, if AppHeader could be on a public page, this would be the login trigger.
-            // For now, with /auth page, direct link to login is better.
              <Link href="/auth?view=login" passHref>
                 <Button size="sm" disabled={authLoading}>
                   <LogInIcon className="mr-2 h-4 w-4" />
@@ -258,7 +246,7 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
           )}
         </div>
       </div>
-      {isShareModalOpen && user && <ShareWorkflowModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} currentWorkflowName={workflows.find(w => w.id === currentWorkflowId)?.name} />}
+      {isShareModalOpen && user && <ShareWorkflowModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} currentWorkflowName={currentWorkflow?.name} />}
       <Dialog open={isCreateWorkflowModalOpen} onOpenChange={setIsCreateWorkflowModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -305,3 +293,4 @@ export function AppHeader({ workflows, currentWorkflowId, onSelectWorkflow, onWo
     </header>
   );
 }
+
