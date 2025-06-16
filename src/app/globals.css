@@ -157,35 +157,36 @@ html {
   position: fixed;
   /* top, left, width, height are set dynamically via inline styles in page.tsx */
   cursor: col-resize;
-  background-color: transparent; /* Transparent by default */
+  background-color: transparent;
   z-index: 35; /* Above sidebar, below modals */
-  transition: background-color 0.2s ease-in-out;
-  display: flex; /* For centering pseudo-elements */
-  align-items: center; /* For centering pseudo-elements */
-  justify-content: center; /* For centering pseudo-elements */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .resize-handle:hover,
-body.resizing-sidebar .resize-handle { 
-  /* background-color: hsl(var(--accent) / 0.1); Optional: slight background tint on hover */
+body.resizing-sidebar .resize-handle {
+  /* No specific background change needed here if lines are always visible */
 }
 
-/* Visual indicators for resize handle (visible on hover/drag) */
+/* Visual indicators for resize handle */
 .resize-handle::before,
 .resize-handle::after {
   content: '';
   position: absolute;
-  width: 1.5px; /* Thinner lines */
-  height: 20px; /* Shorter lines */
-  background-color: hsl(var(--border)); /* Use border color, more subtle */
-  opacity: 0; /* Hidden by default */
-  transition: opacity 0.2s ease-in-out;
+  width: 1.5px;
+  height: 20px;
+  background-color: hsl(var(--border));
+  opacity: 1; /* Lines are now always visible */
+  top: 50%; /* For vertical centering */
+  transform: translateY(-50%); /* For vertical centering */
 }
 
+/* Remove opacity transition from hover/drag as lines are always visible */
 .resize-handle:hover::before,
 .resize-handle:hover::after,
 body.resizing-sidebar .resize-handle::before,
 body.resizing-sidebar .resize-handle::after {
-  opacity: 1; /* Show on hover/drag */
+  /* Opacity is now 1 by default, no change needed on hover/drag for visibility */
 }
 
 .resize-handle::before {
@@ -205,6 +206,4 @@ body.resizing-sidebar {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE/Edge */
 }
-
-
     
