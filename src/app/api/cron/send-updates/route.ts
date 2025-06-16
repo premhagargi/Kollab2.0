@@ -8,6 +8,8 @@ import type { Workflow } from '@/types';
 import { Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+export const dynamic = 'force-dynamic'; // Ensures the route is not statically analyzed or pre-rendered at build time
+
 const WORKFLOWS_COLLECTION = 'boards'; // As per your workflowService
 
 // Local helper function for timestamps within this file
@@ -17,7 +19,14 @@ const mapTimestampToISO = (timestampField: any): string | undefined => {
     }
     // If it's already a string (e.g., from client-side calculation or previous conversion), return it.
     if (typeof timestampField === 'string') {
-      return timestampField;
+      try {
+        // Validate if it's a valid ISO string by trying to parse it
+        new Date(timestampField).toISOString();
+        return timestampField;
+      } catch (e) {
+        // Not a valid date string, treat as undefined
+        return undefined;
+      }
     }
     return undefined; // Return undefined if it's not a Timestamp or a string
   };
@@ -38,7 +47,7 @@ async function getAllEnabledWorkflowsForCron(): Promise<Workflow[]> {
       if (!docSnap.id || !data || !data.ownerId || !data.name || !data.autoUpdateClientEmail || !data.columns) {
         console.warn(
             `Workflow document ${docSnap.id || 'ID_MISSING_FROM_DOCSNAP'} is missing essential fields ` +
-            `(ownerId, name, autoUpdateClientEmail, or columns) or data object is missing. Skipping. Document Data:`, 
+            `(ownerId, name, autoUpdateClientEmail, or columns) or data object is missing. Skipping. Document Data:`,
             data
         );
         return; // Skip this document as it's not a valid Workflow for processing
@@ -98,7 +107,7 @@ export async function GET(request: NextRequest) {
           errorsCount++;
           continue;
       }
-      
+
       if (!workflow.autoUpdateEnabled || !workflow.autoUpdateNextSend || !workflow.autoUpdateClientEmail || !workflow.ownerId) {
         // This check is still useful if a workflow was valid but somehow became invalid for processing (e.g., ownerId removed after fetch - unlikely but possible)
         // Or if specific fields required for this step are missing.
@@ -114,17 +123,22 @@ export async function GET(request: NextRequest) {
         console.log(`Processing workflow: ${workflow.name} (ID: ${workflow.id}) for user ${workflow.ownerId}`);
         try {
           const summaryResult = await generateClientProgressSummaryAction(
-            workflow.ownerId, 
+            workflow.ownerId,
             workflow.id,
             workflow.name,
-            "Automated Progress Update", 
+            "Automated Progress Update",
             `Covering progress up to ${now.toLocaleDateString()}`
           );
 
           if (summaryResult.summaryText.startsWith('Error:')) {
             console.error(`Error generating summary for workflow ${workflow.id}: ${summaryResult.summaryText}`);
             errorsCount++;
-            await updateWorkflow(workflow.id, { autoUpdateNextSend: undefined }); 
+            // Consider how to handle next send date if generation fails.
+            // Maybe reset nextSend to allow retry or log for manual intervention.
+            // For now, let's not change nextSend on generation failure to avoid infinite loops on persistent AI errors.
+            // A more robust solution would be to set a "failedAttempt" flag or similar.
+            // Resetting autoUpdateNextSend to undefined will prevent further auto-sends until manually fixed.
+            // await updateWorkflow(workflow.id, { autoUpdateNextSend: undefined });
             continue;
           }
 
@@ -141,6 +155,8 @@ export async function GET(request: NextRequest) {
           } else {
             console.error(`Failed to send email for workflow ${workflow.id}: ${emailResult.message}`);
             errorsCount++;
+            // If email fails, also consider how to handle next send date.
+            // Perhaps set a flag "emailFailedLastAttempt"
           }
         } catch (e) {
           console.error(`Error processing workflow ${workflow.id}:`, e);
@@ -161,3 +177,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to process automated updates' }, { status: 500 });
   }
 }
+
