@@ -7,16 +7,16 @@ import { siteConfig } from '@/config/site';
 
 interface TeamInvitationParams {
   toEmail: string;
-  workspaceName: string; // Or board name, depending on context
+  workspaceName: string; 
   inviterName: string;
-  inviteLink?: string; // Optional: direct link to accept invite
+  inviteLink?: string; 
 }
 
 export async function sendTeamInvitationEmailAction({
   toEmail,
   workspaceName,
   inviterName,
-  inviteLink = process.env.NEXT_PUBLIC_BASE_URL || 'your-app-url.com', // Fallback URL
+  inviteLink = process.env.NEXT_PUBLIC_BASE_URL || 'your-app-url.com', 
 }: TeamInvitationParams): Promise<{ success: boolean; message: string }> {
   const fromEmail = process.env.EMAIL_FROM;
   if (!fromEmail) {
@@ -55,7 +55,7 @@ interface TaskAssignmentParams {
   taskTitle: string;
   assignerName: string;
   boardName: string;
-  taskLink?: string; // Optional: direct link to the task
+  taskLink?: string; 
 }
 
 export async function sendTaskAssignmentEmailAction({
@@ -63,15 +63,13 @@ export async function sendTaskAssignmentEmailAction({
   taskTitle,
   assignerName,
   boardName,
-  taskLink = process.env.NEXT_PUBLIC_BASE_URL || 'your-app-url.com', // Fallback URL
+  taskLink = process.env.NEXT_PUBLIC_BASE_URL || 'your-app-url.com', 
 }: TaskAssignmentParams): Promise<{ success: boolean; message: string }> {
   const fromEmail = process.env.EMAIL_FROM;
   if (!fromEmail) {
     return { success: false, message: 'Sender email address is not configured.' };
   }
 
-  // This function is a placeholder for now.
-  // Actual implementation requires UI for assignee selection and detection of new assignments.
   console.log(`[Mock Email] Task "${taskTitle}" assigned to ${toEmail} by ${assignerName} on board "${boardName}". Link: ${taskLink}`);
 
   const subject = `You've been assigned a new task on ${siteConfig.name}: ${taskTitle}`;
@@ -85,19 +83,63 @@ export async function sendTaskAssignmentEmailAction({
     </div>
   `;
   
-  // For now, we will simulate sending. Uncomment the sendMail call when ready.
-  // const success = await sendMail({
-  //   from: fromEmail,
-  //   to: toEmail,
-  //   subject: subject,
-  //   html: htmlContent,
-  // });
-  // if (success) {
-  //   return { success: true, message: 'Task assignment email sent successfully.' };
-  // } else {
-  //   return { success: false, message: 'Failed to send task assignment email.' };
-  // }
-
-  // Placeholder response for now
   return { success: true, message: 'Task assignment email would be sent (currently mocked).' };
+}
+
+
+interface AutomatedClientUpdateParams {
+  toEmail: string;
+  clientName?: string; // Optional, for personalization
+  workflowName: string;
+  summaryText: string; // The AI-generated summary
+  workflowLink?: string; // Optional: Link to view the workflow/board
+}
+
+export async function sendAutomatedClientUpdateEmailAction({
+  toEmail,
+  clientName,
+  workflowName,
+  summaryText,
+  workflowLink = process.env.NEXT_PUBLIC_BASE_URL || 'your-app-url.com',
+}: AutomatedClientUpdateParams): Promise<{ success: boolean; message: string }> {
+  const fromEmail = process.env.EMAIL_FROM;
+  if (!fromEmail) {
+    return { success: false, message: 'Sender email address is not configured for automated updates.' };
+  }
+
+  const subject = `Progress Update for ${workflowName}`;
+  
+  // Basic Markdown to HTML conversion for the summary (replace newlines with <br>)
+  const summaryHtml = summaryText.replace(/\n/g, '<br />');
+
+  const greeting = clientName ? `Hi ${clientName},` : `Hi there,`;
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <div style="max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2 style="color: #222; border-bottom: 1px solid #eee; padding-bottom: 10px;">Progress Update: ${workflowName}</h2>
+        <p>${greeting}</p>
+        <p>Here's a summary of recent progress on the "${workflowName}" project/workflow:</p>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-top: 15px; margin-bottom: 20px;">
+          ${summaryHtml}
+        </div>
+        ${workflowLink ? `<p>You can view the full workflow here: <a href="${workflowLink}" style="color: #007bff; text-decoration: none;">${workflowName} Details</a></p>` : ''}
+        <p>If you have any questions, please don't hesitate to reach out.</p>
+        <p>Best regards,<br/>The ${siteConfig.name} Team (on behalf of your project manager)</p>
+      </div>
+    </div>
+  `;
+
+  const success = await sendMail({
+    from: fromEmail,
+    to: toEmail,
+    subject: subject,
+    html: htmlContent,
+  });
+
+  if (success) {
+    return { success: true, message: 'Automated client update email sent successfully.' };
+  } else {
+    return { success: false, message: 'Failed to send automated client update email.' };
+  }
 }

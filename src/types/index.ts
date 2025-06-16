@@ -23,6 +23,12 @@ export interface Workflow { // Renamed from Board
   createdAt?: string; // ISO string
   updatedAt?: string; // ISO string
   template?: string; // Optional: To store which template was used
+  // New fields for Automated Client Update Scheduling
+  autoUpdateEnabled?: boolean;
+  autoUpdateFrequency?: 'weekly' | 'biweekly';
+  autoUpdateClientEmail?: string;
+  autoUpdateLastSent?: string; // ISO date string
+  autoUpdateNextSend?: string; // ISO date string
 }
 
 export interface Column {
@@ -89,3 +95,4 @@ export interface AISubtaskSuggestion {
   id: string;
   text: string;
 }
+

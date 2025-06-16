@@ -5,15 +5,14 @@ import React, { useState } from 'react';
 import { KanbanBoard } from './KanbanBoard';
 import { GenerateClientUpdateModal } from '../modals/GenerateClientUpdateModal';
 import { ShareWorkflowModal } from '../modals/ShareWorkflowModal';
+import { AutomatedUpdateSettingsModal } from '../modals/AutomatedUpdateSettingsModal'; // Import new modal
 import { Button } from '@/components/ui/button';
 import type { Workflow, Task, Column as ColumnType, UserProfile } from '@/types';
-import { Plus, Loader2, MessageSquareText, Share2 } from 'lucide-react';
+import { Plus, Loader2, MessageSquareText, Share2, Settings2 } from 'lucide-react'; // Added Settings2 icon
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface KanbanBoardViewProps {
-  workflowId: string | null;
-  workflowName: string;
-  workflowColumns: ColumnType[];
+  workflow: Workflow | null; // Changed to pass full workflow object
   allTasksForWorkflow: Task[];
   creatorProfiles: Record<string, UserProfile | null>;
   isLoading: boolean;
@@ -23,12 +22,11 @@ interface KanbanBoardViewProps {
   onUpdateColumnName: (columnId: string, newName: string) => Promise<void>;
   onToggleTaskCompleted: (taskId: string, completed: boolean) => Promise<void>;
   onAddColumn: (columnName: string) => Promise<void>;
+  onWorkflowSettingsUpdate: (updatedWorkflowData: Partial<Workflow>) => void; // New prop for settings update
 }
 
 export function KanbanBoardView({
-  workflowId,
-  workflowName,
-  workflowColumns,
+  workflow, // Use workflow directly
   allTasksForWorkflow,
   creatorProfiles,
   isLoading,
@@ -38,20 +36,16 @@ export function KanbanBoardView({
   onUpdateColumnName,
   onToggleTaskCompleted,
   onAddColumn,
+  onWorkflowSettingsUpdate, // Destructure new prop
 }: KanbanBoardViewProps) {
   const [isClientUpdateModalOpen, setIsClientUpdateModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isAutoUpdateSettingsModalOpen, setIsAutoUpdateSettingsModalOpen] = useState(false); // State for new modal
   const [isAddingColumn, setIsAddingColumn] = useState(false);
 
-  // This default task title is more of a placeholder now.
-  // The actual title will be added when the modal opens after creation.
   const DEFAULT_NEW_TASK_TITLE = 'New Task';
 
-
   const handleLocalAddTask = async (columnId: string) => {
-    // The title for the new task will be set in the modal after creation.
-    // For now, we can pass a default or let the parent handle it.
-    // Let's pass a placeholder title that `page.tsx` will use for initial creation.
     const createdTask = await onAddTask(columnId, DEFAULT_NEW_TASK_TITLE);
     if (createdTask) {
       // onTaskClick is called by parent `page.tsx` after task creation and modal opening.
@@ -60,11 +54,10 @@ export function KanbanBoardView({
   
   const handleLocalAddColumn = async (columnName: string) => {
     await onAddColumn(columnName);
-    setIsAddingColumn(false); // Close input after attempt
+    setIsAddingColumn(false); 
   };
 
-
-  if (isLoading && !workflowId) { // Show loader if loading and no workflowId (initial load for workflow itself)
+  if (isLoading && !workflow?.id) { 
     return (
       <div className="flex flex-col items-center justify-center h-full p-8">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -73,7 +66,7 @@ export function KanbanBoardView({
     );
   }
 
-  if (!workflowId || !workflowColumns) { // Should be handled by parent, but as a fallback
+  if (!workflow?.id || !workflow.columns) { 
      return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
         <p className="text-muted-foreground">Select or create a workflow to get started.</p>
@@ -83,7 +76,7 @@ export function KanbanBoardView({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {isLoading && workflowId && ( // Show overlay loader if loading tasks for an existing workflow
+      {isLoading && workflow?.id && ( 
          <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/50">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
          </div>
@@ -91,15 +84,15 @@ export function KanbanBoardView({
       <>
         <div className="flex-shrink-0 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:py-3 bg-background border-b shadow-sm">
           <h1 className="text-base sm:text-lg font-semibold truncate order-1 sm:order-none min-w-0 flex-1 sm:flex-none">
-            {workflowName}
+            {workflow.name}
           </h1>
           <div className="flex items-center space-x-1 sm:space-x-2 order-none sm:order-1 w-full sm:w-auto justify-end">
             <Button
               size="sm"
               variant="ghost"
               className="p-2 sm:px-3"
-              onClick={() => handleLocalAddTask(workflowColumns[0]?.id ?? '')}
-              disabled={workflowColumns.length === 0 || isLoading}
+              onClick={() => handleLocalAddTask(workflow.columns[0]?.id ?? '')}
+              disabled={workflow.columns.length === 0 || isLoading}
               title="New Task"
             >
               <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">New Task</span>
@@ -113,6 +106,16 @@ export function KanbanBoardView({
               title="Client Update"
             >
               <MessageSquareText className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Client Update</span>
+            </Button>
+            <Button // New Button for Auto-Update Settings
+              size="sm"
+              variant="ghost"
+              className="p-2 sm:px-3"
+              onClick={() => setIsAutoUpdateSettingsModalOpen(true)}
+              disabled={isLoading}
+              title="Auto-Update Settings"
+            >
+              <Settings2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Automation</span>
             </Button>
             <Button
               size="sm"
@@ -129,12 +132,12 @@ export function KanbanBoardView({
 
         <ScrollArea className="flex-1 min-h-0 whitespace-nowrap">
           <KanbanBoard
-            workflowColumns={workflowColumns}
+            workflowColumns={workflow.columns}
             allTasksForWorkflow={allTasksForWorkflow.filter(task => !task.isArchived)}
             creatorProfiles={creatorProfiles}
             onTaskClick={onTaskClick}
-            onAddTask={handleLocalAddTask} // Use local handler
-            onAddColumn={handleLocalAddColumn} // Use local handler
+            onAddTask={handleLocalAddTask} 
+            onAddColumn={handleLocalAddColumn} 
             onTaskDrop={onTaskDrop}
             isAddingColumn={isAddingColumn}
             setIsAddingColumn={setIsAddingColumn}
@@ -144,19 +147,27 @@ export function KanbanBoardView({
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </>
-      {isClientUpdateModalOpen && workflowId && (
+      {isClientUpdateModalOpen && workflow?.id && (
         <GenerateClientUpdateModal
             isOpen={isClientUpdateModalOpen}
             onClose={() => setIsClientUpdateModalOpen(false)}
-            workflowId={workflowId}
-            workflowName={workflowName}
+            workflowId={workflow.id}
+            workflowName={workflow.name}
         />
       )}
       {isShareModalOpen && (
         <ShareWorkflowModal
             isOpen={isShareModalOpen}
             onClose={() => setIsShareModalOpen(false)}
-            currentWorkflowName={workflowName}
+            currentWorkflowName={workflow.name}
+        />
+      )}
+      {isAutoUpdateSettingsModalOpen && workflow && ( // Conditionally render new modal
+        <AutomatedUpdateSettingsModal
+            isOpen={isAutoUpdateSettingsModalOpen}
+            onClose={() => setIsAutoUpdateSettingsModalOpen(false)}
+            workflow={workflow}
+            onWorkflowSettingsUpdate={onWorkflowSettingsUpdate}
         />
       )}
     </div>

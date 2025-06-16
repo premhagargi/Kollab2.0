@@ -26,12 +26,12 @@ import type { UserProfile } from '@/types';
 const MIN_SIDEBAR_WIDTH = 240;
 const MAX_SIDEBAR_WIDTH = 350; 
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const DESKTOP_CONTENT_SPACER_WIDTH = 16; // approx 1rem
+const DESKTOP_CONTENT_SPACER_WIDTH = 16; 
 const RESIZE_HANDLE_WIDTH = DESKTOP_CONTENT_SPACER_WIDTH; 
-const SIDEBAR_MARGIN_LEFT_PX = 16; // For ml-4 class
+const SIDEBAR_MARGIN_LEFT_PX = 16; 
 const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; 
-const HEADER_HEIGHT_PLUS_MARGIN_REM = '5rem'; // 4rem header + 1rem top margin
-const VIEWPORT_HEIGHT_MINUS_HEADER_AND_MARGINS = 'calc(100vh - 6rem)'; // 4rem header + 1rem top + 1rem bottom
+const HEADER_HEIGHT_PLUS_MARGIN_REM = '5rem'; 
+const VIEWPORT_HEIGHT_MINUS_HEADER_AND_MARGINS = 'calc(100vh - 6rem)'; 
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -41,7 +41,7 @@ function DashboardContentInternal() {
   const [tasksForCurrentWorkflow, setTasksForCurrentWorkflow] = useState<Task[]>([]);
   const [userWorkflows, setUserWorkflows] = useState<Workflow[]>([]);
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
-  const [isLoadingCurrentWorkflowTasks, setIsLoadingCurrentWorkflowTasks] = useState(false);
+  const [isLoadingCurrentWorkflow, setIsLoadingCurrentWorkflow] = useState(false); // Renamed from isLoadingCurrentWorkflowTasks
   const { toast } = useToast();
 
   const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true);
@@ -85,7 +85,6 @@ function DashboardContentInternal() {
     }
   }, [user, authLoading, router]);
 
-  // Fetch all user workflows (for dropdown)
   useEffect(() => {
     if (user && !authLoading) {
       setIsLoadingWorkflows(true);
@@ -112,13 +111,12 @@ function DashboardContentInternal() {
       setTasksForCurrentWorkflow([]);
       setIsLoadingWorkflows(false);
     }
-  }, [user, authLoading, toast]); // Removed currentWorkflowId from deps to avoid re-fetching all workflows when only one changes
+  }, [user, authLoading, toast]); 
 
-  // Fetch current workflow details and its tasks
   useEffect(() => {
     if (currentWorkflowId && user?.id) {
-      setIsLoadingCurrentWorkflowTasks(true);
-      setCreatorProfiles({}); // Reset profiles when workflow changes
+      setIsLoadingCurrentWorkflow(true);
+      setCreatorProfiles({}); 
       Promise.all([
         getWorkflowById(currentWorkflowId),
         getTasksByWorkflow(currentWorkflowId, user.id)
@@ -156,17 +154,16 @@ function DashboardContentInternal() {
         console.error("Error fetching current workflow details or tasks:", error);
         toast({ title: "Error Loading Workflow", description: "Could not load workflow data.", variant: "destructive" });
       }).finally(() => {
-        setIsLoadingCurrentWorkflowTasks(false);
+        setIsLoadingCurrentWorkflow(false);
       });
     } else {
       setCurrentWorkflow(null);
       setTasksForCurrentWorkflow([]);
-      setIsLoadingCurrentWorkflowTasks(false);
+      setIsLoadingCurrentWorkflow(false);
     }
   }, [currentWorkflowId, user?.id, toast, taskChangeTrigger]);
 
 
-  // Fetch all tasks for calendar view (runs once or when user changes)
    useEffect(() => {
     if (user && !authLoading) {
         setIsLoadingAllTasks(true);
@@ -183,7 +180,7 @@ function DashboardContentInternal() {
         setAllUserTasks([]);
         setIsLoadingAllTasks(false);
     }
-  }, [user, authLoading, toast, taskChangeTrigger]); // Added taskChangeTrigger here
+  }, [user, authLoading, toast, taskChangeTrigger]);
 
 
   const handleSelectWorkflow = (workflowId: string) => {
@@ -197,10 +194,10 @@ function DashboardContentInternal() {
     }
     try {
       const newWorkflow = await createWorkflowService(user.id, newWorkflowName, templateName);
-      setUserWorkflows(prevWorkflows => [...prevWorkflows, newWorkflow]); // Update dropdown list
-      setCurrentWorkflowId(newWorkflow.id); // Switch to the new workflow
+      setUserWorkflows(prevWorkflows => [...prevWorkflows, newWorkflow]); 
+      setCurrentWorkflowId(newWorkflow.id); 
       toast({ title: "Workflow Created", description: `Workflow "${newWorkflow.name}" has been created.` });
-      setTaskChangeTrigger(prev => prev + 1); // Trigger re-fetch for new workflow's tasks (and calendar)
+      setTaskChangeTrigger(prev => prev + 1); 
       return newWorkflow.id;
     } catch (error) {
       console.error("Error creating workflow from page:", error);
@@ -209,12 +206,20 @@ function DashboardContentInternal() {
     }
   };
 
+  const handleWorkflowSettingsUpdate = (updatedWorkflowData: Partial<Workflow>) => {
+    if (currentWorkflow && currentWorkflow.id === updatedWorkflowData.id) {
+      setCurrentWorkflow(prev => prev ? { ...prev, ...updatedWorkflowData } : null);
+    }
+    setUserWorkflows(prevs => prevs.map(w => w.id === updatedWorkflowData.id ? { ...w, ...updatedWorkflowData } : w));
+    toast({ title: "Workflow Settings Updated" });
+  };
+
   const toggleCalendarSidebar = () => {
     setIsCalendarSidebarVisible(prev => !prev);
   };
 
   const handleTaskClickFromKanbanOrCalendar = (task: Task) => {
-    setSelectedTaskForModal({...task}); // Ensure a copy is passed
+    setSelectedTaskForModal({...task}); 
     setIsTaskModalOpen(true);
   };
 
@@ -227,10 +232,8 @@ function DashboardContentInternal() {
     try {
       await updateTaskService(updatedTaskData.id, updatedTaskData);
       
-      // Update allUserTasks (for calendar)
       setAllUserTasks(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData} : t).filter(Boolean) as Task[]);
       
-      // Update tasksForCurrentWorkflow (for Kanban)
       if(currentWorkflow && updatedTaskData.workflowId === currentWorkflow.id) {
         setTasksForCurrentWorkflow(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData} : t));
       }
@@ -238,7 +241,6 @@ function DashboardContentInternal() {
       if (provisionalNewTaskIdRef.current === updatedTaskData.id) {
         provisionalNewTaskIdRef.current = null;
       }
-      // No taskChangeTrigger here for simple updates, local state update handles UI.
     } catch (error) {
       toast({ title: "Save Failed", description: "Unable to save task changes.", variant: "destructive" });
       console.error("Error updating task from modal:", error);
@@ -253,7 +255,6 @@ function DashboardContentInternal() {
       setAllUserTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
       setTasksForCurrentWorkflow(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
 
-      // Remove task ID from the column in currentWorkflow state
       const updatedColumns = currentWorkflow.columns.map(col => {
         if (col.taskIds.includes(taskToArchive.id)) {
           return { ...col, taskIds: col.taskIds.filter(tid => tid !== taskToArchive.id) };
@@ -261,10 +262,9 @@ function DashboardContentInternal() {
         return col;
       });
       setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
-      // Persist this change to columns (optional, if backend doesn't auto-handle)
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       
-      setTaskChangeTrigger(prev => prev + 1); // Trigger potential refresh if needed, though local state is updated
+      setTaskChangeTrigger(prev => prev + 1); 
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
       if (selectedTaskForModal?.id === taskToArchive.id) {
         handleCloseTaskModal(); 
@@ -276,17 +276,16 @@ function DashboardContentInternal() {
   };
 
   const handleCloseTaskModal = () => {
-    setTimeout(() => { // Defer to prevent React update-in-render warnings
+    setTimeout(() => { 
       setIsTaskModalOpen(false);
       setSelectedTaskForModal(null);
       if (provisionalNewTaskIdRef.current) {
-        setTaskChangeTrigger(prev => prev + 1); // Refresh to pick up newly detailed task
+        setTaskChangeTrigger(prev => prev + 1); 
       }
       provisionalNewTaskIdRef.current = null;
     }, 0);
   };
   
-  // Handlers for KanbanBoardView callbacks
   const handleAddTaskToWorkflow = async (columnId: string, taskTitle: string) => {
     if (!user || !currentWorkflow) return null;
     const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables'> = {
@@ -297,7 +296,7 @@ function DashboardContentInternal() {
     try {
       const createdTask = await createTask(newTaskData);
       setTasksForCurrentWorkflow(prev => [...prev, createdTask]);
-      setAllUserTasks(prev => [...prev, createdTask]); // For calendar
+      setAllUserTasks(prev => [...prev, createdTask]); 
       
       const updatedColumns = currentWorkflow.columns.map(col => 
         col.id === columnId ? { ...col, taskIds: [...col.taskIds, createdTask.id] } : col
@@ -306,7 +305,7 @@ function DashboardContentInternal() {
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       
       setProvisionalNewTaskId(createdTask.id);
-      handleTaskClickFromKanbanOrCalendar(createdTask); // Open modal for new task
+      handleTaskClickFromKanbanOrCalendar(createdTask); 
 
       if (createdTask.creatorId && !creatorProfiles[createdTask.creatorId]) {
         getUsersByIds([createdTask.creatorId]).then(profile => {
@@ -327,21 +326,19 @@ function DashboardContentInternal() {
     const taskToMove = tasksForCurrentWorkflow.find(t => t.id === taskId);
     if (!taskToMove) return;
 
-    // Optimistic UI update for tasksForCurrentWorkflow
     setTasksForCurrentWorkflow(prevTasks => 
       prevTasks.map(t => t.id === taskId ? { ...t, columnId: destinationColumnId } : t)
     );
 
-    // Optimistic UI update for currentWorkflow.columns
     let newWorkflowColumns = JSON.parse(JSON.stringify(currentWorkflow.columns)) as Column[];
     const sourceColIndex = newWorkflowColumns.findIndex(col => col.id === sourceColumnId);
     const destColIndex = newWorkflowColumns.findIndex(col => col.id === destinationColumnId);
 
-    if (sourceColIndex === -1 || destColIndex === -1) return; // Should not happen
+    if (sourceColIndex === -1 || destColIndex === -1) return; 
 
     newWorkflowColumns[sourceColIndex].taskIds = newWorkflowColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
     let destTaskIds = [...newWorkflowColumns[destColIndex].taskIds];
-    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); // Remove if already there (e.g., drag within same column)
+    const currentTaskIndexInDest = destTaskIds.indexOf(taskId); 
     if (currentTaskIndexInDest > -1) destTaskIds.splice(currentTaskIndexInDest, 1);
     
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
@@ -360,7 +357,6 @@ function DashboardContentInternal() {
       await updateWorkflowService(currentWorkflow.id, { columns: newWorkflowColumns });
     } catch (error) {
       toast({ title: "Error Moving Task", variant: "destructive" });
-      // Revert optimistic updates by re-fetching
       setTaskChangeTrigger(prev => prev + 1);
     }
   };
@@ -376,7 +372,7 @@ function DashboardContentInternal() {
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       toast({title: "Column Renamed"});
     } catch (error) {
-      setCurrentWorkflow(prev => prev ? { ...prev, columns: originalColumns } : null); // Revert
+      setCurrentWorkflow(prev => prev ? { ...prev, columns: originalColumns } : null); 
       toast({ title: "Error Renaming Column", variant: "destructive" });
     }
   };
@@ -391,10 +387,9 @@ function DashboardContentInternal() {
     
     try {
       await updateTaskService(taskId, { isCompleted });
-      // toast({ title: "Task Updated" }); // May be too noisy
     } catch (error) {
-      setTasksForCurrentWorkflow(originalTasks); // Revert
-      setAllUserTasks(originalAllTasks); // Revert
+      setTasksForCurrentWorkflow(originalTasks); 
+      setAllUserTasks(originalAllTasks); 
       toast({ title: "Error Updating Task", variant: "destructive" });
     }
   };
@@ -412,7 +407,7 @@ function DashboardContentInternal() {
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       toast({title: "Column Added"});
     } catch (error) {
-      setCurrentWorkflow(prev => prev ? { ...prev, columns: currentWorkflow.columns } : null); // Revert
+      setCurrentWorkflow(prev => prev ? { ...prev, columns: currentWorkflow.columns } : null); 
       toast({ title: "Error Adding Column", variant: "destructive" });
     }
   };
@@ -420,7 +415,6 @@ function DashboardContentInternal() {
 
   const tasksForCalendarFiltered = useMemo(() => {
     return allUserTasks.filter(task => {
-      // Filter by current workflow if one is selected, otherwise show all user's tasks on calendar
       const matchesWorkflow = currentWorkflowId ? task.workflowId === currentWorkflowId : true;
       const matchesBillable = showBillableOnlyCalendar ? task.isBillable : true;
       return matchesWorkflow && matchesBillable && !task.isArchived && task.dueDate;
@@ -477,7 +471,6 @@ function DashboardContentInternal() {
   }, [isCalendarSidebarVisible, handleResizeMouseUp, toggleCalendarSidebar]);
 
   useEffect(() => {
-    // Cleanup for resize listeners if component unmounts while resizing
     return () => {
       if (isResizingRef.current) {
         handleResizeMouseUp();
@@ -525,7 +518,7 @@ function DashboardContentInternal() {
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform shadow-lg rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                "fixed h-[calc(100vh-6rem)]", // Adjusted height: 4rem header + 1rem top margin + 1rem bottom margin
+                "fixed h-[calc(100vh-6rem)]", 
                 isDesktopSidebarExpanded && `opacity-100 translate-x-0 ml-4`,
                 isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0 ml-4`
               )}
@@ -545,8 +538,8 @@ function DashboardContentInternal() {
                 className="resize-handle hidden md:block"
                 style={{
                   left: `${SIDEBAR_MARGIN_LEFT_PX + (isDesktopSidebarExpanded ? sidebarWidth : MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX)}px`,
-                  top: HEADER_HEIGHT_PLUS_MARGIN_REM,  // Consistent top positioning
-                  height: VIEWPORT_HEIGHT_MINUS_HEADER_AND_MARGINS, // Consistent height
+                  top: HEADER_HEIGHT_PLUS_MARGIN_REM,  
+                  height: VIEWPORT_HEIGHT_MINUS_HEADER_AND_MARGINS, 
                   width: `${RESIZE_HANDLE_WIDTH}px`,
                 }}
                 onMouseDown={isDesktopSidebarExpanded ? handleResizeMouseDown : undefined}
@@ -561,7 +554,7 @@ function DashboardContentInternal() {
                     "transition-opacity duration-300 ease-in-out transform shadow-xl md:shadow-lg md:rounded-lg",
                     "bg-sidebar-background border-r border-sidebar-border",
                     "fixed z-30",
-                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0"
+                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0" 
                 )}
                 style={{}} 
                 selectedDate={selectedDateForCalendar}
@@ -579,32 +572,30 @@ function DashboardContentInternal() {
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
             "md:rounded-xl md:shadow-lg", 
-            "border-0 md:border md:mb-4" // Added md:mb-4 for consistent bottom spacing with sidebar
+            "border-0 md:border md:mb-4 md:mt-4" 
            )}
             style={{ 
               marginLeft: isDesktop ? mainContentMarginLeft : '0px',
               marginRight: isDesktop ? '1rem' : '0px',
             }}
            >
-            {(isLoadingWorkflows || isLoadingCurrentWorkflowTasks) && user && !currentWorkflow ? (
+            {(isLoadingWorkflows || isLoadingCurrentWorkflow) && user && !currentWorkflow ? (
                 <div className="flex flex-1 items-center justify-center h-full">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
             ) : currentWorkflow && user ? (
               <KanbanBoardView
-                workflowId={currentWorkflow.id}
-                workflowName={currentWorkflow.name}
-                workflowColumns={currentWorkflow.columns}
+                workflow={currentWorkflow}
                 allTasksForWorkflow={tasksForCurrentWorkflow}
                 creatorProfiles={creatorProfiles}
-                isLoading={isLoadingCurrentWorkflowTasks}
+                isLoading={isLoadingCurrentWorkflow}
                 onTaskClick={handleTaskClickFromKanbanOrCalendar}
                 onAddTask={handleAddTaskToWorkflow}
                 onTaskDrop={handleMoveTaskInWorkflow}
                 onUpdateColumnName={handleUpdateWorkflowColumnName}
                 onToggleTaskCompleted={handleToggleWorkflowTaskCompleted}
                 onAddColumn={handleAddColumnToWorkflow}
-                // setProvisionalNewTaskId will be managed via onTaskClick and handleAddTaskToWorkflow
+                onWorkflowSettingsUpdate={handleWorkflowSettingsUpdate}
               />
             ) : user ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -652,6 +643,7 @@ export default function DashboardPage() {
     
 
     
+
 
 
 

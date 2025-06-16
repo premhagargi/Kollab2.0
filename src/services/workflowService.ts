@@ -17,6 +17,7 @@ import {
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
+import { addDays, addWeeks, formatISO } from 'date-fns';
 
 const WORKFLOWS_COLLECTION = 'boards'; 
 const TASKS_COLLECTION = 'tasks';
@@ -60,6 +61,10 @@ function invalidateCache(key?: string, prefix?: string) {
 const mapTimestampToISO = (timestampField: any): string | undefined => {
   if (timestampField instanceof Timestamp) {
     return timestampField.toDate().toISOString();
+  }
+  // If it's already a string (e.g. from client-side calculation), return it.
+  if (typeof timestampField === 'string') {
+    return timestampField;
   }
   return undefined;
 };
@@ -150,6 +155,20 @@ const getSampleTaskDefinitionsForTemplate = (templateName?: string): SampleTaskD
   }
 };
 
+export const calculateNextSendDate = (frequency?: 'weekly' | 'biweekly', lastSent?: string | Date): string | undefined => {
+  if (!frequency) return undefined;
+  const baseDate = lastSent ? new Date(lastSent) : new Date(); // If no lastSent, start from now for initial setup
+  let nextSend: Date;
+  if (frequency === 'weekly') {
+    nextSend = addWeeks(baseDate, 1);
+  } else { // biweekly
+    nextSend = addWeeks(baseDate, 2);
+  }
+  // Set time to a reasonable hour, e.g., 9 AM in the system's local timezone for the CRON job
+  nextSend.setHours(9, 0, 0, 0);
+  return formatISO(nextSend);
+};
+
 export const createWorkflow = async (userId: string, workflowName: string, templateName?: string): Promise<Workflow> => {
   const batch = writeBatch(db);
   const workflowDocRef = doc(collection(db, WORKFLOWS_COLLECTION));
@@ -163,6 +182,11 @@ export const createWorkflow = async (userId: string, workflowName: string, templ
     template: templateName || 'Blank Workflow',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+    autoUpdateEnabled: false, // Initialize new fields
+    autoUpdateFrequency: undefined,
+    autoUpdateClientEmail: undefined,
+    autoUpdateLastSent: undefined,
+    autoUpdateNextSend: undefined,
   };
 
   const sampleTaskDefinitions = getSampleTaskDefinitionsForTemplate(templateName);
@@ -191,15 +215,43 @@ export const createWorkflow = async (userId: string, workflowName: string, templ
     await batch.commit();
     invalidateCache(undefined, `workflows_owner_${userId}`); // Invalidate list cache
     const now = new Date().toISOString();
-    return {
-      id: workflowDocRef.id, ...newWorkflowData,
-      createdAt: now, updatedAt: now,
-    } as unknown as Workflow; // Cast needed due to serverTimestamp
+    // Ensure all fields, including new auto-update ones, are in the returned object
+    const returnedWorkflow: Workflow = {
+      id: workflowDocRef.id,
+      name: newWorkflowData.name,
+      ownerId: newWorkflowData.ownerId,
+      columns: newWorkflowData.columns,
+      template: newWorkflowData.template,
+      createdAt: now, 
+      updatedAt: now,
+      autoUpdateEnabled: newWorkflowData.autoUpdateEnabled,
+      autoUpdateFrequency: newWorkflowData.autoUpdateFrequency,
+      autoUpdateClientEmail: newWorkflowData.autoUpdateClientEmail,
+      autoUpdateLastSent: newWorkflowData.autoUpdateLastSent,
+      autoUpdateNextSend: newWorkflowData.autoUpdateNextSend,
+    };
+    return returnedWorkflow;
   } catch (error) {
     console.error("Error creating workflow with sample tasks:", error);
     throw error;
   }
 };
+
+const mapWorkflowDocumentToWorkflowObject = (docSnap: any): Workflow => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    ...data,
+    createdAt: mapTimestampToISO(data.createdAt),
+    updatedAt: mapTimestampToISO(data.updatedAt),
+    autoUpdateEnabled: data.autoUpdateEnabled ?? false, // Ensure default
+    autoUpdateFrequency: data.autoUpdateFrequency,
+    autoUpdateClientEmail: data.autoUpdateClientEmail,
+    autoUpdateLastSent: mapTimestampToISO(data.autoUpdateLastSent),
+    autoUpdateNextSend: mapTimestampToISO(data.autoUpdateNextSend),
+  } as Workflow;
+};
+
 
 export const getWorkflowsByOwner = async (userId: string): Promise<Workflow[]> => {
   const cacheKey = `workflows_owner_${userId}`;
@@ -209,11 +261,7 @@ export const getWorkflowsByOwner = async (userId: string): Promise<Workflow[]> =
   try {
     const q = query(collection(db, WORKFLOWS_COLLECTION), where('ownerId', '==', userId));
     const querySnapshot = await getDocs(q);
-    const workflows = querySnapshot.docs.map(docSnap => ({
-      id: docSnap.id, ...docSnap.data(),
-      createdAt: mapTimestampToISO(docSnap.data().createdAt),
-      updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
-    } as Workflow));
+    const workflows = querySnapshot.docs.map(mapWorkflowDocumentToWorkflowObject);
     setCache(cacheKey, workflows);
     return workflows;
   } catch (error) {
@@ -225,21 +273,17 @@ export const getWorkflowsByOwner = async (userId: string): Promise<Workflow[]> =
 export const getWorkflowById = async (workflowId: string): Promise<Workflow | null> => {
   const cacheKey = `workflow_${workflowId}`;
   const cachedData = getCache<Workflow | null>(cacheKey);
-  if (cachedData !== undefined) return cachedData; // Check for undefined to handle null from cache
+  if (cachedData !== undefined) return cachedData; 
 
   try {
     const docRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      const workflow = {
-        id: docSnap.id, ...docSnap.data(),
-        createdAt: mapTimestampToISO(docSnap.data().createdAt),
-        updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
-      } as Workflow;
+      const workflow = mapWorkflowDocumentToWorkflowObject(docSnap);
       setCache(cacheKey, workflow);
       return workflow;
     }
-    setCache(cacheKey, null); // Cache null if not found
+    setCache(cacheKey, null); 
     return null;
   } catch (error) {
     console.error("Error fetching workflow by ID:", error);
@@ -250,19 +294,36 @@ export const getWorkflowById = async (workflowId: string): Promise<Workflow | nu
 export const updateWorkflow = async (workflowId: string, updates: Partial<Omit<Workflow, 'id' | 'createdAt'>>): Promise<void> => {
   try {
     const workflowDocRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
-    await updateDoc(workflowDocRef, { ...updates, updatedAt: serverTimestamp() });
-    
-    // Invalidate caches
-    invalidateCache(`workflow_${workflowId}`);
-    if (updates.ownerId) { // If ownerId is part of updates, though unlikely to change
-        invalidateCache(undefined, `workflows_owner_${updates.ownerId}`);
-    } else {
-        // To be safe, if ownerId might change or we need to refresh lists, fetch the ownerId first
-        const currentWorkflow = await getWorkflowById(workflowId); // This will use cache if available
-        if (currentWorkflow) {
-            invalidateCache(undefined, `workflows_owner_${currentWorkflow.ownerId}`);
-        }
+    const dataToUpdate: any = { ...updates, updatedAt: serverTimestamp() };
+
+    // If enabling auto-updates and frequency is set, calculate next send date
+    if (updates.autoUpdateEnabled === true && updates.autoUpdateFrequency) {
+       const currentWorkflow = await getWorkflowById(workflowId); // Fetch current to get lastSent
+       dataToUpdate.autoUpdateNextSend = calculateNextSendDate(updates.autoUpdateFrequency, currentWorkflow?.autoUpdateLastSent);
+    } else if (updates.autoUpdateEnabled === false) {
+      // If disabling, clear related fields
+      dataToUpdate.autoUpdateFrequency = null;
+      dataToUpdate.autoUpdateClientEmail = null;
+      dataToUpdate.autoUpdateNextSend = null; 
+      // autoUpdateLastSent can be kept for historical purposes or cleared:
+      // dataToUpdate.autoUpdateLastSent = null; 
+    } else if (updates.autoUpdateFrequency && updates.autoUpdateEnabled !== false) {
+       // If only frequency changes and it's enabled, recalculate next send
+       const currentWorkflow = await getWorkflowById(workflowId);
+       if (currentWorkflow?.autoUpdateEnabled) {
+         dataToUpdate.autoUpdateNextSend = calculateNextSendDate(updates.autoUpdateFrequency, currentWorkflow.autoUpdateLastSent);
+       }
     }
+
+
+    await updateDoc(workflowDocRef, dataToUpdate);
+    
+    const currentWorkflowForOwnerId = await getWorkflowById(workflowId); 
+    if (currentWorkflowForOwnerId) {
+        invalidateCache(`workflow_${workflowId}`);
+        invalidateCache(undefined, `workflows_owner_${currentWorkflowForOwnerId.ownerId}`);
+    }
+
   } catch (error) {
     console.error("Error updating workflow:", error);
     throw error;
@@ -279,15 +340,33 @@ export const deleteWorkflow = async (workflowId: string, ownerId: string): Promi
     tasksSnapshot.forEach(taskDoc => batch.delete(taskDoc.ref));
     await batch.commit();
 
-    // Invalidate caches
     invalidateCache(`workflow_${workflowId}`);
     invalidateCache(undefined, `workflows_owner_${ownerId}`);
-    // Also invalidate task caches related to this workflow
-    // This is a simplification; task service should manage its own cache invalidation
-    // For now, this indicates that related task lists are stale.
-    // taskService.invalidateWorkflowTasksCache(workflowId, ownerId); 
   } catch (error) {
     console.error("Error deleting workflow and its tasks:", error);
+    throw error;
+  }
+};
+
+// Function for CRON job to call
+export const recordAutoUpdateSent = async (workflowId: string, frequency: 'weekly' | 'biweekly'): Promise<void> => {
+  try {
+    const workflowDocRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
+    const now = new Date();
+    const nextSend = calculateNextSendDate(frequency, now);
+
+    await updateDoc(workflowDocRef, {
+      autoUpdateLastSent: now.toISOString(),
+      autoUpdateNextSend: nextSend,
+      updatedAt: serverTimestamp(),
+    });
+    invalidateCache(`workflow_${workflowId}`);
+    const workflow = await getWorkflowById(workflowId);
+    if(workflow) invalidateCache(undefined, `workflows_owner_${workflow.ownerId}`);
+
+  } catch (error) {
+    console.error(`Error recording auto update sent for workflow ${workflowId}:`, error);
+    // Consider adding more robust error handling/logging for CRON job failures
     throw error;
   }
 };
