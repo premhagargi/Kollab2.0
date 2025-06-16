@@ -23,7 +23,7 @@ import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 500;
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const RESIZE_HANDLE_WIDTH = 8; // Width of the draggable handle in pixels
+const RESIZE_HANDLE_WIDTH = 8; 
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -44,7 +44,6 @@ function DashboardContentInternal() {
   const provisionalNewTaskIdRef = useRef<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  // State for resizable sidebar
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const isResizingRef = useRef(false);
   const initialMouseXRef = useRef(0);
@@ -52,7 +51,7 @@ function DashboardContentInternal() {
 
 
   useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768); // md breakpoint
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768); 
     checkDesktop();
     window.addEventListener('resize', checkDesktop);
     return () => window.removeEventListener('resize', checkDesktop);
@@ -193,7 +192,7 @@ function DashboardContentInternal() {
     }
     provisionalNewTaskIdRef.current = null;
   };
-
+  
   const tasksForCalendarFiltered = useMemo(() => {
     if (!currentWorkflowId) return allUserTasks.filter(task => showBillableOnlyCalendar ? task.isBillable : true);
     return allUserTasks.filter(task => {
@@ -202,6 +201,7 @@ function DashboardContentInternal() {
       return matchesWorkflow && matchesBillable;
     });
   }, [allUserTasks, currentWorkflowId, showBillableOnlyCalendar]);
+
 
   const tasksByDateForCalendar = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -216,7 +216,6 @@ function DashboardContentInternal() {
   }, [tasksForCalendarFiltered]);
 
 
-  // Resizing logic
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
@@ -279,23 +278,26 @@ function DashboardContentInternal() {
             onWorkflowCreated={handleWorkflowCreated}
             isLoadingWorkflows={isLoadingWorkflows}
         />
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-0 md:pt-0 md:p-2 lg:p-4">
+        <main className={cn(
+          "flex-1 flex overflow-hidden bg-background min-h-0",
+          isDesktopSidebarExpanded
+            ? "pt-0 md:pt-0 md:pr-2 md:pb-2 md:pl-0 lg:pr-4 lg:pb-4 lg:pl-0" 
+            : "pt-0 md:pt-0 md:p-2 lg:p-4" 
+        )}>
           {user && (
             <>
             <CalendarSidebar
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform md:shadow-lg md:rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                // Mobile: overlay or hidden
-                "fixed md:static z-30 md:z-auto top-16 left-0 h-[calc(100vh-4rem-4rem)]", // Mobile height
-                // Desktop: fixed width or minimized
-                "md:top-16 md:h-[calc(100vh-4rem)]", // Desktop height (below header)
+                "fixed md:static z-30 md:z-auto top-16 left-0 h-[calc(100vh-4rem-4rem)]", 
+                "md:top-16 md:h-[calc(100vh-4rem)]", 
                 isDesktopSidebarExpanded && `md:fixed md:w-[${sidebarWidth}px] opacity-100 translate-x-0`,
                 isDesktopSidebarMinimized && "md:static md:w-16 opacity-100 translate-x-0",
                 !isDesktop && isCalendarSidebarVisible && "w-full sm:w-4/5 opacity-100 translate-x-0",
                 !isDesktop && !isCalendarSidebarVisible && "opacity-0 -translate-x-full w-0"
               )}
-              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, zIndex: 30 } : {}}
+              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, position: 'fixed', top: '4rem', height: 'calc(100vh - 4rem)' } : {}}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
               tasksByDate={tasksByDateForCalendar}
@@ -309,9 +311,12 @@ function DashboardContentInternal() {
             {isDesktopSidebarExpanded && (
               <div
                 className="resize-handle hidden md:block"
-                style={{ left: `${sidebarWidth - (RESIZE_HANDLE_WIDTH / 2)}px`, top: '4rem', height: 'calc(100vh - 4rem)' }}
+                style={{ 
+                  left: `${sidebarWidth - (RESIZE_HANDLE_WIDTH / 2)}px`, 
+                  top: '4rem', 
+                  height: 'calc(100vh - 4rem)' 
+                }}
                 onMouseDown={handleResizeMouseDown}
-                onTouchStart={(e) => { /* TODO: Add touch support */ }}
               />
             )}
             </>
