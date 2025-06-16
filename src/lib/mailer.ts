@@ -1,96 +1,138 @@
+
 // src/lib/mailer.ts
 import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+import type { Transporter, SendMailOptions as NodemailerMailOptions } from 'nodemailer';
 
-console.log('Initializing mailer...');
-
-const emailHost = process.env.EMAIL_HOST;
-const emailPort = process.env.EMAIL_PORT;
-const emailUser = process.env.EMAIL_USER;
-const emailPass = process.env.EMAIL_PASS;
-
-console.log('Loaded email environment variables:');
-console.log(`EMAIL_HOST: ${emailHost}`);
-console.log(`EMAIL_PORT: ${emailPort}`);
-console.log(`EMAIL_USER: ${emailUser}`);
-console.log(`EMAIL_PASS: ${emailPass ? '***hidden***' : 'NOT SET'}`);
-
-if (!emailHost || !emailPort || !emailUser || !emailPass) {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(
-      'Email credentials (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS) are not fully set in .env.local. Email sending will be disabled.'
-    );
-  } else {
-    console.error(
-      'CRITICAL: Email credentials are not set in .env.local. Email sending will fail.'
-    );
-  }
+// Define a type for the mailer configuration, to be passed if needed
+interface MailerTransportConfig {
+  host: string;
+  port: number;
+  secure?: boolean;
+  auth: {
+    user: string;
+    pass: string;
+  };
+  connectionTimeout?: number;
+  greetingTimeout?: number;
+  socketTimeout?: number;
+  debug?: boolean;
+  logger?: boolean;
 }
 
-let transporter: Transporter | null = null;
+let globalTransporter: Transporter | null = null;
 
-if (emailHost && emailPort && emailUser && emailPass) {
-  console.log('Creating nodemailer transporter...');
-  transporter = nodemailer.createTransport({
-    host: emailHost,
-    port: parseInt(emailPort, 10),
-    secure: parseInt(emailPort, 10) === 465, // true for 465, false for other ports (TLS)
-    auth: {
-      user: emailUser,
-      pass: emailPass,
-    },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000, // 10 seconds
-    socketTimeout: 10000, // 10 seconds
-    debug: process.env.NODE_ENV === 'development', // Enable SMTP debug output in development
-    logger: process.env.NODE_ENV === 'development', // Log SMTP transactions to console in development
-  });
+const initializeGlobalTransporter = () => {
+  const emailHost = process.env.EMAIL_HOST;
+  const emailPort = process.env.EMAIL_PORT;
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Verifying transporter connection (this may output a lot of debug info if debug/logger are true)...');
-    transporter.verify(function (error, success) {
-      if (error) {
-        console.error('Nodemailer transporter verification error. This often indicates issues with credentials, host, port, or SSL/TLS settings:', error);
-      } else {
-        console.log('Nodemailer transporter is ready to send emails.');
-      }
+  if (emailHost && emailPort && emailUser && emailPass) {
+    console.log('Initializing global nodemailer transporter with process.env variables...');
+    globalTransporter = nodemailer.createTransport({
+      host: emailHost,
+      port: parseInt(emailPort, 10),
+      secure: parseInt(emailPort, 10) === 465,
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+      debug: process.env.NODE_ENV === 'development',
+      logger: process.env.NODE_ENV === 'development',
     });
+
+    if (process.env.NODE_ENV === 'development') {
+      globalTransporter.verify((error) => {
+        if (error) {
+          console.error('Global Nodemailer transporter verification error (using process.env):', error);
+        } else {
+          console.log('Global Nodemailer transporter (using process.env) is ready.');
+        }
+      });
+    }
+  } else {
+    if (process.env.NODE_ENV !== 'production') { // Only warn loudly if not in prod and trying to use global
+        console.warn(
+        'Global transporter: Email credentials (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS) are not fully set in process.env. Global email sending will be disabled unless a specific config is passed to sendMail.'
+        );
+    }
   }
-} else {
-  console.warn('Transporter was not created due to missing/incomplete credentials in .env.local.');
+};
+
+// Initialize global transporter on module load (for Next.js environment)
+initializeGlobalTransporter();
+
+interface MailOptions extends NodemailerMailOptions {
+  // from, to, subject, html are already in NodemailerMailOptions
 }
 
-interface MailOptions {
-  from: string; // sender address
-  to: string; // list of receivers
-  subject: string; // Subject line
-  text?: string; // plain text body
-  html: string; // html body
-}
+export const sendMail = async (
+  options: MailOptions,
+  transportConfig?: Partial<MailerTransportConfig> // Allow passing specific config for Cloud Functions
+): Promise<boolean> => {
+  let transporterToUse: Transporter | null = globalTransporter;
 
-export const sendMail = async (options: MailOptions): Promise<boolean> => {
-  console.log('Preparing to send email...');
-  if (!transporter) {
-    console.error('Email transporter not initialized. Cannot send email. Please check your .env.local SMTP credentials (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS) and ensure they are correct, and the email server is reachable. Also check server logs for transporter creation issues.');
+  if (transportConfig && transportConfig.host && transportConfig.port && transportConfig.auth?.user && transportConfig.auth?.pass) {
+    // If a specific transportConfig is provided (and valid), create a new transporter instance
+    console.log('Creating nodemailer transporter with provided transportConfig...');
+    try {
+        transporterToUse = nodemailer.createTransport({
+            host: transportConfig.host,
+            port: transportConfig.port,
+            secure: transportConfig.secure !== undefined ? transportConfig.secure : transportConfig.port === 465,
+            auth: {
+                user: transportConfig.auth.user,
+                pass: transportConfig.auth.pass,
+            },
+            connectionTimeout: transportConfig.connectionTimeout || 10000,
+            greetingTimeout: transportConfig.greetingTimeout || 10000,
+            socketTimeout: transportConfig.socketTimeout || 10000,
+            debug: transportConfig.debug || process.env.NODE_ENV === 'development',
+            logger: transportConfig.logger || process.env.NODE_ENV === 'development',
+        });
+         if (process.env.NODE_ENV === 'development' || transportConfig.debug) {
+            const tempTransporter = transporterToUse; // To satisfy TS null check in callback
+            tempTransporter.verify((error) => {
+                if (error) {
+                console.error('Nodemailer transporter verification error (using provided config):', error);
+                } else {
+                console.log('Nodemailer transporter (using provided config) is ready.');
+                }
+            });
+        }
+    } catch (e) {
+        console.error("Failed to create transporter from provided config:", e);
+        transporterToUse = null; // Fallback or ensure it's null if creation fails
+    }
+  }
+
+
+  if (!transporterToUse) {
+    console.error(
+      'Email transporter not initialized. Cannot send email. Please check SMTP credentials (either in process.env for global or in passed config) and ensure they are correct, and the email server is reachable.'
+    );
     return false;
   }
 
-  if (!options.from) {
-    console.error('EMAIL_FROM is not set in .env.local. Cannot send email.');
+  const emailFrom = options.from || process.env.EMAIL_FROM; // Use options.from if provided, else fallback to env
+  if (!emailFrom) {
+    console.error('Sender email (options.from or EMAIL_FROM) is not set. Cannot send email.');
     return false;
   }
+  
+  const mailToSend = { ...options, from: emailFrom };
 
-  console.log(`Sending email with Nodemailer. From: ${options.from}, To: ${options.to}, Subject: "${options.subject}"`);
-  // console.log(`HTML content for email to ${options.to}:`, options.html); // Uncomment for deep debugging of content
+  console.log(`Sending email with Nodemailer. From: ${mailToSend.from}, To: ${mailToSend.to}, Subject: "${mailToSend.subject}"`);
 
   try {
-    const info = await transporter.sendMail(options);
+    const info = await transporterToUse.sendMail(mailToSend);
     console.log('Email sent successfully by Nodemailer. Message ID:', info.messageId);
-    // For more detailed success info, uncomment the line below (can be verbose)
-    // console.log('Full Nodemailer response info:', info);
     return true;
   } catch (error) {
-    console.error('Error sending email via Nodemailer. This is likely an issue with SMTP server connection, authentication, or configuration:', error);
+    console.error('Error sending email via Nodemailer:', error);
     return false;
   }
 };
