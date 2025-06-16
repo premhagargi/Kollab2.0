@@ -1,11 +1,12 @@
 
 {
   "name": "kollab-functions-placeholder",
-  "description": "Cloud Functions for Kollab (CRON job reverted to Next.js API route)",
+  "description": "Cloud Functions for Kollab (CRON job reverted, this is a placeholder)",
   "scripts": {
     "build": "echo 'No build step needed for placeholder functions package' && exit 0",
     "serve": "echo 'No functions to serve locally for placeholder package' && exit 0",
-    "deploy": "echo 'No functions to deploy for placeholder package' && exit 0"
+    "deploy": "echo 'No functions to deploy for placeholder package' && exit 0",
+    "lint": "echo 'No lint step for placeholder functions package' && exit 0"
   },
   "engines": {
     "node": "18"

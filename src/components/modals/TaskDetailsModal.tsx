@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { CalendarIcon, User, MessageSquare, Paperclip, Brain, ListChecks, Sparkles, Trash2, Edit3, PlusCircle, Archive, Loader2, Clock, Briefcase, DollarSign, Target } from 'lucide-react';
+import { CalendarIcon, User, MessageSquare, Paperclip, Brain, ListChecks, Sparkles, Trash2, Edit3, PlusCircle, Archive, Loader2, Clock, DollarSign, Target } from 'lucide-react'; // Removed Briefcase as clientName is on workflow
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isEqual, set } from 'date-fns';
@@ -30,11 +30,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 
 interface TaskDetailsModalProps {
-  task: Task | null; // Renamed from initialTaskProp for clarity within this component context
+  task: Task | null; 
   isOpen: boolean;
   onClose: () => void;
   onUpdateTask: (updatedTask: Task) => Promise<void>;
   onArchiveTask: (taskToArchive: Task) => Promise<void>;
+  // clientName prop removed, as it's now part of workflow, not passed to task modal directly
 }
 
 const priorityOptions: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
@@ -47,7 +48,6 @@ const priorityColors: Record<TaskPriority, string> = {
 
 export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpdateTask, onArchiveTask }: TaskDetailsModalProps) {
   const { user } = useAuth();
-  // Internal state for the task being edited
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const initialTaskStateOnOpenRef = useRef<Task | null>(null);
   
@@ -65,7 +65,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   useEffect(() => {
     if (isOpen && initialTaskProp) {
       const deepClonedTask = JSON.parse(JSON.stringify(initialTaskProp)) as Task;
-      deepClonedTask.clientName = deepClonedTask.clientName || '';
+      // clientName is no longer a direct property of Task
       deepClonedTask.isBillable = deepClonedTask.isBillable || false;
       deepClonedTask.deliverables = deepClonedTask.deliverables || [];
 
@@ -83,7 +83,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
       setNewSubtask('');
       setNewDeliverable('');
     } else if (!isOpen) {
-        // When modal is explicitly closed by parent or its own mechanisms, clear internal state
         setCurrentTask(null);
         initialTaskStateOnOpenRef.current = null;
     }
@@ -184,7 +183,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
         priority: currentTask.priority,
         dueDate: currentTask.dueDate || undefined,
         subtasks: currentTask.subtasks.map(st => ({ text: st.text, completed: st.completed })),
-        clientName: currentTask.clientName || undefined,
+        // clientName removed from input, as it's not on Task type anymore
         deliverables: currentTask.deliverables || undefined,
     };
 
@@ -241,7 +240,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
-      {currentTask && ( // Only render DialogContent if internal currentTask state is ready
+      {currentTask && ( 
         <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col bg-gradient-to-br from-background to-background/95 rounded-xl shadow-2xl border border-border/50">
           <DialogHeader className="flex-shrink-0 px-4 pt-4 pb-2 border-b border-border/50">
             <div className="flex justify-between items-start gap-2">
@@ -279,20 +278,8 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
           <div className="flex-grow min-h-0 overflow-y-auto px-4">
             <ScrollArea className="h-full">
               <div className="grid gap-6 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="clientName" className="text-sm font-semibold flex items-center text-foreground">
-                      <Briefcase className="mr-2 h-4 w-4 text-primary" /> Client Name
-                    </Label>
-                    <Input
-                      id="clientName"
-                      value={currentTask.clientName || ''}
-                      onChange={(e) => handleInputChange('clientName', e.target.value)}
-                      placeholder="Enter client name (optional)"
-                      className="border-border/50 bg-background/50 hover:bg-background/70 rounded-lg text-sm transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-2">
+                {/* Client Name input removed from here, it's on the workflow level now */}
+                <div className="space-y-2">
                     <Label htmlFor="isBillable" className="text-sm font-semibold flex items-center text-foreground">
                       <DollarSign className="mr-2 h-4 w-4 text-primary" /> Billable Task
                     </Label>
@@ -304,8 +291,8 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                       />
                       <span className="text-sm text-muted-foreground">{currentTask.isBillable ? "Yes, this task is billable" : "No, this task is not billable"}</span>
                     </div>
-                  </div>
                 </div>
+
 
                 <div className="space-y-3">
                   <Label htmlFor="description" className="text-sm font-semibold flex items-center text-foreground">

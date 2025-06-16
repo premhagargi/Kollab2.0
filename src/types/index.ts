@@ -23,12 +23,7 @@ export interface Workflow { // Renamed from Board
   createdAt?: string; // ISO string
   updatedAt?: string; // ISO string
   template?: string; // Optional: To store which template was used
-  // New fields for Automated Client Update Scheduling
-  autoUpdateEnabled?: boolean;
-  autoUpdateFrequency?: 'weekly' | 'biweekly';
-  autoUpdateClientEmail?: string;
-  autoUpdateLastSent?: string; // ISO date string
-  autoUpdateNextSend?: string; // ISO date string
+  clientName?: string; // Moved from Task to Workflow, as it's often project-level
 }
 
 export interface Column {
@@ -58,7 +53,7 @@ export interface Task {
   isArchived?: boolean;
   archivedAt?: string; // ISO string, when the task was archived
   isCompleted: boolean;
-  clientName?: string; // New field for freelancers
+  // clientName?: string; // Removed from task, moved to Workflow
   isBillable: boolean; // New field for freelancers
   deliverables?: string[]; // New field for freelancers
 }
@@ -95,4 +90,3 @@ export interface AISubtaskSuggestion {
   id: string;
   text: string;
 }
-

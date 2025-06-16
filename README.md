@@ -9,9 +9,9 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 *   **Kanban Workflows:** Organize tasks visually with customizable columns within different workflows (e.g., for client projects, content calendars, personal goals).
     *   Inline column creation and renaming.
 *   **Task Management:** Create, update, and manage tasks with details like:
-    *   Client Name
-    *   Billable status (toggle)
-    *   Deliverables list
+    *   Client Name (at the workflow level)
+    *   Billable status (toggle per task)
+    *   Deliverables list (per task)
     *   Descriptions, priority, due dates, subtasks, and comments.
 *   **Task Cards on Workflow:**
     *   Visual priority indicators.
@@ -28,6 +28,7 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 *   **Workflow Templates:** Create new workflows from predefined templates like "Blank", "Freelance Project", "Content Creation", "Social Media Content Calendar", or "Weekly Solo Sprint" to quickly set up common column structures, optionally with sample tasks.
 *   **Responsive Design:** Works across different screen sizes.
 *   **Black & White UI Theme:** A clean, focused, and minimalist black and white interface.
+*   **Automated Client Updates (UI Placeholder):** UI for setting up automated client updates exists, but the backend CRON job functionality has been reverted. This is a placeholder for future development.
 
 ## Tech Stack
 
@@ -165,6 +166,7 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 *   **`src/ai/`**: Genkit related files (flows, prompts).
 *   **`src/types/`**: TypeScript type definitions.
 *   **`public/`**: Static assets.
+*   **`functions/`**: Placeholder for Firebase Cloud Functions. Currently not used for core app logic after CRON job reversion.
 
 ## Contributing
 
@@ -173,4 +175,3 @@ Kollab is a Trello-like task management platform designed for remote teams, buil
 ## License
 
 (Specify a license if applicable, e.g., MIT)
-

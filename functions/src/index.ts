@@ -1,24 +1,26 @@
 
-// This file was previously used for a Firebase Cloud Function CRON job.
-// The CRON logic has been reverted to a Next.js API Route (/api/cron/send-updates)
-// to be triggered by an external service like Supabase Edge Functions or cron-job.org.
-// This file can be deleted or kept if other Firebase Cloud Functions are planned for the project.
-
-// To avoid deployment errors if this functions/src directory still exists and is picked up by Firebase deploy,
+// This Firebase Functions directory is currently a placeholder.
+// The automated client update CRON job functionality, previously considered for
+// a Firebase Cloud Function, has been reverted.
+//
+// If you decide to implement other Firebase Cloud Functions (e.g., database triggers,
+// complex background tasks, or a server-side CRON job in the future),
+// you can add them here.
+//
+// To avoid deployment errors if this functions/src directory exists and is picked up by Firebase deploy,
 // ensure no functions are exported here if you don't intend to deploy any from this file.
 // For example, you can comment out or remove previous exports.
 
 /*
 import * as functions from "firebase-functions";
-// ... (previous imports and function definitions would go here)
+import * as admin from "firebase-admin";
+admin.initializeApp();
 
-export const myExampleFunction = functions.https.onRequest((request, response) => {
-  functions.logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
+// Example of a callable function (not related to CRON)
+export const myExampleCallableFunction = functions.https.onCall((data, context) => {
+  // ... your logic here
+  return { message: "Hello from Firebase Cloud Function!" };
 });
 */
 
-// If you are NOT using Firebase Cloud Functions at all, you can delete the entire 'functions' directory.
-// If you ARE using other Firebase Cloud Functions, ensure only those are active here.
-
-// console.log("Firebase Functions `index.ts` loaded. No CRON job function active here; CRON is via Next.js API route.");
+// console.log("Firebase Functions `index.ts` loaded. No active functions for Kollab CRON job here.");

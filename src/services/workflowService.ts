@@ -17,7 +17,7 @@ import {
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { addDays, addWeeks, formatISO } from 'date-fns';
+// import { addDays, addWeeks, formatISO } from 'date-fns'; // No longer needed for CRON
 
 const WORKFLOWS_COLLECTION = 'boards'; 
 const TASKS_COLLECTION = 'tasks';
@@ -29,26 +29,21 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 function getCache<T>(key: string): T | undefined {
   const entry = workflowCache.get(key);
   if (entry && Date.now() < entry.expiry) {
-    // console.log(`[Cache HIT] Key: ${key}`);
     return entry.data as T;
   }
-  // console.log(`[Cache MISS or EXPIRED] Key: ${key}`);
   workflowCache.delete(key); 
   return undefined;
 }
 
 function setCache(key: string, data: any) {
-  // console.log(`[Cache SET] Key: ${key}`);
   workflowCache.set(key, { data, expiry: Date.now() + CACHE_TTL });
 }
 
 function invalidateCache(key?: string, prefix?: string) {
   if (key) {
-    // console.log(`[Cache INVALIDATE] Key: ${key}`);
     workflowCache.delete(key);
   }
   if (prefix) {
-    // console.log(`[Cache INVALIDATE - PREFIX] Prefix: ${prefix}`);
     for (const k of workflowCache.keys()) {
       if (k.startsWith(prefix)) {
         workflowCache.delete(k);
@@ -62,7 +57,6 @@ const mapTimestampToISO = (timestampField: any): string | undefined => {
   if (timestampField instanceof Timestamp) {
     return timestampField.toDate().toISOString();
   }
-  // If it's already a string (e.g. from client-side calculation), return it.
   if (typeof timestampField === 'string') {
     return timestampField;
   }
@@ -127,6 +121,7 @@ interface SampleTaskDefinition {
   description?: string;
   priority?: TaskPriority;
   targetColumnName: string;
+  clientName?: string; // Added for potential sample data
 }
 
 const getSampleTaskDefinitionsForTemplate = (templateName?: string): SampleTaskDefinition[] => {
@@ -150,47 +145,49 @@ const getSampleTaskDefinitionsForTemplate = (templateName?: string): SampleTaskD
         { title: "Ship feature: User Authentication for Project Beta", targetColumnName: 'Completed This Week', priority: 'high' },
         { title: "Waiting for client feedback on design mockups", targetColumnName: 'Blocked/Needs Review' },
       ];
+     case 'Freelance Project':
+      return [
+        { title: "Initial client consultation call", targetColumnName: 'Backlog', priority: 'high', clientName: "New Client Co." },
+        { title: "Draft project proposal & quote", targetColumnName: 'Proposal/Quote', priority: 'high', clientName: "New Client Co." },
+        { title: "Design homepage mockup", targetColumnName: 'Active Work', priority: 'medium', clientName: "New Client Co." },
+        { title: "Submit homepage mockup for review", targetColumnName: 'Client Review', priority: 'medium', clientName: "New Client Co." },
+      ];
     default:
       return [];
   }
 };
 
-export const calculateNextSendDate = (frequency?: 'weekly' | 'biweekly', lastSent?: string | Date): string | undefined => {
-  if (!frequency) return undefined;
-  const baseDate = lastSent ? new Date(lastSent) : new Date(); // If no lastSent, start from now for initial setup
-  let nextSend: Date;
-  if (frequency === 'weekly') {
-    nextSend = addWeeks(baseDate, 1);
-  } else { // biweekly
-    nextSend = addWeeks(baseDate, 2);
-  }
-  // Set time to a reasonable hour, e.g., 9 AM in the system's local timezone for the CRON job
-  nextSend.setHours(9, 0, 0, 0);
-  return formatISO(nextSend);
-};
 
 export const createWorkflow = async (userId: string, workflowName: string, templateName?: string): Promise<Workflow> => {
   const batch = writeBatch(db);
   const workflowDocRef = doc(collection(db, WORKFLOWS_COLLECTION));
   const initialColumns = getColumnsByTemplate(templateName);
   const columnsWithTaskIds = JSON.parse(JSON.stringify(initialColumns)) as Column[]; 
+  let workflowClientName = ''; // Initialize workflow-level clientName
 
-  const newWorkflowData = {
+  const newWorkflowData: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'> = {
     name: workflowName,
     ownerId: userId,
     columns: columnsWithTaskIds,
     template: templateName || 'Blank Workflow',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    autoUpdateEnabled: false, // Initialize new fields
-    autoUpdateFrequency: undefined,
-    autoUpdateClientEmail: undefined,
-    autoUpdateLastSent: undefined,
-    autoUpdateNextSend: undefined,
+    clientName: '', // Default clientName for the workflow
   };
 
   const sampleTaskDefinitions = getSampleTaskDefinitionsForTemplate(templateName);
   if (sampleTaskDefinitions.length > 0) {
+    // If sample tasks define a client name, use the first one for the workflow, or prioritize Freelance Project template
+    const freelanceProjectClientSample = templateName === 'Freelance Project' ? sampleTaskDefinitions.find(s => s.clientName) : undefined;
+    if (freelanceProjectClientSample) {
+        workflowClientName = freelanceProjectClientSample.clientName!;
+    } else {
+        const firstTaskWithClientName = sampleTaskDefinitions.find(s => s.clientName);
+        if (firstTaskWithClientName) {
+            workflowClientName = firstTaskWithClientName.clientName!;
+        }
+    }
+    newWorkflowData.clientName = workflowClientName;
+
+
     for (const sampleDef of sampleTaskDefinitions) {
       const taskDocRef = doc(collection(db, TASKS_COLLECTION)); 
       const targetColumn = columnsWithTaskIds.find(c => c.name === sampleDef.targetColumnName);
@@ -200,7 +197,8 @@ export const createWorkflow = async (userId: string, workflowName: string, templ
           priority: sampleDef.priority || 'medium' as TaskPriority,
           subtasks: [], comments: [], workflowId: workflowDocRef.id, 
           columnId: targetColumn.id, creatorId: userId, ownerId: userId,
-          isCompleted: false, isBillable: false, clientName: '', deliverables: [],
+          isCompleted: false, isBillable: false, // clientName from sampleDef is not stored on task now
+          deliverables: [],
           isArchived: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         };
         batch.set(taskDocRef, taskDataForDb);
@@ -209,26 +207,21 @@ export const createWorkflow = async (userId: string, workflowName: string, templ
     }
     newWorkflowData.columns = columnsWithTaskIds;
   }
-  batch.set(workflowDocRef, newWorkflowData);
+  batch.set(workflowDocRef, { ...newWorkflowData, createdAt: serverTimestamp(), updatedAt: serverTimestamp()});
 
   try {
     await batch.commit();
     invalidateCache(undefined, `workflows_owner_${userId}`); // Invalidate list cache
     const now = new Date().toISOString();
-    // Ensure all fields, including new auto-update ones, are in the returned object
     const returnedWorkflow: Workflow = {
       id: workflowDocRef.id,
       name: newWorkflowData.name,
       ownerId: newWorkflowData.ownerId,
       columns: newWorkflowData.columns,
       template: newWorkflowData.template,
+      clientName: newWorkflowData.clientName,
       createdAt: now, 
       updatedAt: now,
-      autoUpdateEnabled: newWorkflowData.autoUpdateEnabled,
-      autoUpdateFrequency: newWorkflowData.autoUpdateFrequency,
-      autoUpdateClientEmail: newWorkflowData.autoUpdateClientEmail,
-      autoUpdateLastSent: newWorkflowData.autoUpdateLastSent,
-      autoUpdateNextSend: newWorkflowData.autoUpdateNextSend,
     };
     return returnedWorkflow;
   } catch (error) {
@@ -241,14 +234,13 @@ const mapWorkflowDocumentToWorkflowObject = (docSnap: any): Workflow => {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    ...data,
+    name: data.name,
+    ownerId: data.ownerId,
+    columns: data.columns,
+    template: data.template,
+    clientName: data.clientName || '', // Ensure clientName defaults to empty string
     createdAt: mapTimestampToISO(data.createdAt),
     updatedAt: mapTimestampToISO(data.updatedAt),
-    autoUpdateEnabled: data.autoUpdateEnabled ?? false, // Ensure default
-    autoUpdateFrequency: data.autoUpdateFrequency,
-    autoUpdateClientEmail: data.autoUpdateClientEmail,
-    autoUpdateLastSent: mapTimestampToISO(data.autoUpdateLastSent),
-    autoUpdateNextSend: mapTimestampToISO(data.autoUpdateNextSend),
   } as Workflow;
 };
 
@@ -296,23 +288,9 @@ export const updateWorkflow = async (workflowId: string, updates: Partial<Omit<W
     const workflowDocRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
     const dataToUpdate: any = { ...updates, updatedAt: serverTimestamp() };
 
-    // If enabling auto-updates and frequency is set, calculate next send date
-    if (updates.autoUpdateEnabled === true && updates.autoUpdateFrequency) {
-       const currentWorkflow = await getWorkflowById(workflowId); // Fetch current to get lastSent
-       dataToUpdate.autoUpdateNextSend = calculateNextSendDate(updates.autoUpdateFrequency, currentWorkflow?.autoUpdateLastSent);
-    } else if (updates.autoUpdateEnabled === false) {
-      // If disabling, clear related fields
-      dataToUpdate.autoUpdateFrequency = null;
-      dataToUpdate.autoUpdateClientEmail = null;
-      dataToUpdate.autoUpdateNextSend = null; 
-      // autoUpdateLastSent can be kept for historical purposes or cleared:
-      // dataToUpdate.autoUpdateLastSent = null; 
-    } else if (updates.autoUpdateFrequency && updates.autoUpdateEnabled !== false) {
-       // If only frequency changes and it's enabled, recalculate next send
-       const currentWorkflow = await getWorkflowById(workflowId);
-       if (currentWorkflow?.autoUpdateEnabled) {
-         dataToUpdate.autoUpdateNextSend = calculateNextSendDate(updates.autoUpdateFrequency, currentWorkflow.autoUpdateLastSent);
-       }
+    // Explicitly handle clientName if it's being set to an empty string
+    if ('clientName' in updates && updates.clientName === '') {
+      dataToUpdate.clientName = '';
     }
 
 
@@ -344,29 +322,6 @@ export const deleteWorkflow = async (workflowId: string, ownerId: string): Promi
     invalidateCache(undefined, `workflows_owner_${ownerId}`);
   } catch (error) {
     console.error("Error deleting workflow and its tasks:", error);
-    throw error;
-  }
-};
-
-// Function for CRON job to call
-export const recordAutoUpdateSent = async (workflowId: string, frequency: 'weekly' | 'biweekly'): Promise<void> => {
-  try {
-    const workflowDocRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
-    const now = new Date();
-    const nextSend = calculateNextSendDate(frequency, now);
-
-    await updateDoc(workflowDocRef, {
-      autoUpdateLastSent: now.toISOString(),
-      autoUpdateNextSend: nextSend,
-      updatedAt: serverTimestamp(),
-    });
-    invalidateCache(`workflow_${workflowId}`);
-    const workflow = await getWorkflowById(workflowId);
-    if(workflow) invalidateCache(undefined, `workflows_owner_${workflow.ownerId}`);
-
-  } catch (error) {
-    console.error(`Error recording auto update sent for workflow ${workflowId}:`, error);
-    // Consider adding more robust error handling/logging for CRON job failures
     throw error;
   }
 };

@@ -11,15 +11,12 @@ import type { Task } from '@/types';
 
 export async function summarizeTaskAction(input: TaskSummarizationInput): Promise<TaskSummarizationOutput> {
   try {
-    // console.log("[aiAction] summarizeTaskAction: Calling summarizeTask flow with input:", input);
     const result = await runSummarizeTaskFlow(input);
-    // console.log("[aiAction] summarizeTaskAction: summarizeTask flow result:", result);
     if (!result || typeof result.summary !== 'string') {
       throw new Error('Invalid summary format from AI');
     }
     return result;
   } catch (error) {
-    // console.error("[aiAction] Error in summarizeTaskAction:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error generating summary.";
     return { summary: `Error: ${errorMessage}` };
   }
@@ -27,15 +24,12 @@ export async function summarizeTaskAction(input: TaskSummarizationInput): Promis
 
 export async function suggestSubtasksAction(input: SubtaskSuggestionsInput): Promise<SubtaskSuggestionsOutput> {
   try {
-    // console.log("Calling suggestSubtasks flow with input:", input);
     const result = await runSuggestSubtasksFlow(input);
-    // console.log("suggestSubtasks flow result:", result);
      if (!result || !Array.isArray(result.subtaskSuggestions)) {
       throw new Error('Invalid subtask suggestions format from AI');
     }
     return result;
   } catch (error) {
-    // console.error("Error in suggestSubtasksAction:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error generating subtasks.";
     return { subtaskSuggestions: [`Error: ${errorMessage}`] };
   }
@@ -44,42 +38,31 @@ export async function suggestSubtasksAction(input: SubtaskSuggestionsInput): Pro
 export async function generateClientProgressSummaryAction(
   userId: string,
   workflowId: string,
-  workflowName: string,
+  workflowName: string, // This can be directly from the workflow object
   clientContext?: string,
   dateRangeContext?: string
 ): Promise<ClientProgressSummaryOutput> {
-  // console.log(`[aiAction] generateClientProgressSummaryAction: Entry. UserID: '${userId}', WorkflowID: '${workflowId}', WorkflowName: '${workflowName}'`);
 
   if (!userId || typeof userId !== 'string' || userId.trim() === '') {
-    // console.error("[aiAction] generateClientProgressSummaryAction: Invalid userId provided.", { userId });
     return { summaryText: "Error: User authentication is required to generate summaries. Invalid user ID." };
   }
   if (!workflowId || typeof workflowId !== 'string' || workflowId.trim() === '') {
-    // console.error("[aiAction] generateClientProgressSummaryAction: Invalid workflowId provided.", { workflowId });
     return { summaryText: "Error: Workflow information is missing. Invalid workflow ID." };
   }
    if (!workflowName || typeof workflowName !== 'string' || workflowName.trim() === '') {
-    // console.error("[aiAction] generateClientProgressSummaryAction: Invalid workflowName provided.", { workflowName });
     return { summaryText: "Error: Workflow name is missing." };
   }
 
-
   try {
-    // console.log(`[aiAction] generateClientProgressSummaryAction: Starting summary generation for workflowId='${workflowId}', userId='${userId}'`);
-
     const workflow = await getWorkflowById(workflowId);
     if (!workflow) {
-      // console.error(`[aiAction] generateClientProgressSummaryAction: Workflow not found. workflowId='${workflowId}'`);
       return { summaryText: "Error: Workflow not found." };
     }
     if (workflow.ownerId !== userId) {
-      // console.error(`[aiAction] generateClientProgressSummaryAction: User does not own this workflow. workflowId='${workflowId}', userId='${userId}', workflowOwnerId='${workflow.ownerId}'`);
       return { summaryText: "Error: You don't have permission to generate summaries for this workflow." };
     }
 
-    // console.log(`[aiAction] generateClientProgressSummaryAction: Fetching tasks for workflowId='${workflowId}', userId='${userId}'`);
     const tasksFromDb = await getTasksByWorkflow(workflowId, userId);
-    // console.log(`[aiAction] generateClientProgressSummaryAction: Retrieved ${tasksFromDb.length} tasks for workflow ${workflowName}`);
 
     const tasksForAI: ClientProgressSummaryInput['tasks'] = tasksFromDb.map(task => ({
       id: task.id,
@@ -90,26 +73,23 @@ export async function generateClientProgressSummaryAction(
       updatedAt: task.updatedAt,
       isCompleted: task.isCompleted,
       columnId: task.columnId,
-      clientName: task.clientName,
+      // clientName removed from task, it's on workflow
       isBillable: task.isBillable,
     }));
 
-    // console.log(`[aiAction] generateClientProgressSummaryAction: Generating summary with ${tasksForAI.length} tasks for workflow ${workflowName}`);
     const result = await runClientProgressSummaryFlow({
-      workflowName,
+      workflowName: workflow.name, // Use name from fetched workflow
       tasks: tasksForAI,
       clientContext: clientContext || "General progress update",
       dateRangeContext: dateRangeContext,
+      workflowClientName: workflow.clientName, // Pass workflow-level client name
     });
 
     if (!result || typeof result.summaryText !== 'string') {
-      // console.error(`[aiAction] generateClientProgressSummaryAction: Invalid summary format from AI. workflowId='${workflowId}'`);
       throw new Error('Invalid summary format from AI for client update.');
     }
-    // console.log(`[aiAction] generateClientProgressSummaryAction: Successfully generated summary for workflowId='${workflowId}'`);
     return result;
   } catch (error) {
-    // console.error(`[aiAction] Error in generateClientProgressSummaryAction for workflowId='${workflowId}', userId='${userId}':`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error generating client progress summary.";
     return { summaryText: `Error: ${errorMessage}` };
   }

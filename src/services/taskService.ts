@@ -26,26 +26,21 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 function getCache<T>(key: string): T | undefined {
   const entry = taskCache.get(key);
   if (entry && Date.now() < entry.expiry) {
-    // console.log(`[TaskCache HIT] Key: ${key}`);
     return entry.data as T;
   }
-  // console.log(`[TaskCache MISS or EXPIRED] Key: ${key}`);
   taskCache.delete(key);
   return undefined;
 }
 
 function setCache(key: string, data: any) {
-  // console.log(`[TaskCache SET] Key: ${key}`);
   taskCache.set(key, { data, expiry: Date.now() + CACHE_TTL });
 }
 
 function invalidateCache(key?: string, prefix?: string) {
   if (key) {
-    // console.log(`[TaskCache INVALIDATE] Key: ${key}`);
     taskCache.delete(key);
   }
   if (prefix) {
-    // console.log(`[TaskCache INVALIDATE - PREFIX] Prefix: ${prefix}`);
     for (const k of taskCache.keys()) {
       if (k.startsWith(prefix)) {
         taskCache.delete(k);
@@ -62,11 +57,12 @@ const mapTimestampToISO = (timestampField: any): string => {
   return typeof timestampField === 'string' ? timestampField : new Date().toISOString();
 };
 
-export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables' | 'ownerId'> & Partial<Pick<Task, 'clientName' | 'deliverables' | 'isBillable'>>): Promise<Task> => {
+// Task type no longer has clientName, it's on Workflow
+export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'deliverables' | 'ownerId'> & Partial<Pick<Task, 'deliverables' | 'isBillable'>>): Promise<Task> => {
   try {
     const newTaskData = {
       ...taskData, ownerId: taskData.creatorId, isCompleted: false,
-      isBillable: taskData.isBillable || false, clientName: taskData.clientName || '',
+      isBillable: taskData.isBillable || false, 
       deliverables: taskData.deliverables || [], isArchived: false,
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     };
@@ -79,7 +75,7 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
     return {
       id: docRef.id, ...taskData, ownerId: newTaskData.ownerId,
       isCompleted: false, isBillable: newTaskData.isBillable,
-      clientName: newTaskData.clientName, deliverables: newTaskData.deliverables,
+      deliverables: newTaskData.deliverables,
       isArchived: false, createdAt: now, updatedAt: now, 
     };
   } catch (error) {
@@ -106,7 +102,6 @@ export const getTasksByWorkflow = async (workflowId: string, userId: string): Pr
       id: docSnap.id, ...docSnap.data(),
       isCompleted: docSnap.data().isCompleted || false,
       isBillable: docSnap.data().isBillable || false,
-      clientName: docSnap.data().clientName || '',
       deliverables: docSnap.data().deliverables || [],
       createdAt: mapTimestampToISO(docSnap.data().createdAt),
       updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
@@ -136,7 +131,6 @@ export const getAllTasksByOwner = async (userId: string): Promise<Task[]> => {
       id: docSnap.id, ...docSnap.data(),
       isCompleted: docSnap.data().isCompleted || false,
       isBillable: docSnap.data().isBillable || false,
-      clientName: docSnap.data().clientName || '',
       deliverables: docSnap.data().deliverables || [],
       createdAt: mapTimestampToISO(docSnap.data().createdAt),
       updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
@@ -163,7 +157,6 @@ export const getTaskById = async (taskId: string): Promise<Task | null> => {
         id: docSnap.id, ...data,
         isCompleted: data.isCompleted || false,
         isBillable: data.isBillable || false,
-        clientName: data.clientName || '',
         deliverables: data.deliverables || [],
         createdAt: mapTimestampToISO(data.createdAt),
         updatedAt: mapTimestampToISO(data.updatedAt),
