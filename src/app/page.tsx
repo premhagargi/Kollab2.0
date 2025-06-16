@@ -21,7 +21,7 @@ import { Card } from '@/components/ui/card';
 import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 
 const MIN_SIDEBAR_WIDTH = 240; 
-const MAX_SIDEBAR_WIDTH = 500;
+const MAX_SIDEBAR_WIDTH = 350; // Adjusted max width
 const DEFAULT_SIDEBAR_WIDTH = 280;
 const RESIZE_HANDLE_WIDTH = 16; 
 const SIDEBAR_MARGIN_LEFT_PX = 16; 
@@ -234,7 +234,7 @@ function DashboardContentInternal() {
     document.body.classList.remove('resizing-sidebar');
     window.removeEventListener('mousemove', handleResizeMouseMove);
     window.removeEventListener('mouseup', handleResizeMouseUp);
-  }, [/* handleResizeMouseMove is added below */]);
+  }, []);
 
 
   const handleResizeMouseMove = useCallback((e: MouseEvent) => {
@@ -242,7 +242,6 @@ function DashboardContentInternal() {
     const dx = e.clientX - initialMouseXRef.current;
     let newWidth = initialSidebarWidthRef.current + dx;
     
-    // Auto-close if under-stretched (made too narrow)
     if (newWidth <= MIN_SIDEBAR_WIDTH + 20 && isCalendarSidebarVisible) { 
       toggleCalendarSidebar(); 
       setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); 
@@ -255,8 +254,6 @@ function DashboardContentInternal() {
   }, [isCalendarSidebarVisible, handleResizeMouseUp]); 
 
   useEffect(() => {
-    // Ensure handleResizeMouseUp is part of handleResizeMouseMove's closure context if it changes
-    // This is implicitly handled by useCallback's dependency array.
   }, [handleResizeMouseUp, handleResizeMouseMove]);
 
 
