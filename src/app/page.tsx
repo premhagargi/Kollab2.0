@@ -23,7 +23,7 @@ import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 const MIN_SIDEBAR_WIDTH = 240;
 const MAX_SIDEBAR_WIDTH = 350;
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const RESIZE_HANDLE_WIDTH = 16; // This is the interactive width of the gap/handle
+const RESIZE_HANDLE_WIDTH = 16; // Interactive width for the gap/handle
 const SIDEBAR_MARGIN_LEFT_PX = 16; // For ml-4 class
 const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; // 4rem
 
@@ -244,8 +244,8 @@ function DashboardContentInternal() {
     
     if (newWidth <= MIN_SIDEBAR_WIDTH + 20 && isCalendarSidebarVisible) {
       toggleCalendarSidebar();
-      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); // Reset for next open
-      handleResizeMouseUp(); // Stop resizing
+      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+      handleResizeMouseUp(); 
       return;
     }
 
@@ -304,11 +304,11 @@ function DashboardContentInternal() {
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform shadow-lg rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                "fixed top-16 h-[calc(100vh-5rem)] ml-4", // Adjusted height for 1rem bottom effective margin
+                "fixed h-[calc(100vh-6rem)] ml-4", 
                 isDesktopSidebarExpanded && `opacity-100 translate-x-0`,
                 isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0`
               )}
-              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`} : {}}
+              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, top: '5rem' } : { top: '5rem' }}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
               tasksByDate={tasksByDateForCalendar}
@@ -324,8 +324,8 @@ function DashboardContentInternal() {
                 className="resize-handle hidden md:block"
                 style={{
                   left: `${SIDEBAR_MARGIN_LEFT_PX + (isDesktopSidebarExpanded ? sidebarWidth : MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX)}px`,
-                  top: '4rem',
-                  height: 'calc(100vh - 5rem)', // Adjusted height for 1rem bottom effective margin
+                  top: '5rem', 
+                  height: 'calc(100vh - 6rem)', 
                   width: `${RESIZE_HANDLE_WIDTH}px`,
                 }}
                 onMouseDown={isDesktopSidebarExpanded ? handleResizeMouseDown : undefined}
@@ -340,9 +340,9 @@ function DashboardContentInternal() {
                     "transition-opacity duration-300 ease-in-out transform shadow-xl md:shadow-lg md:rounded-lg",
                     "bg-sidebar-background border-r border-sidebar-border",
                     "fixed z-30",
-                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0"
+                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0" // Original mobile top
                 )}
-                style={{}}
+                style={{}} // No top style here for mobile, handled by classes
                 selectedDate={selectedDateForCalendar}
                 onSelectDate={setSelectedDateForCalendar}
                 tasksByDate={tasksByDateForCalendar}
@@ -357,7 +357,7 @@ function DashboardContentInternal() {
 
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
-            "md:mr-4 mb-4 md:rounded-xl md:shadow-lg", // Removed mt-4
+            "md:mr-4 mb-4 md:rounded-xl md:shadow-lg mt-4", // Added mt-4
             "border-0 md:border"
            )}
             style={{ marginLeft: isDesktop ? mainContentMarginLeft : '0px' }}
@@ -418,5 +418,6 @@ export default function DashboardPage() {
     
 
     
+
 
 
