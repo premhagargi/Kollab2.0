@@ -159,7 +159,7 @@ html {
   height: calc(100vh - 4rem); /* Full height below header */
   width: 8px;
   cursor: col-resize;
-  background-color: hsl(var(--border));
+  background-color: transparent; /* Transparent by default */
   z-index: 35; /* Above sidebar, below modals */
   transition: background-color 0.2s ease-in-out;
 }
@@ -176,3 +176,4 @@ body.resizing-sidebar {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE/Edge */
 }
+
