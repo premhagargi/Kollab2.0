@@ -21,11 +21,11 @@ import { Card } from '@/components/ui/card';
 import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 
 const MIN_SIDEBAR_WIDTH = 240;
-const MAX_SIDEBAR_WIDTH = 350;
+const MAX_SIDEBAR_WIDTH = 350; 
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const RESIZE_HANDLE_WIDTH = 16; // Interactive width for the gap/handle
+const RESIZE_HANDLE_WIDTH = 16; 
 const SIDEBAR_MARGIN_LEFT_PX = 16; // For ml-4 class
-const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; // 4rem
+const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; 
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -159,7 +159,7 @@ function DashboardContentInternal() {
       await updateTask(updatedTaskData.id, updatedTaskData);
       setAllUserTasks(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? updatedTaskData : t));
       
-      toast({ title: "Task Updated", description: "Changes saved successfully." });
+      // No toast here, auto-save confirmation is handled in modal's onClose
       if (provisionalNewTaskIdRef.current === updatedTaskData.id) {
         provisionalNewTaskIdRef.current = null;
       }
@@ -176,8 +176,9 @@ function DashboardContentInternal() {
       setAllUserTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
       if (selectedTaskForModal?.id === taskToArchive.id) {
-        setIsTaskModalOpen(false);
-        setSelectedTaskForModal(null);
+        // setIsTaskModalOpen(false); // This will be handled by modal's internal close
+        // setSelectedTaskForModal(null);
+        handleCloseTaskModal(); // Ensure consistent close logic
       }
     } catch (error) {
       toast({ title: "Archive Failed", description: "Unable to archive task.", variant: "destructive" });
@@ -186,14 +187,16 @@ function DashboardContentInternal() {
   };
 
   const handleCloseTaskModal = () => {
-    setIsTaskModalOpen(false);
-    setSelectedTaskForModal(null);
-    if (provisionalNewTaskIdRef.current) {
-      if (user && currentWorkflowId) {
-         getAllTasksByOwner(user.id).then(tasks => setAllUserTasks(tasks.filter(t => t.dueDate)));
+    setTimeout(() => {
+      setIsTaskModalOpen(false);
+      setSelectedTaskForModal(null);
+      if (provisionalNewTaskIdRef.current) {
+        if (user && currentWorkflowId) {
+           getAllTasksByOwner(user.id).then(tasks => setAllUserTasks(tasks.filter(t => t.dueDate)));
+        }
       }
-    }
-    provisionalNewTaskIdRef.current = null;
+      provisionalNewTaskIdRef.current = null;
+    }, 0);
   };
 
   const tasksForCalendarFiltered = useMemo(() => {
@@ -244,7 +247,7 @@ function DashboardContentInternal() {
     
     if (newWidth <= MIN_SIDEBAR_WIDTH + 20 && isCalendarSidebarVisible) {
       toggleCalendarSidebar();
-      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); 
       handleResizeMouseUp(); 
       return;
     }
@@ -280,12 +283,18 @@ function DashboardContentInternal() {
   const isDesktopSidebarExpanded = isDesktop && isCalendarSidebarVisible;
   const isDesktopSidebarMinimized = isDesktop && !isCalendarSidebarVisible;
 
-  let mainContentMarginLeft = '0px';
-  if (isDesktopSidebarExpanded) {
-    mainContentMarginLeft = `${SIDEBAR_MARGIN_LEFT_PX + sidebarWidth + RESIZE_HANDLE_WIDTH}px`;
-  } else if (isDesktopSidebarMinimized) {
-    mainContentMarginLeft = `${SIDEBAR_MARGIN_LEFT_PX + MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX + RESIZE_HANDLE_WIDTH}px`;
+  let mainContentMarginLeft = '0px'; // Default for mobile
+  let kanbanBoardMarginTop = '0px';
+
+  if(isDesktop) {
+    kanbanBoardMarginTop = '1rem'; // mt-4 for desktop
+    if (isDesktopSidebarExpanded) {
+      mainContentMarginLeft = `${SIDEBAR_MARGIN_LEFT_PX + sidebarWidth + RESIZE_HANDLE_WIDTH}px`;
+    } else if (isDesktopSidebarMinimized) {
+      mainContentMarginLeft = `${SIDEBAR_MARGIN_LEFT_PX + MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX + RESIZE_HANDLE_WIDTH}px`;
+    }
   }
+
 
   return (
       <div className="flex flex-col h-screen overflow-hidden">
@@ -297,16 +306,16 @@ function DashboardContentInternal() {
             isLoadingWorkflows={isLoadingWorkflows}
         />
         
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0">
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0 px-0 md:px-4 md:pb-4">
           {user && isDesktop && (
             <>
             <CalendarSidebar
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform shadow-lg rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                "fixed h-[calc(100vh-6rem)] ml-4", 
-                isDesktopSidebarExpanded && `opacity-100 translate-x-0`,
-                isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0`
+                "fixed h-[calc(100vh-6rem)]", 
+                isDesktopSidebarExpanded && `opacity-100 translate-x-0 ml-4`,
+                isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0 ml-4`
               )}
               style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, top: '5rem' } : { top: '5rem' }}
               selectedDate={selectedDateForCalendar}
@@ -340,9 +349,9 @@ function DashboardContentInternal() {
                     "transition-opacity duration-300 ease-in-out transform shadow-xl md:shadow-lg md:rounded-lg",
                     "bg-sidebar-background border-r border-sidebar-border",
                     "fixed z-30",
-                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0" // Original mobile top
+                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0"
                 )}
-                style={{}} // No top style here for mobile, handled by classes
+                style={{}} 
                 selectedDate={selectedDateForCalendar}
                 onSelectDate={setSelectedDateForCalendar}
                 tasksByDate={tasksByDateForCalendar}
@@ -357,10 +366,13 @@ function DashboardContentInternal() {
 
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
-            "md:mr-4 mb-4 md:rounded-xl md:shadow-lg mt-4", // Added mt-4
-            "border-0 md:border"
+            "md:rounded-xl md:shadow-lg", 
+            "border-0 md:border mb-0 md:mb-0" // Removed bottom margin for desktop to align with sidebar visually
            )}
-            style={{ marginLeft: isDesktop ? mainContentMarginLeft : '0px' }}
+            style={{ 
+              marginLeft: isDesktop ? mainContentMarginLeft : '0px',
+              marginTop: kanbanBoardMarginTop, 
+            }}
            >
             {isLoadingWorkflows && user && !currentWorkflowId ? (
                 <div className="flex flex-1 items-center justify-center h-full">
@@ -418,6 +430,7 @@ export default function DashboardPage() {
     
 
     
+
 
 
 
