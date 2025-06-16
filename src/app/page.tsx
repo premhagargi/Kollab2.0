@@ -24,8 +24,6 @@ const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 500;
 const DEFAULT_SIDEBAR_WIDTH = 280;
 const RESIZE_HANDLE_WIDTH = 8; // In pixels
-const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; // 4rem, assuming 1rem = 16px
-const DESKTOP_CONTENT_GAP_PX = 8; // 0.5rem, space between sidebar and main content
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -35,7 +33,7 @@ function DashboardContentInternal() {
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const { toast } = useToast();
 
-  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true); // Default to true for desktop logic
+  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true);
   const [allUserTasks, setAllUserTasks] = useState<Task[]>([]);
   const [isLoadingAllTasks, setIsLoadingAllTasks] = useState(false);
   const [selectedDateForCalendar, setSelectedDateForCalendar] = useState<Date | undefined>(new Date());
@@ -53,18 +51,17 @@ function DashboardContentInternal() {
 
 
   useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768); 
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
     checkDesktop();
     window.addEventListener('resize', checkDesktop);
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  // Adjust initial calendar visibility based on desktop status
   useEffect(() => {
     if (isDesktop) {
-      setIsCalendarSidebarVisible(true); 
+      setIsCalendarSidebarVisible(true);
     } else {
-      setIsCalendarSidebarVisible(false); // Hidden by default on mobile, controlled by bottom nav
+      setIsCalendarSidebarVisible(false);
     }
   }, [isDesktop]);
 
@@ -113,7 +110,7 @@ function DashboardContentInternal() {
       setAllUserTasks([]);
       setIsLoadingAllTasks(false);
     }
-  }, [user, authLoading, toast, currentWorkflowId]); 
+  }, [user, authLoading, toast, currentWorkflowId]);
 
 
   const handleSelectWorkflow = (workflowId: string) => {
@@ -195,7 +192,7 @@ function DashboardContentInternal() {
     }
     provisionalNewTaskIdRef.current = null;
   };
-  
+
   const tasksForCalendarFiltered = useMemo(() => {
     if (!currentWorkflowId) return allUserTasks.filter(task => showBillableOnlyCalendar ? task.isBillable : true);
     return allUserTasks.filter(task => {
@@ -245,7 +242,7 @@ function DashboardContentInternal() {
   }, [handleResizeMouseMove]);
 
   useEffect(() => {
-    return () => { 
+    return () => {
       if (isResizingRef.current) {
         handleResizeMouseUp();
       }
@@ -266,11 +263,11 @@ function DashboardContentInternal() {
 
   let mainContentMarginLeft = '0px';
   if (isDesktopSidebarExpanded) {
-    mainContentMarginLeft = `${sidebarWidth + DESKTOP_CONTENT_GAP_PX}px`;
+    mainContentMarginLeft = `${sidebarWidth}px`;
   } else if (isDesktopSidebarMinimized) {
-    mainContentMarginLeft = `${MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX + DESKTOP_CONTENT_GAP_PX}px`;
+    mainContentMarginLeft = `4rem`; // Width of minimized sidebar
   }
-  
+
   return (
       <div className="flex flex-col h-screen overflow-hidden">
         <AppHeader
@@ -280,25 +277,20 @@ function DashboardContentInternal() {
             onWorkflowCreated={handleWorkflowCreated}
             isLoadingWorkflows={isLoadingWorkflows}
         />
-        {/* The main content area (including sidebar and board) needs top padding for the AppHeader */}
-        <main className={cn(
-          "flex-1 flex overflow-hidden bg-background min-h-0 pt-16", // pt-16 for AppHeader
-          "px-4 pb-4" // General padding for the content area
-        )}>
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0">
           {user && (
             <>
             <CalendarSidebar
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform md:shadow-lg md:rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                "fixed md:static z-30 md:z-auto", 
-                // Mobile: Overlay, full width or large part, height considers top and bottom bars
+                "fixed z-30", // For both mobile overlay and desktop fixed/static behavior control
                 !isDesktop && isCalendarSidebarVisible && "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0",
                 !isDesktop && !isCalendarSidebarVisible && "opacity-0 -translate-x-full w-0",
                 // Desktop Expanded: Fixed position, dynamic width, full height below header
                 isDesktopSidebarExpanded && `fixed top-16 h-[calc(100vh-4rem)] opacity-100 translate-x-0`,
                 // Desktop Minimized: Static position, fixed small width, full height below header
-                isDesktopSidebarMinimized && "static w-16 h-full opacity-100 translate-x-0"
+                isDesktopSidebarMinimized && "static w-16 h-full opacity-100 translate-x-0" // 'static' implies it's part of normal flow
               )}
               style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`} : {}}
               selectedDate={selectedDateForCalendar}
@@ -308,17 +300,17 @@ function DashboardContentInternal() {
               showBillableOnly={showBillableOnlyCalendar}
               onToggleBillable={setShowBillableOnlyCalendar}
               isMinimizedOnDesktop={isDesktopSidebarMinimized}
-              onExpandCalendar={toggleCalendarSidebar} 
+              onExpandCalendar={toggleCalendarSidebar}
               isMobileView={!isDesktop}
             />
             {isDesktopSidebarExpanded && (
               <div
                 className="resize-handle hidden md:block"
-                style={{ 
-                  left: `${sidebarWidth}px`, // Positioned at the end of the sidebar, start of the gap
-                  top: '4rem', 
-                  height: 'calc(100vh - 4rem)',
-                  width: `${RESIZE_HANDLE_WIDTH}px`, // The handle itself fills the gap
+                style={{
+                  left: `${sidebarWidth - (RESIZE_HANDLE_WIDTH / 2)}px`, // Centered on the seam
+                  top: '4rem', // Align with top of sidebar content area
+                  height: 'calc(100vh - 4rem)', // Full height of sidebar content area
+                  width: `${RESIZE_HANDLE_WIDTH}px`,
                 }}
                 onMouseDown={handleResizeMouseDown}
               />
@@ -327,8 +319,12 @@ function DashboardContentInternal() {
           )}
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
-            "md:rounded-xl md:shadow-lg",
-            "border-0 md:border"
+            // The Kanban board view might need its own internal padding if <main> doesn't provide it.
+            // Or ensure AppHeader (h-16) being a sibling in a flex-col pushes this down.
+            // It will be pushed down. The question is padding around it.
+            // Adding some padding here for desktop if main doesn't have it.
+            "md:ml-0 md:mt-4 md:mr-4 md:mb-4 md:rounded-xl md:shadow-lg", // Example padding/margin for desktop
+            "border-0 md:border" // No border on mobile, border on desktop
            )}
             style={{ marginLeft: isDesktop ? mainContentMarginLeft : '0px' }}
            >
