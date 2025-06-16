@@ -31,7 +31,7 @@ export function BottomNavigationBar({ onToggleCalendar, isCalendarVisible }: Bot
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t bg-background shadow-top md:hidden">
       {navItems.map((item) => (
         item.href ? (
-          <Link key={item.label} href={item.href} passHref legacyBehavior>
+          <Link key={item.label} href={item.href}>
             <Button
               variant="ghost"
               className={cn(
