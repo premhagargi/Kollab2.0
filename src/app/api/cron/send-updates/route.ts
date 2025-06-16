@@ -100,18 +100,25 @@ export async function GET(request: NextRequest) {
     const workflows = await getAllEnabledWorkflowsForCron();
     const now = new Date();
 
-    for (const workflow of workflows) {
-      if (!workflow || typeof workflow !== 'object') {
-        console.error("Invalid workflow object encountered:", workflow);
-        errorsCount++;
-        continue;
-      }
-
-      if (!workflow.id || !workflow.ownerId) {
-        console.error("Workflow missing ID or ownerId:", workflow);
-        errorsCount++;
-        continue;
-      }
+      for (const workflow of workflows) {
+        // Add this explicit check for undefined
+        if (workflow === undefined) {
+          console.error("Undefined workflow object encountered. Skipping.");
+          errorsCount++;
+          continue;
+        }
+  
+        if (!workflow || typeof workflow !== 'object') {
+          console.error("Invalid workflow object encountered:", workflow);
+          errorsCount++;
+          continue;
+        }
+  
+        if (!workflow.id || !workflow.ownerId) {
+          console.error("Workflow missing ID or ownerId:", workflow);
+          errorsCount++;
+          continue;
+        }
 
       if (!workflow.autoUpdateEnabled || !workflow.autoUpdateNextSend || !workflow.autoUpdateClientEmail) {
         continue; // Skip if missing required fields
