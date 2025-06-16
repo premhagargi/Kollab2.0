@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  // DialogFooter, // Footer removed
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +49,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   const { user } = useAuth();
   const [task, setTask] = useState<Task | null>(null);
   const initialTaskStateOnOpenRef = useRef<Task | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
   const [newDeliverable, setNewDeliverable] = useState('');
@@ -69,41 +68,39 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
       deepClonedTask.deliverables = deepClonedTask.deliverables || [];
 
       setTask(deepClonedTask);
-      initialTaskStateOnOpenRef.current = JSON.parse(JSON.stringify(deepClonedTask));
+      initialTaskStateOnOpenRef.current = JSON.parse(JSON.stringify(deepClonedTask)); // Store initial state for comparison
 
       if (initialTaskProp.dueDate) {
         setTime(format(parseISO(initialTaskProp.dueDate), 'HH:mm'));
+      } else {
+        setTime('12:00'); // Reset time if no due date
       }
       setAiSummary(null);
       setAiSubtaskSuggestions([]);
       setNewComment('');
       setNewSubtask('');
       setNewDeliverable('');
-      setIsSaving(false);
     } else if (!isOpen) {
-        setTask(null);
-        initialTaskStateOnOpenRef.current = null;
+        setTask(null); // Clear internal task state when modal is not open
+        initialTaskStateOnOpenRef.current = null; // Clear ref
     }
   }, [initialTaskProp, isOpen]);
 
 
-  const handleDialogCloseAttempt = async (openState: boolean) => {
-    if (!openState && !isSaving) {
+  const handleDialogCloseAttempt = (openState: boolean) => {
+    if (!openState) { // If attempting to close
       if (task && initialTaskStateOnOpenRef.current) {
         const hasChanges = JSON.stringify(task) !== JSON.stringify(initialTaskStateOnOpenRef.current);
         if (hasChanges) {
-          setIsSaving(true);
-          try {
-            await onUpdateTask(task);
-            toast({ title: "Task Updated", description: "Changes auto-saved." });
-          } catch (error) {
-            toast({ title: "Auto-save Failed", description: "Unable to save changes. Your latest edits might not be saved.", variant: "destructive" });
-          } finally {
-            setIsSaving(false);
-          }
+          // Fire and forget update, parent handles optimistic UI and actual DB update
+          onUpdateTask(task).catch(error => {
+            // Parent should ideally handle this, but a local toast fallback can be useful
+            console.error("Background save failed from modal context:", error);
+            toast({ title: "Save Failed", description: "Changes might not be saved to the server.", variant: "destructive" });
+          });
         }
       }
-      onClose();
+      onClose(); // Call parent's onClose immediately
     }
   };
 
@@ -257,7 +254,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   value={task.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto w-full placeholder:text-muted-foreground/60 hover:bg-muted/20 rounded-md px-2 py-1 transition-colors"
-                  disabled={isSaving}
                   placeholder="Enter task title"
                 />
               </div>
@@ -266,11 +262,11 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
               variant="ghost"
               size="icon"
               onClick={() => {
-                if (task && !isSaving) {
-                  onArchiveTask(task);
+                if (task) { // No need for isSaving check here as parent handles it
+                  onArchiveTask(task); // This will close the modal optimistically
                 }
               }}
-              disabled={isSaving || task.isArchived}
+              disabled={task.isArchived}
               className="ml-auto text-muted-foreground hover:text-destructive flex-shrink-0 mt-1"
               title={task.isArchived ? 'Task Archived' : 'Archive Task'}
             >
@@ -296,7 +292,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     onChange={(e) => handleInputChange('clientName', e.target.value)}
                     placeholder="Enter client name (optional)"
                     className="border-border/50 bg-background/50 hover:bg-background/70 rounded-lg text-sm transition-colors"
-                    disabled={isSaving}
                   />
                 </div>
                 <div className="space-y-2">
@@ -308,7 +303,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                       id="isBillable"
                       checked={task.isBillable}
                       onCheckedChange={(checked) => handleInputChange('isBillable', checked)}
-                      disabled={isSaving}
                     />
                     <span className="text-sm text-muted-foreground">{task.isBillable ? "Yes, this task is billable" : "No, this task is not billable"}</span>
                   </div>
@@ -325,13 +319,12 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Describe the task in detail..."
                   className="min-h-[80px] border-border/50 rounded-lg bg-background/50 hover:bg-background/70 focus:ring-primary/50 resize-y text-sm transition-colors"
-                  disabled={isSaving}
                 />
                 <div className="flex space-x-3">
                   <Button
                     variant="ghost"
                     onClick={handleGenerateSummary}
-                    disabled={isSummarizing || (!task.description && !task.title) || isSaving}
+                    disabled={isSummarizing || (!task.description && !task.title)}
                     className={cn(
                       "text-xs font-medium flex items-center text-primary p-0 h-auto hover:bg-transparent hover:underline",
                       isSummarizing && 'animate-pulse'
@@ -342,7 +335,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   <Button
                     variant="ghost"
                     onClick={handleSuggestSubtasks}
-                    disabled={isSuggestingSubtasks || (!task.description && !task.title) || isSaving}
+                    disabled={isSuggestingSubtasks || (!task.description && !task.title)}
                     className={cn(
                       "text-xs font-medium flex items-center text-primary p-0 h-auto hover:bg-transparent hover:underline",
                       isSuggestingSubtasks && 'animate-pulse'
@@ -372,7 +365,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                             size="icon"
                             variant="ghost"
                             onClick={() => handleAddSubtask(suggestion.text, true)}
-                            disabled={isSaving}
                             className="h-6 w-6 text-primary hover:text-primary/80"
                           >
                             <PlusCircle className="h-3 w-3" />
@@ -396,7 +388,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                             size="icon"
                             className="h-6 w-6 text-muted-foreground/60 hover:text-destructive"
                             onClick={() => handleRemoveDeliverable(index)}
-                            disabled={isSaving}
                             aria-label={`Delete deliverable ${deliverable}`}
                         >
                             <Trash2 className="h-3 w-3" />
@@ -409,13 +400,12 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                         onChange={(e) => setNewDeliverable(e.target.value)}
                         placeholder="Add a deliverable..."
                         onKeyPress={(e) => e.key === 'Enter' && handleAddDeliverable()}
-                        disabled={isSaving}
                         className="border-border/50 bg-background/50 hover:bg-background/70 rounded-lg text-sm transition-colors"
                     />
                     <Button
                         onClick={handleAddDeliverable}
                         size="icon"
-                        disabled={!newDeliverable.trim() || isSaving}
+                        disabled={!newDeliverable.trim()}
                         className="rounded-full bg-primary/90 hover:bg-primary"
                     >
                         <PlusCircle className="h-4 w-4" />
@@ -434,7 +424,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                         id="dueDate"
                         variant="outline"
                         className="w-full justify-start text-left text-sm font-normal border-border/50 bg-background/50 hover:bg-background/70"
-                        disabled={isSaving}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 text-primary/80" />
                         {task.dueDate ? format(parseISO(task.dueDate), 'PPP h:mm a') : <span className="text-muted-foreground/60">Select date & time</span>}
@@ -454,7 +443,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                           value={time}
                           onChange={(e) => setTime(e.target.value)}
                           className="w-24 border-border/50 text-sm"
-                          disabled={isSaving}
                         />
                       </div>
                     </PopoverContent>
@@ -467,7 +455,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   <Select
                     value={task.priority}
                     onValueChange={(value) => handleInputChange('priority', value)}
-                    disabled={isSaving}
                   >
                     <SelectTrigger className="w-full border-border/50 bg-background/50 hover:bg-background/70 text-sm">
                       <SelectValue placeholder="Select priority" />
@@ -501,7 +488,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                       size="icon"
                       className="h-6 w-6 ml-auto text-primary hover:text-primary/80"
                       onClick={() => toast({ title: "Coming Soon", description: "Assignee selection coming soon." })}
-                      disabled={isSaving}
                       aria-label="Add assignee"
                     >
                       <PlusCircle className="h-3 w-3" />
@@ -520,7 +506,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                       id={`subtask-${subtask.id}`}
                       checked={subtask.completed}
                       onCheckedChange={(checked) => handleSubtaskChange(subtask.id, !!checked)}
-                      disabled={isSaving}
                       className="border-border/50"
                     />
                     <Label
@@ -534,7 +519,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                       size="icon"
                       className="h-6 w-6 text-muted-foreground/60 hover:text-destructive"
                       onClick={() => toast({ title: "Coming Soon", description: "Subtask deletion coming soon." })}
-                      disabled={isSaving}
                       aria-label={`Delete subtask ${subtask.text}`}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -547,13 +531,12 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     onChange={(e) => setNewSubtask(e.target.value)}
                     placeholder="Add an action item or subtask..."
                     onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask(newSubtask)}
-                    disabled={isSaving}
                     className="border-border/50 bg-background/50 hover:bg-background/70 rounded-lg text-sm transition-colors"
                   />
                   <Button
                     onClick={() => handleAddSubtask(newSubtask)}
                     size="icon"
-                    disabled={!newSubtask.trim() || isSaving}
+                    disabled={!newSubtask.trim()}
                     className="rounded-full bg-primary/90 hover:bg-primary"
                   >
                     <PlusCircle className="h-4 w-4" />
@@ -569,7 +552,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                   variant="outline"
                   className="w-full border-border/50 bg-background/50 hover:bg-background/70 text-sm"
                   onClick={() => toast({ title: "Coming Soon", description: "File attachments coming soon." })}
-                  disabled={isSaving}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Upload Attachment
                 </Button>
@@ -611,14 +593,13 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Add a comment or note..."
                         className="flex-grow border-border/50 bg-background/50 hover:bg-background/70 rounded-lg resize-none h-16 text-sm transition-colors"
-                        disabled={isSaving}
                       />
                     </div>
                     <div className="text-right">
                       <Button
                         onClick={handleAddComment}
                         size="sm"
-                        disabled={!newComment.trim() || isSaving}
+                        disabled={!newComment.trim()}
                         className="rounded-full bg-primary/90 hover:bg-primary"
                       >
                         Post

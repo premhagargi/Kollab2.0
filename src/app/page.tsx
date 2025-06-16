@@ -41,7 +41,7 @@ function DashboardContentInternal() {
   const [tasksForCurrentWorkflow, setTasksForCurrentWorkflow] = useState<Task[]>([]);
   const [userWorkflows, setUserWorkflows] = useState<Workflow[]>([]);
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
-  const [isLoadingCurrentWorkflow, setIsLoadingCurrentWorkflow] = useState(false); // Renamed from isLoadingCurrentWorkflowTasks
+  const [isLoadingCurrentWorkflow, setIsLoadingCurrentWorkflow] = useState(false);
   const { toast } = useToast();
 
   const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true);
@@ -229,49 +229,58 @@ function DashboardContentInternal() {
 
   const handleUpdateTaskInModal = async (updatedTaskData: Task) => {
     if (!user) return;
+
+    // Optimistic UI update
+    setAllUserTasks(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData } : t).filter(Boolean) as Task[]);
+    if (currentWorkflow && updatedTaskData.workflowId === currentWorkflow.id) {
+      setTasksForCurrentWorkflow(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData } : t));
+    }
+    if (provisionalNewTaskIdRef.current === updatedTaskData.id) {
+      provisionalNewTaskIdRef.current = null; 
+    }
+
     try {
       await updateTaskService(updatedTaskData.id, updatedTaskData);
-      
-      setAllUserTasks(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData} : t).filter(Boolean) as Task[]);
-      
-      if(currentWorkflow && updatedTaskData.workflowId === currentWorkflow.id) {
-        setTasksForCurrentWorkflow(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData} : t));
-      }
-      
-      if (provisionalNewTaskIdRef.current === updatedTaskData.id) {
-        provisionalNewTaskIdRef.current = null;
-      }
+      // Toast for success can be added here if desired, or rely on modal's auto-save message.
     } catch (error) {
-      toast({ title: "Save Failed", description: "Unable to save task changes.", variant: "destructive" });
+      toast({ title: "Save Failed", description: "Unable to save task changes to the server.", variant: "destructive" });
       console.error("Error updating task from modal:", error);
+      // Optionally revert optimistic update here or inform user more strongly
+      setTaskChangeTrigger(prev => prev + 1); // Trigger a re-fetch to ensure consistency if save failed
     }
   };
 
   const handleArchiveTaskInModal = async (taskToArchive: Task) => {
     if (!user || !currentWorkflow) return;
+
+    // Optimistic UI Update
+    setAllUserTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
+    setTasksForCurrentWorkflow(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
+
+    const updatedColumns = currentWorkflow.columns.map(col => {
+      if (col.taskIds.includes(taskToArchive.id)) {
+        return { ...col, taskIds: col.taskIds.filter(tid => tid !== taskToArchive.id) };
+      }
+      return col;
+    });
+    setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
+    
+    // Close modal immediately
+    if (selectedTaskForModal?.id === taskToArchive.id) {
+        handleCloseTaskModal(); 
+    }
+
     try {
       await archiveTaskService(taskToArchive.id);
-      
-      setAllUserTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
-      setTasksForCurrentWorkflow(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
-
-      const updatedColumns = currentWorkflow.columns.map(col => {
-        if (col.taskIds.includes(taskToArchive.id)) {
-          return { ...col, taskIds: col.taskIds.filter(tid => tid !== taskToArchive.id) };
-        }
-        return col;
-      });
-      setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
+      // Persist column changes (taskIds) to workflow
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
-      
-      setTaskChangeTrigger(prev => prev + 1); 
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
-      if (selectedTaskForModal?.id === taskToArchive.id) {
-        handleCloseTaskModal(); 
-      }
+      // No taskChangeTrigger increment needed if local state is managed correctly
     } catch (error) {
-      toast({ title: "Archive Failed", description: "Unable to archive task.", variant: "destructive" });
+      toast({ title: "Archive Failed", description: "Unable to archive task on the server.", variant: "destructive" });
       console.error("Error archiving task from modal:", error);
+      // Revert optimistic UI updates or trigger a full refresh
+      setTaskChangeTrigger(prev => prev + 1);
     }
   };
 
@@ -280,6 +289,8 @@ function DashboardContentInternal() {
       setIsTaskModalOpen(false);
       setSelectedTaskForModal(null);
       if (provisionalNewTaskIdRef.current) {
+        // If a new task was being edited, trigger a refresh to ensure it's fully loaded with server data
+        // (though optimistic updates should handle most of it)
         setTaskChangeTrigger(prev => prev + 1); 
       }
       provisionalNewTaskIdRef.current = null;
@@ -326,10 +337,16 @@ function DashboardContentInternal() {
     const taskToMove = tasksForCurrentWorkflow.find(t => t.id === taskId);
     if (!taskToMove) return;
 
+    // Optimistic UI Update for task's columnId
     setTasksForCurrentWorkflow(prevTasks => 
-      prevTasks.map(t => t.id === taskId ? { ...t, columnId: destinationColumnId } : t)
+      prevTasks.map(t => t.id === taskId ? { ...t, columnId: destinationColumnId, updatedAt: new Date().toISOString() } : t)
+    );
+    setAllUserTasks(prevTasks => 
+      prevTasks.map(t => t.id === taskId ? { ...t, columnId: destinationColumnId, updatedAt: new Date().toISOString() } : t)
     );
 
+
+    // Optimistic UI Update for column taskIds
     let newWorkflowColumns = JSON.parse(JSON.stringify(currentWorkflow.columns)) as Column[];
     const sourceColIndex = newWorkflowColumns.findIndex(col => col.id === sourceColumnId);
     const destColIndex = newWorkflowColumns.findIndex(col => col.id === destinationColumnId);
@@ -337,37 +354,41 @@ function DashboardContentInternal() {
     if (sourceColIndex === -1 || destColIndex === -1) return; 
 
     newWorkflowColumns[sourceColIndex].taskIds = newWorkflowColumns[sourceColIndex].taskIds.filter(id => id !== taskId);
+    
     let destTaskIds = [...newWorkflowColumns[destColIndex].taskIds];
     const currentTaskIndexInDest = destTaskIds.indexOf(taskId); 
-    if (currentTaskIndexInDest > -1) destTaskIds.splice(currentTaskIndexInDest, 1);
+    if (currentTaskIndexInDest > -1) destTaskIds.splice(currentTaskIndexInDest, 1); // Remove if already present (e.g., drag within same column)
     
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
     if (targetIndexInDest !== -1) {
-      destTaskIds.splice(targetIndexInDest, 0, taskId);
+      destTaskIds.splice(targetIndexInDest, 0, taskId); // Insert before target
     } else {
-      destTaskIds.push(taskId);
+      destTaskIds.push(taskId); // Add to end if no target or target not found
     }
     newWorkflowColumns[destColIndex].taskIds = destTaskIds;
-    setCurrentWorkflow(prev => prev ? { ...prev, columns: newWorkflowColumns } : null);
+    setCurrentWorkflow(prev => prev ? { ...prev, columns: newWorkflowColumns, updatedAt: new Date().toISOString() } : null);
 
+    // Persist changes to backend
     try {
       if (sourceColumnId !== destinationColumnId) {
         await updateTaskService(taskId, { columnId: destinationColumnId });
       }
       await updateWorkflowService(currentWorkflow.id, { columns: newWorkflowColumns });
+      // Success toast optional, UI updated optimistically
     } catch (error) {
-      toast({ title: "Error Moving Task", variant: "destructive" });
+      toast({ title: "Error Moving Task", description: "Failed to save task movement.", variant: "destructive" });
+      // Revert optimistic changes or trigger a full refresh
       setTaskChangeTrigger(prev => prev + 1);
     }
   };
   
   const handleUpdateWorkflowColumnName = async (columnId: string, newName: string) => {
     if (!currentWorkflow || !user) return;
-    const originalColumns = currentWorkflow.columns;
-    const updatedColumns = originalColumns.map(col => 
+    const originalColumns = JSON.parse(JSON.stringify(currentWorkflow.columns)); // Deep copy for potential revert
+    const updatedColumns = currentWorkflow.columns.map(col => 
       col.id === columnId ? { ...col, name: newName } : col
     );
-    setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
+    setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns, updatedAt: new Date().toISOString() } : null);
     try {
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       toast({title: "Column Renamed"});
@@ -379,35 +400,37 @@ function DashboardContentInternal() {
 
   const handleToggleWorkflowTaskCompleted = async (taskId: string, isCompleted: boolean) => {
      if (!user) return;
-    const originalTasks = [...tasksForCurrentWorkflow];
-    const originalAllTasks = [...allUserTasks];
-
-    setTasksForCurrentWorkflow(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted, updatedAt: new Date().toISOString() } : t));
-    setAllUserTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted, updatedAt: new Date().toISOString() } : t));
+    // Optimistic UI update
+    const newUpdatedAt = new Date().toISOString();
+    setTasksForCurrentWorkflow(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted, updatedAt: newUpdatedAt } : t));
+    setAllUserTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted, updatedAt: newUpdatedAt } : t));
     
     try {
       await updateTaskService(taskId, { isCompleted });
+      // Success toast optional
     } catch (error) {
-      setTasksForCurrentWorkflow(originalTasks); 
-      setAllUserTasks(originalAllTasks); 
+      // Revert optimistic update
+      setTasksForCurrentWorkflow(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !isCompleted, updatedAt: new Date().toISOString() } : t)); // Revert with a new timestamp or original
+      setAllUserTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !isCompleted, updatedAt: new Date().toISOString() } : t));
       toast({ title: "Error Updating Task", variant: "destructive" });
     }
   };
 
   const handleAddColumnToWorkflow = async (columnName: string) => {
     if (!user || !currentWorkflow) return;
+    const originalColumns = JSON.parse(JSON.stringify(currentWorkflow.columns));
     const newColumn: Column = {
       id: `col-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, 
       name: columnName.trim(), 
       taskIds: [],
     };
     const updatedColumns = [...currentWorkflow.columns, newColumn];
-    setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
+    setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns, updatedAt: new Date().toISOString() } : null);
     try {
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       toast({title: "Column Added"});
     } catch (error) {
-      setCurrentWorkflow(prev => prev ? { ...prev, columns: currentWorkflow.columns } : null); 
+      setCurrentWorkflow(prev => prev ? { ...prev, columns: originalColumns } : null); 
       toast({ title: "Error Adding Column", variant: "destructive" });
     }
   };
@@ -511,7 +534,7 @@ function DashboardContentInternal() {
             isLoadingWorkflows={isLoadingWorkflows}
         />
         
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0 px-0 md:px-4 md:pb-4 mt-0 md:mt-4">
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0 px-0 md:px-4 md:pb-4 mt-4 md:mt-0">
           {user && isDesktop && (
             <>
             <CalendarSidebar
@@ -572,7 +595,7 @@ function DashboardContentInternal() {
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
             "md:rounded-xl md:shadow-lg", 
-            "border-0 md:border md:mb-4 md:mt-4" 
+            "border-0 md:border md:mb-4 mt-4" 
            )}
             style={{ 
               marginLeft: isDesktop ? mainContentMarginLeft : '0px',
@@ -643,6 +666,7 @@ export default function DashboardPage() {
     
 
     
+
 
 
 
