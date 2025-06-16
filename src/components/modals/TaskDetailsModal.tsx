@@ -69,7 +69,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
       deepClonedTask.deliverables = deepClonedTask.deliverables || [];
 
       setTask(deepClonedTask);
-      initialTaskStateOnOpenRef.current = JSON.parse(JSON.stringify(deepClonedTask)); 
+      initialTaskStateOnOpenRef.current = JSON.parse(JSON.stringify(deepClonedTask));
 
       if (initialTaskProp.dueDate) {
         setTime(format(parseISO(initialTaskProp.dueDate), 'HH:mm'));
@@ -80,12 +80,15 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
       setNewSubtask('');
       setNewDeliverable('');
       setIsSaving(false);
+    } else if (!isOpen) {
+        setTask(null);
+        initialTaskStateOnOpenRef.current = null;
     }
   }, [initialTaskProp, isOpen]);
 
 
   const handleDialogCloseAttempt = async (openState: boolean) => {
-    if (!openState && !isSaving) { 
+    if (!openState && !isSaving) {
       if (task && initialTaskStateOnOpenRef.current) {
         const hasChanges = JSON.stringify(task) !== JSON.stringify(initialTaskStateOnOpenRef.current);
         if (hasChanges) {
@@ -100,16 +103,9 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
           }
         }
       }
-      onClose(); 
+      onClose();
     }
   };
-
-  if (!task && isOpen) {
-    onClose();
-    return null;
-  }
-  if (!task) return null;
-
 
   const handleInputChange = (field: keyof Task, value: any) => {
     setTask(prev => prev ? { ...prev, [field]: value, updatedAt: new Date().toISOString() } : null);
@@ -140,7 +136,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
       setNewSubtask('');
     }
   };
-  
+
   const handleAddDeliverable = () => {
     if (!newDeliverable.trim() || !task) return;
     const updatedDeliverables = [...(task.deliverables || []), newDeliverable.trim()];
@@ -211,7 +207,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   };
 
   const handleSuggestSubtasks = async () => {
-    if (!task.description && !task.title) {
+    if (!task || (!task.description && !task.title)) {
       toast({ title: "Cannot Suggest", description: "Task title and details are empty.", variant: "destructive" });
       return;
     }
@@ -232,10 +228,9 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     }
     setIsSuggestingSubtasks(false);
   };
-  
 
   const handleDateTimeSelect = (date?: Date) => {
-    if (!date) {
+    if (!date || !task) {
       handleInputChange('dueDate', null);
       return;
     }
@@ -244,7 +239,11 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     handleInputChange('dueDate', updatedDate.toISOString());
   };
 
-  const assignee = user; 
+  const assignee = user;
+
+  if (!isOpen || !task) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
