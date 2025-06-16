@@ -20,12 +20,12 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 
-const MIN_SIDEBAR_WIDTH = 240; // Increased min width slightly
+const MIN_SIDEBAR_WIDTH = 240; 
 const MAX_SIDEBAR_WIDTH = 500;
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const RESIZE_HANDLE_WIDTH = 16; // Width of the interactive gap (1rem)
-const SIDEBAR_MARGIN_LEFT_PX = 16; // 1rem, for the sidebar's own ml-4
-const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; // 4rem in pixels (for the icon-only sidebar)
+const RESIZE_HANDLE_WIDTH = 16; 
+const SIDEBAR_MARGIN_LEFT_PX = 16; 
+const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; 
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -35,7 +35,7 @@ function DashboardContentInternal() {
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const { toast } = useToast();
 
-  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true); // true means expanded on desktop by default
+  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true); 
   const [allUserTasks, setAllUserTasks] = useState<Task[]>([]);
   const [isLoadingAllTasks, setIsLoadingAllTasks] = useState(false);
   const [selectedDateForCalendar, setSelectedDateForCalendar] = useState<Date | undefined>(new Date());
@@ -61,9 +61,9 @@ function DashboardContentInternal() {
 
   useEffect(() => {
     if (isDesktop) {
-      setIsCalendarSidebarVisible(true); // Default to expanded on desktop
+      setIsCalendarSidebarVisible(true); 
     } else {
-      setIsCalendarSidebarVisible(false); // Default to hidden (controlled by bottom nav) on mobile
+      setIsCalendarSidebarVisible(false); 
     }
   }, [isDesktop]);
 
@@ -228,29 +228,37 @@ function DashboardContentInternal() {
     window.addEventListener('mouseup', handleResizeMouseUp);
   };
 
+  const handleResizeMouseUp = useCallback(() => {
+    if (!isResizingRef.current) return; 
+    isResizingRef.current = false;
+    document.body.classList.remove('resizing-sidebar');
+    window.removeEventListener('mousemove', handleResizeMouseMove);
+    window.removeEventListener('mouseup', handleResizeMouseUp);
+  }, [/* handleResizeMouseMove is added below */]);
+
+
   const handleResizeMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizingRef.current) return;
     const dx = e.clientX - initialMouseXRef.current;
     let newWidth = initialSidebarWidthRef.current + dx;
     
-    if (newWidth >= MAX_SIDEBAR_WIDTH - 20 && isCalendarSidebarVisible) {
+    // Auto-close if under-stretched (made too narrow)
+    if (newWidth <= MIN_SIDEBAR_WIDTH + 20 && isCalendarSidebarVisible) { 
       toggleCalendarSidebar(); 
-      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); // Reset width for next open
-      handleResizeMouseUp(); // Clean up listeners immediately
+      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); 
+      handleResizeMouseUp(); 
       return;
     }
 
     newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, newWidth));
     setSidebarWidth(newWidth);
-  }, [isCalendarSidebarVisible]); // Added isCalendarSidebarVisible dependency
+  }, [isCalendarSidebarVisible, handleResizeMouseUp]); 
 
-  const handleResizeMouseUp = useCallback(() => {
-    if (!isResizingRef.current) return; // Prevent multiple calls
-    isResizingRef.current = false;
-    document.body.classList.remove('resizing-sidebar');
-    window.removeEventListener('mousemove', handleResizeMouseMove);
-    window.removeEventListener('mouseup', handleResizeMouseUp);
-  }, [handleResizeMouseMove]);
+  useEffect(() => {
+    // Ensure handleResizeMouseUp is part of handleResizeMouseMove's closure context if it changes
+    // This is implicitly handled by useCallback's dependency array.
+  }, [handleResizeMouseUp, handleResizeMouseMove]);
+
 
   useEffect(() => {
     return () => {
@@ -272,7 +280,7 @@ function DashboardContentInternal() {
   const isDesktopSidebarExpanded = isDesktop && isCalendarSidebarVisible;
   const isDesktopSidebarMinimized = isDesktop && !isCalendarSidebarVisible;
 
-  let mainContentMarginLeft = '0px'; // Default for mobile
+  let mainContentMarginLeft = '0px'; 
   if (isDesktopSidebarExpanded) {
     mainContentMarginLeft = `${SIDEBAR_MARGIN_LEFT_PX + sidebarWidth + RESIZE_HANDLE_WIDTH}px`;
   } else if (isDesktopSidebarMinimized) {
@@ -288,7 +296,7 @@ function DashboardContentInternal() {
             onWorkflowCreated={handleWorkflowCreated}
             isLoadingWorkflows={isLoadingWorkflows}
         />
-        {/* Removed pt-4 from here, will add to individual Cards if needed or rely on main AppHeader height */}
+        
         <main className="flex-1 flex overflow-hidden bg-background min-h-0"> 
           {user && isDesktop && (
             <>
@@ -296,7 +304,6 @@ function DashboardContentInternal() {
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform shadow-lg rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                // Common fixed positioning and height for desktop sidebar states
                 "fixed top-16 h-[calc(100vh-4rem)] ml-4", 
                 isDesktopSidebarExpanded && `opacity-100 translate-x-0`,
                 isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0` 
@@ -333,9 +340,9 @@ function DashboardContentInternal() {
                     "transition-opacity duration-300 ease-in-out transform shadow-xl md:shadow-lg md:rounded-lg",
                     "bg-sidebar-background border-r border-sidebar-border",
                     "fixed z-30", 
-                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0" // Height accounts for AppHeader and BottomNav
+                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0" 
                 )}
-                style={{}} // No dynamic width for mobile overlay
+                style={{}} 
                 selectedDate={selectedDateForCalendar}
                 onSelectDate={setSelectedDateForCalendar}
                 tasksByDate={tasksByDateForCalendar}
@@ -350,7 +357,7 @@ function DashboardContentInternal() {
 
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
-            "mt-4 md:mr-4 mb-4 md:rounded-xl md:shadow-lg", // Added mt-4 for spacing below AppHeader
+            "mt-4 md:mr-4 mb-4 md:rounded-xl md:shadow-lg", 
             "border-0 md:border" 
            )}
             style={{ marginLeft: isDesktop ? mainContentMarginLeft : '0px' }}
