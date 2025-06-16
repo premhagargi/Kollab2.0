@@ -23,7 +23,9 @@ import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 500;
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const RESIZE_HANDLE_WIDTH = 8; 
+const RESIZE_HANDLE_WIDTH = 8; // In pixels
+const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; // 4rem, assuming 1rem = 16px
+const DESKTOP_CONTENT_GAP_PX = 8; // 0.5rem, space between sidebar and main content
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -33,7 +35,7 @@ function DashboardContentInternal() {
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const { toast } = useToast();
 
-  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(false); 
+  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true); // Default to true for desktop logic
   const [allUserTasks, setAllUserTasks] = useState<Task[]>([]);
   const [isLoadingAllTasks, setIsLoadingAllTasks] = useState(false);
   const [selectedDateForCalendar, setSelectedDateForCalendar] = useState<Date | undefined>(new Date());
@@ -57,11 +59,12 @@ function DashboardContentInternal() {
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
+  // Adjust initial calendar visibility based on desktop status
   useEffect(() => {
     if (isDesktop) {
       setIsCalendarSidebarVisible(true); 
     } else {
-      setIsCalendarSidebarVisible(false);
+      setIsCalendarSidebarVisible(false); // Hidden by default on mobile, controlled by bottom nav
     }
   }, [isDesktop]);
 
@@ -263,12 +266,11 @@ function DashboardContentInternal() {
 
   let mainContentMarginLeft = '0px';
   if (isDesktopSidebarExpanded) {
-    mainContentMarginLeft = `${sidebarWidth}px`;
+    mainContentMarginLeft = `${sidebarWidth + DESKTOP_CONTENT_GAP_PX}px`;
   } else if (isDesktopSidebarMinimized) {
-    mainContentMarginLeft = '4rem'; 
+    mainContentMarginLeft = `${MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX + DESKTOP_CONTENT_GAP_PX}px`;
   }
   
-
   return (
       <div className="flex flex-col h-screen overflow-hidden">
         <AppHeader
@@ -278,11 +280,10 @@ function DashboardContentInternal() {
             onWorkflowCreated={handleWorkflowCreated}
             isLoadingWorkflows={isLoadingWorkflows}
         />
+        {/* The main content area (including sidebar and board) needs top padding for the AppHeader */}
         <main className={cn(
-          "flex-1 flex overflow-hidden bg-background min-h-0",
-          isDesktopSidebarExpanded
-            ? "pt-0 md:pt-0 md:pr-2 md:pb-2 md:pl-0 lg:pr-4 lg:pb-4 lg:pl-0" 
-            : "pt-0 md:pt-0 md:p-2 lg:p-4" 
+          "flex-1 flex overflow-hidden bg-background min-h-0 pt-16", // pt-16 for AppHeader
+          "px-4 pb-4" // General padding for the content area
         )}>
           {user && (
             <>
@@ -290,14 +291,16 @@ function DashboardContentInternal() {
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform md:shadow-lg md:rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                "fixed md:static z-30 md:z-auto top-16 left-0 h-[calc(100vh-4rem-4rem)]", 
-                "md:top-16 md:h-[calc(100vh-4rem)]", 
-                isDesktopSidebarExpanded && `md:fixed md:w-[${sidebarWidth}px] opacity-100 translate-x-0`,
-                isDesktopSidebarMinimized && "md:static md:w-16 opacity-100 translate-x-0",
-                !isDesktop && isCalendarSidebarVisible && "w-full sm:w-4/5 opacity-100 translate-x-0",
-                !isDesktop && !isCalendarSidebarVisible && "opacity-0 -translate-x-full w-0"
+                "fixed md:static z-30 md:z-auto", 
+                // Mobile: Overlay, full width or large part, height considers top and bottom bars
+                !isDesktop && isCalendarSidebarVisible && "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0",
+                !isDesktop && !isCalendarSidebarVisible && "opacity-0 -translate-x-full w-0",
+                // Desktop Expanded: Fixed position, dynamic width, full height below header
+                isDesktopSidebarExpanded && `fixed top-16 h-[calc(100vh-4rem)] opacity-100 translate-x-0`,
+                // Desktop Minimized: Static position, fixed small width, full height below header
+                isDesktopSidebarMinimized && "static w-16 h-full opacity-100 translate-x-0"
               )}
-              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, position: 'fixed', top: '4rem', height: 'calc(100vh - 4rem)' } : {}}
+              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`} : {}}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
               tasksByDate={tasksByDateForCalendar}
@@ -312,9 +315,10 @@ function DashboardContentInternal() {
               <div
                 className="resize-handle hidden md:block"
                 style={{ 
-                  left: `${sidebarWidth - (RESIZE_HANDLE_WIDTH / 2)}px`, 
+                  left: `${sidebarWidth}px`, // Positioned at the end of the sidebar, start of the gap
                   top: '4rem', 
-                  height: 'calc(100vh - 4rem)' 
+                  height: 'calc(100vh - 4rem)',
+                  width: `${RESIZE_HANDLE_WIDTH}px`, // The handle itself fills the gap
                 }}
                 onMouseDown={handleResizeMouseDown}
               />
@@ -382,4 +386,3 @@ export default function DashboardPage() {
   );
 }
     
-

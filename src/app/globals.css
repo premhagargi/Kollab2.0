@@ -155,9 +155,7 @@ html {
 /* Styles for Resizable Sidebar Handle */
 .resize-handle {
   position: fixed; 
-  top: 4rem; /* Align below header */
-  height: calc(100vh - 4rem); /* Full height below header */
-  width: 8px;
+  /* top, left, width, height are set dynamically via inline styles in page.tsx */
   cursor: col-resize;
   background-color: transparent; /* Transparent by default */
   z-index: 35; /* Above sidebar, below modals */
@@ -165,7 +163,7 @@ html {
 }
 .resize-handle:hover,
 body.resizing-sidebar .resize-handle { /* Ensure hover style persists during drag */
-  background-color: hsl(var(--primary));
+  background-color: hsl(var(--primary)); /* Visible on hover or during resize */
 }
 
 /* Global cursor and selection prevention during resize */
