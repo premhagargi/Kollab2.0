@@ -34,6 +34,10 @@ const mapTimestampToISO = (timestampField: any): string | undefined => {
 
 async function getAllEnabledWorkflowsForCron(): Promise<Workflow[]> {
   try {
+    if (!db) {
+      console.error("Firestore 'db' instance is not available in getAllEnabledWorkflowsForCron. Firebase might not be initialized correctly for this environment.");
+      return [];
+    }
     const q = query(
       collection(db, WORKFLOWS_COLLECTION),
       where('autoUpdateEnabled', '==', true)
@@ -42,37 +46,39 @@ async function getAllEnabledWorkflowsForCron(): Promise<Workflow[]> {
     const workflows: Workflow[] = [];
     querySnapshot.forEach(docSnap => {
       const data = docSnap.data();
+      const currentDocId = docSnap.id; // Explicitly capture docSnap.id
 
-      // Validate essential fields for CRON job processing
-      if (!docSnap.id || !data || !data.ownerId || !data.name || !data.autoUpdateClientEmail || !data.columns) {
+      // Strict validation: ensure all critical fields are present before constructing the Workflow object
+      if (!currentDocId || !data || !data.ownerId || !data.name || !data.autoUpdateClientEmail || !data.columns) {
         console.warn(
-            `Workflow document ${docSnap.id || 'ID_MISSING_FROM_DOCSNAP'} is missing essential fields ` +
+            `CRON Pre-check: Workflow document ${currentDocId || 'ID_MISSING_FROM_DOCSNAP'} is missing essential fields ` +
             `(ownerId, name, autoUpdateClientEmail, or columns) or data object is missing. Skipping. Document Data:`,
-            data
+            JSON.stringify(data) // Log the data for debugging
         );
-        return; // Skip this document as it's not a valid Workflow for processing
+        return; // Skip this document, do not add to workflows array
       }
 
       const workflowItem: Workflow = {
-        id: docSnap.id, // docSnap.id is guaranteed by Firestore
-        name: data.name, // Validated above
-        ownerId: data.ownerId, // Validated above
-        columns: data.columns, // Validated above
-        template: data.template, // Optional
+        id: currentDocId, // Use the validated currentDocId
+        name: data.name,
+        ownerId: data.ownerId,
+        columns: data.columns,
+        template: data.template,
         createdAt: mapTimestampToISO(data.createdAt),
         updatedAt: mapTimestampToISO(data.updatedAt),
-        autoUpdateEnabled: data.autoUpdateEnabled ?? false, // Default to false if missing
-        autoUpdateFrequency: data.autoUpdateFrequency, // Optional
-        autoUpdateClientEmail: data.autoUpdateClientEmail, // Validated above
-        autoUpdateLastSent: mapTimestampToISO(data.autoUpdateLastSent), // Optional
-        autoUpdateNextSend: mapTimestampToISO(data.autoUpdateNextSend), // Optional
+        autoUpdateEnabled: data.autoUpdateEnabled ?? false,
+        autoUpdateFrequency: data.autoUpdateFrequency,
+        autoUpdateClientEmail: data.autoUpdateClientEmail,
+        autoUpdateLastSent: mapTimestampToISO(data.autoUpdateLastSent),
+        autoUpdateNextSend: mapTimestampToISO(data.autoUpdateNextSend),
       };
       workflows.push(workflowItem);
     });
     return workflows;
   } catch (error) {
-    console.error("Error fetching enabled workflows for CRON:", error);
-    throw error; // Or return empty array, but throwing helps identify issues
+    console.error("CRON: Error fetching enabled workflows:", error);
+    // In case of a DB error, return an empty array to prevent the main loop from failing
+    return [];
   }
 }
 
@@ -100,66 +106,63 @@ export async function GET(request: NextRequest) {
     const now = new Date();
 
     for (const workflow of workflows) {
-      // Due to the checks in getAllEnabledWorkflowsForCron, 'workflow' should be a valid object.
-      // Additional checks here are for runtime safety if absolutely necessary, but primary validation is above.
-      if (!workflow || typeof workflow !== 'object' || !workflow.id) {
-          console.error("CRON job loop: Encountered an invalid/undefined workflow object. This should have been caught by getAllEnabledWorkflowsForCron. Skipping.", workflow);
+      // Rigorous check for the workflow object and its id before any access
+      if (!workflow || typeof workflow !== 'object' || !workflow.id || !workflow.ownerId) {
+          console.error(
+            "CRON job loop: Encountered an invalid/undefined workflow object or missing ID/OwnerID. This should have been caught by getAllEnabledWorkflowsForCron. Skipping.",
+            JSON.stringify(workflow) // Log the problematic workflow object
+          );
           errorsCount++;
           continue;
       }
 
-      if (!workflow.autoUpdateEnabled || !workflow.autoUpdateNextSend || !workflow.autoUpdateClientEmail || !workflow.ownerId) {
-        // This check is still useful if a workflow was valid but somehow became invalid for processing (e.g., ownerId removed after fetch - unlikely but possible)
-        // Or if specific fields required for this step are missing.
-        // console.log(`Workflow ${workflow.id} skipped. Conditions: enabled=${workflow.autoUpdateEnabled}, nextSend=${workflow.autoUpdateNextSend}, email=${workflow.autoUpdateClientEmail}, owner=${workflow.ownerId}`);
-        if (!workflow.ownerId) {
-            console.warn(`Workflow ${workflow.id} skipped in main loop because ownerId is missing.`);
-        }
+      if (!workflow.autoUpdateEnabled || !workflow.autoUpdateNextSend || !workflow.autoUpdateClientEmail) {
+        // This workflow is not configured for auto-updates or essential info is missing.
+        // console.log(`Workflow ${workflow.id} skipped in main loop (not enabled, or missing nextSend/email).`);
         continue;
       }
 
       const nextSendDate = new Date(workflow.autoUpdateNextSend);
       if (now >= nextSendDate) {
-        console.log(`Processing workflow: ${workflow.name} (ID: ${workflow.id}) for user ${workflow.ownerId}`);
+        console.log(`CRON: Processing workflow: ${workflow.name} (ID: ${workflow.id}) for user ${workflow.ownerId}`);
         try {
+          // Ensure workflow.name is also present, though it should be from getAllEnabledWorkflowsForCron
+          if (!workflow.name) {
+            console.error(`CRON: Workflow ${workflow.id} is missing a name. Skipping summary generation.`);
+            errorsCount++;
+            continue;
+          }
+
           const summaryResult = await generateClientProgressSummaryAction(
-            workflow.ownerId,
-            workflow.id,
-            workflow.name,
+            workflow.ownerId, // Already checked this exists
+            workflow.id,       // Already checked this exists
+            workflow.name,     // Checked just above
             "Automated Progress Update",
             `Covering progress up to ${now.toLocaleDateString()}`
           );
 
           if (summaryResult.summaryText.startsWith('Error:')) {
-            console.error(`Error generating summary for workflow ${workflow.id}: ${summaryResult.summaryText}`);
+            console.error(`CRON: Error generating summary for workflow ${workflow.id}: ${summaryResult.summaryText}`);
             errorsCount++;
-            // Consider how to handle next send date if generation fails.
-            // Maybe reset nextSend to allow retry or log for manual intervention.
-            // For now, let's not change nextSend on generation failure to avoid infinite loops on persistent AI errors.
-            // A more robust solution would be to set a "failedAttempt" flag or similar.
-            // Resetting autoUpdateNextSend to undefined will prevent further auto-sends until manually fixed.
-            // await updateWorkflow(workflow.id, { autoUpdateNextSend: undefined });
             continue;
           }
 
           const emailResult = await sendAutomatedClientUpdateEmailAction({
-            toEmail: workflow.autoUpdateClientEmail,
+            toEmail: workflow.autoUpdateClientEmail, // Already checked this exists
             workflowName: workflow.name,
             summaryText: summaryResult.summaryText,
           });
 
           if (emailResult.success) {
-            console.log(`Successfully sent update for workflow ${workflow.id} to ${workflow.autoUpdateClientEmail}`);
+            console.log(`CRON: Successfully sent update for workflow ${workflow.id} to ${workflow.autoUpdateClientEmail}`);
             await recordAutoUpdateSent(workflow.id, workflow.autoUpdateFrequency || 'weekly');
             updatesSentCount++;
           } else {
-            console.error(`Failed to send email for workflow ${workflow.id}: ${emailResult.message}`);
+            console.error(`CRON: Failed to send email for workflow ${workflow.id}: ${emailResult.message}`);
             errorsCount++;
-            // If email fails, also consider how to handle next send date.
-            // Perhaps set a flag "emailFailedLastAttempt"
           }
         } catch (e) {
-          console.error(`Error processing workflow ${workflow.id}:`, e);
+          console.error(`CRON: Error processing workflow ${workflow.id} during AI/Email phase:`, e);
           errorsCount++;
         }
       }
@@ -177,4 +180,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to process automated updates' }, { status: 500 });
   }
 }
-
