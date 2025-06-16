@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
     // Add @opentelemetry/instrumentation to externals
     // This helps resolve "Critical dependency: the request of a dependency is an expression" errors during build
     // related to packages like Genkit that use OpenTelemetry.
-    config.externals = [...(config.externals || []), '@opentelemetry/instrumentation'];
+    config.externals = [...(config.externals || []), '@opentelemetry/instrumentation']; 
     
     // Important: return the modified config
     return config;
