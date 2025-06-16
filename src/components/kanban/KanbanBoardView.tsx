@@ -3,29 +3,37 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { KanbanBoard } from './KanbanBoard';
-// TaskDetailsModal is now handled by the parent page (DashboardContent)
 import { GenerateClientUpdateModal } from '../modals/GenerateClientUpdateModal';
+import { ShareWorkflowModal } from '../modals/ShareWorkflowModal';
 import { Button } from '@/components/ui/button';
 import type { Workflow, Task, Column as ColumnType, UserProfile } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Loader2, MessageSquareText } from 'lucide-react';
+import { Plus, Loader2, MessageSquareText, Share2, MoreHorizontal } from 'lucide-react';
 import { getWorkflowById, updateWorkflow } from '@/services/workflowService';
 import { getTasksByWorkflow, createTask, updateTask as updateTaskService, deleteTask } from '@/services/taskService';
 import { getUsersByIds } from '@/services/userService';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'; // Added for custom scrollbars
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const DEFAULT_NEW_TASK_TITLE = 'New Task';
 
 interface KanbanBoardViewProps {
   workflowId: string | null;
-  onTaskClick: (task: Task) => void; // Callback to open modal in parent
-  setProvisionalNewTaskId: (taskId: string | null) => void; // Callback to inform parent of new provisional task
+  onTaskClick: (task: Task) => void;
+  setProvisionalNewTaskId: (taskId: string | null) => void;
+  // Props for "Create New Workflow" and "Select Workflow" will be handled by AppHeader's mobile sheet
 }
 
 export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTaskId }: KanbanBoardViewProps) {
   const { user } = useAuth();
   const [isClientUpdateModalOpen, setIsClientUpdateModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
   const [workflowTasks, setWorkflowTasks] = useState<Task[]>([]);
   const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(false);
@@ -92,18 +100,6 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
     }
   }, [workflowId, user?.id, fetchWorkflowData]);
 
-  const handleUpdateTaskLocally = async (updatedTask: Task) => {
-    // This function is now primarily handled by the parent DashboardContent's modal logic.
-    // This local update is for UI responsiveness within KanbanBoardView if needed,
-    // but source of truth for updates comes from parent.
-    setWorkflowTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-     if (updatedTask.creatorId && !userProfiles[updatedTask.creatorId]) {
-        const profile = await getUsersByIds([updatedTask.creatorId]);
-        if (profile.length > 0) {
-          setUserProfiles(prev => ({ ...prev, [updatedTask.creatorId]: profile[0] }));
-        }
-      }
-  };
 
   const handleAddTask = async (columnId: string) => {
     if (!user || !user.id || !currentWorkflow) {
@@ -131,7 +127,7 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
 
     try {
       const createdTask = await createTask(newTaskData);
-      setProvisionalNewTaskId(createdTask.id); // Inform parent
+      setProvisionalNewTaskId(createdTask.id); 
       setWorkflowTasks(prevTasks => [...prevTasks, createdTask]);
       const updatedWorkflowColumns = currentWorkflow.columns.map(col => {
         if (col.id === targetColumn.id) {
@@ -141,7 +137,7 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
       });
       setCurrentWorkflow(prevWorkflow => prevWorkflow ? { ...prevWorkflow, columns: updatedWorkflowColumns } : null);
       
-      onTaskClick(createdTask); // Open modal for the new task via parent
+      onTaskClick(createdTask); 
 
       updateWorkflow(currentWorkflow.id, { columns: updatedWorkflowColumns })
          .catch(err => {
@@ -222,19 +218,6 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
     }
 };
 
-  const handleArchiveTaskLocally = async (taskToArchive: Task) => {
-    // This is primarily handled by parent DashboardContent. This ensures UI updates locally.
-    setWorkflowTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
-    if (currentWorkflow) {
-        const updatedColumns = currentWorkflow.columns.map(col => ({
-        ...col,
-        taskIds: col.taskIds.filter(tid => tid !== taskToArchive.id),
-        }));
-        setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
-        // Parent's handleArchiveTaskInModal will call updateWorkflow.
-    }
-  };
-
   const handleUpdateColumnName = async (columnId: string, newName: string) => {
     if (!currentWorkflow || !user || !user.id) {
       toast({ title: "Error", description: "Cannot update column name.", variant: "destructive" }); return;
@@ -280,7 +263,7 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
       </div>
     );
   }
-  if (!currentWorkflow && !isLoadingWorkflow) return null;
+  if (!currentWorkflow && !isLoadingWorkflow) return null; // Handled by parent page if no workflow selected
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -291,36 +274,62 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
       )}
       {currentWorkflow && (
         <>
-          <div className="sticky top-0 z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-2 sm:py-3 bg-background shadow-sm flex-shrink-0">
-            <h1 className="text-lg font-medium truncate w-full sm:w-auto order-1 sm:order-none">{currentWorkflow.name}</h1>
-            <div className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto justify-end order-none sm:order-1">
+          {/* This header is part of KanbanBoardView, specific to the current workflow */}
+          <div className="flex-shrink-0 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:py-3 bg-background border-b shadow-sm">
+            <h1 className="text-base sm:text-lg font-semibold truncate order-1 sm:order-none min-w-0 flex-1 sm:flex-none">
+              {currentWorkflow.name}
+            </h1>
+            <div className="flex items-center space-x-1 sm:space-x-2 order-none sm:order-1 w-full sm:w-auto justify-end">
               <Button
                 size="sm"
-                onClick={() => setIsClientUpdateModalOpen(true)}
-                disabled={workflowTasks.length === 0 || isLoadingWorkflow}
-                variant="outline"
-                className="border-border/70 hover:bg-muted/50 text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <MessageSquareText className="mr-1 h-3 w-3" /> Client Update
-              </Button>
-              <Button
-                size="sm"
+                variant="ghost"
+                className="p-2 sm:px-3"
                 onClick={() => handleAddTask(currentWorkflow.columns[0]?.id ?? '')}
                 disabled={currentWorkflow.columns.length === 0 || isLoadingWorkflow}
-                variant="default"
-                className="bg-primary hover:bg-primary/90 text-xs sm:text-sm flex-1 sm:flex-none"
+                title="New Task"
               >
-                <Plus className="mr-1 h-3 w-3" /> New Task
+                <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">New Task</span>
               </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="p-2 sm:px-3"
+                onClick={() => setIsClientUpdateModalOpen(true)}
+                disabled={workflowTasks.length === 0 || isLoadingWorkflow}
+                title="Client Update"
+              >
+                <MessageSquareText className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Client Update</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="p-2 sm:px-3"
+                onClick={() => setIsShareModalOpen(true)}
+                disabled={isLoadingWorkflow}
+                title="Share Workflow"
+              >
+                <Share2 className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Share</span>
+              </Button>
+              {/* <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title="More options">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {}}>Rename Workflow</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {}} className="text-destructive">Delete Workflow</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu> */}
             </div>
           </div>
 
           <ScrollArea className="flex-1 min-h-0 whitespace-nowrap">
             <KanbanBoard
               workflowColumns={currentWorkflow.columns}
-              allTasksForWorkflow={activeTasks} // Make sure activeTasks is up-to-date
+              allTasksForWorkflow={activeTasks}
               creatorProfiles={userProfiles}
-              onTaskClick={onTaskClick} // Use parent's handler
+              onTaskClick={onTaskClick}
               onAddTask={handleAddTask}
               onAddColumn={handleAddColumn}
               onTaskDrop={handleTaskDrop}
@@ -341,7 +350,13 @@ export function KanbanBoardView({ workflowId, onTaskClick, setProvisionalNewTask
             workflowName={currentWorkflow.name}
         />
       )}
+      {isShareModalOpen && currentWorkflow && (
+        <ShareWorkflowModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            currentWorkflowName={currentWorkflow.name}
+        />
+      )}
     </div>
   );
 }
-
