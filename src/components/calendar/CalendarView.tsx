@@ -1,4 +1,3 @@
-
 // src/components/calendar/CalendarSidebar.tsx
 "use client";
 import React, { useMemo } from 'react';
@@ -24,7 +23,7 @@ interface CalendarSidebarProps {
   showBillableOnly: boolean;
   onToggleBillable: (checked: boolean) => void;
   className?: string;
-  style?: React.CSSProperties; // Added for dynamic width
+  style?: React.CSSProperties;
   isMinimizedOnDesktop: boolean;
   onExpandCalendar: () => void;
   isMobileView: boolean;
@@ -38,7 +37,7 @@ export function CalendarSidebar({
   showBillableOnly,
   onToggleBillable,
   className,
-  style, // Destructure style
+  style,
   isMinimizedOnDesktop,
   onExpandCalendar,
   isMobileView,
@@ -72,7 +71,7 @@ export function CalendarSidebar({
 
   if (isMinimizedOnDesktop && !isMobileView) { 
     return (
-      <div className={cn("h-full flex flex-col items-center justify-start pt-4 p-2 bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:rounded-lg md:shadow-lg", className)}>
+      <div className={cn("h-full flex flex-col items-center justify-start pt-4 p-2 bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:rounded-lg md:shadow-lg", className)} style={style}>
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -109,7 +108,7 @@ export function CalendarSidebar({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={onExpandCalendar} // This toggles the sidebar
+                      onClick={onExpandCalendar} 
                       className="h-7 w-7 rounded-full text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       aria-label="Collapse Calendar"
                     >
@@ -133,14 +132,14 @@ export function CalendarSidebar({
         </div>
       </CardHeader>
 
-      <CardContent className="px-2 pt-2 pb-0 border-b border-sidebar-border flex-shrink-0">
+      <CardContent className="px-4 pt-0 pb-0 border-b border-sidebar-border flex-shrink-0"> {/* Changed px-2 pt-2 to px-4 pt-0 */}
         <Calendar
           mode="single"
           selected={selectedDate}
           onSelect={onSelectDate}
           month={currentMonth}
           onMonthChange={setCurrentMonth}
-          className="rounded-md p-0 w-full"
+          className="rounded-md p-0 py-2 w-full" // Added py-2 for internal spacing
           classNames={{
             caption_label: "text-sm font-medium text-sidebar-primary",
             head_cell: "w-full text-sidebar-accent-foreground text-[10px] uppercase tracking-wide",
@@ -173,7 +172,7 @@ export function CalendarSidebar({
         />
       </CardContent>
 
-      <div className="flex-grow min-h-0 px-2 pt-1 pb-2 flex flex-col">
+      <div className="flex-grow min-h-0 px-4 pt-1 pb-2 flex flex-col"> {/* Changed px-2 to px-4 */}
         <Label className="text-[10px] uppercase text-sidebar-accent-foreground font-semibold px-1 flex-shrink-0">
             Tasks for {selectedDate ? format(selectedDate, 'MMM d') : 'Selected Day'}
         </Label>
@@ -205,11 +204,13 @@ export function CalendarSidebar({
 }
 
 const tasksForCurrentWorkflowCalendar = (tasksByDate: Map<string, Task[]>, currentWorkflowId: string | null): Task[] => {
-    if (!currentWorkflowId) return [];
-    let allTasks: Task[] = [];
+    if (!currentWorkflowId) return []; // if no workflow context, return empty to avoid showing all tasks
+    let allTasksInWorkflow: Task[] = [];
     tasksByDate.forEach(tasksOnDate => {
-        allTasks = allTasks.concat(tasksOnDate.filter(task => task.workflowId === currentWorkflowId));
+        allTasksInWorkflow = allTasksInWorkflow.concat(tasksOnDate.filter(task => task.workflowId === currentWorkflowId));
     });
-    return allTasks;
+    return allTasksInWorkflow;
 };
+    
+
     

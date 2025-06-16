@@ -160,11 +160,42 @@ html {
   background-color: transparent; /* Transparent by default */
   z-index: 35; /* Above sidebar, below modals */
   transition: background-color 0.2s ease-in-out;
+  display: flex; /* For centering pseudo-elements */
+  align-items: center; /* For centering pseudo-elements */
+  justify-content: center; /* For centering pseudo-elements */
 }
 .resize-handle:hover,
-body.resizing-sidebar .resize-handle { /* Ensure hover style persists during drag */
-  /* background-color: hsl(var(--primary)); -- Removed to keep it transparent on hover */
+body.resizing-sidebar .resize-handle { 
+  /* background-color: hsl(var(--accent) / 0.1); Optional: slight background tint on hover */
 }
+
+/* Visual indicators for resize handle (visible on hover/drag) */
+.resize-handle::before,
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  width: 1.5px; /* Thinner lines */
+  height: 20px; /* Shorter lines */
+  background-color: hsl(var(--border)); /* Use border color, more subtle */
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.2s ease-in-out;
+}
+
+.resize-handle:hover::before,
+.resize-handle:hover::after,
+body.resizing-sidebar .resize-handle::before,
+body.resizing-sidebar .resize-handle::after {
+  opacity: 1; /* Show on hover/drag */
+}
+
+.resize-handle::before {
+  left: calc(50% - 3px); /* Position first line slightly left of center */
+}
+
+.resize-handle::after {
+  right: calc(50% - 3px); /* Position second line slightly right of center */
+}
+
 
 /* Global cursor and selection prevention during resize */
 body.resizing-sidebar {
@@ -174,3 +205,6 @@ body.resizing-sidebar {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE/Edge */
 }
+
+
+    
