@@ -2,7 +2,7 @@
 // src/services/workflowService.ts
 // Renamed from boardService.ts
 import { db } from '@/lib/firebase';
-import type { Workflow, Column, Task, TaskPriority } from '@/types'; // Renamed Board to Workflow, added TaskPriority
+import type { Workflow, Column, Task, TaskPriority } from '@/types'; 
 import {
   collection,
   addDoc,
@@ -18,8 +18,44 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 
-const WORKFLOWS_COLLECTION = 'boards'; // Firestore collection name remains 'boards' for now to avoid data migration
+const WORKFLOWS_COLLECTION = 'boards'; 
 const TASKS_COLLECTION = 'tasks';
+
+// --- Caching Logic ---
+const workflowCache = new Map<string, { data: any, expiry: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCache<T>(key: string): T | undefined {
+  const entry = workflowCache.get(key);
+  if (entry && Date.now() < entry.expiry) {
+    // console.log(`[Cache HIT] Key: ${key}`);
+    return entry.data as T;
+  }
+  // console.log(`[Cache MISS or EXPIRED] Key: ${key}`);
+  workflowCache.delete(key); 
+  return undefined;
+}
+
+function setCache(key: string, data: any) {
+  // console.log(`[Cache SET] Key: ${key}`);
+  workflowCache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+}
+
+function invalidateCache(key?: string, prefix?: string) {
+  if (key) {
+    // console.log(`[Cache INVALIDATE] Key: ${key}`);
+    workflowCache.delete(key);
+  }
+  if (prefix) {
+    // console.log(`[Cache INVALIDATE - PREFIX] Prefix: ${prefix}`);
+    for (const k of workflowCache.keys()) {
+      if (k.startsWith(prefix)) {
+        workflowCache.delete(k);
+      }
+    }
+  }
+}
+// --- End Caching Logic ---
 
 const mapTimestampToISO = (timestampField: any): string | undefined => {
   if (timestampField instanceof Timestamp) {
@@ -28,7 +64,6 @@ const mapTimestampToISO = (timestampField: any): string | undefined => {
   return undefined;
 };
 
-// Default columns for different workflow templates
 export const getColumnsByTemplate = (templateName?: string): Column[] => {
   const now = Date.now();
   switch (templateName) {
@@ -115,122 +150,96 @@ const getSampleTaskDefinitionsForTemplate = (templateName?: string): SampleTaskD
   }
 };
 
-
-/**
- * Creates a new workflow in Firestore for a given user.
- * @param userId The UID of the user creating the workflow.
- * @param workflowName The name of the new workflow.
- * @param templateName Optional name of the template to use for columns.
- * @returns The created workflow object with its Firestore ID.
- */
 export const createWorkflow = async (userId: string, workflowName: string, templateName?: string): Promise<Workflow> => {
   const batch = writeBatch(db);
   const workflowDocRef = doc(collection(db, WORKFLOWS_COLLECTION));
-
   const initialColumns = getColumnsByTemplate(templateName);
-  const columnsWithTaskIds = JSON.parse(JSON.stringify(initialColumns)) as Column[]; // Deep copy for modification
+  const columnsWithTaskIds = JSON.parse(JSON.stringify(initialColumns)) as Column[]; 
 
   const newWorkflowData = {
     name: workflowName,
     ownerId: userId,
-    columns: columnsWithTaskIds, // Will be used as is if no sample tasks
+    columns: columnsWithTaskIds,
     template: templateName || 'Blank Workflow',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
 
   const sampleTaskDefinitions = getSampleTaskDefinitionsForTemplate(templateName);
-
   if (sampleTaskDefinitions.length > 0) {
     for (const sampleDef of sampleTaskDefinitions) {
-      const taskDocRef = doc(collection(db, TASKS_COLLECTION)); // Firestore generates ID
+      const taskDocRef = doc(collection(db, TASKS_COLLECTION)); 
       const targetColumn = columnsWithTaskIds.find(c => c.name === sampleDef.targetColumnName);
-
       if (targetColumn) {
         const taskDataForDb = {
-          title: sampleDef.title,
-          description: sampleDef.description || '',
+          title: sampleDef.title, description: sampleDef.description || '',
           priority: sampleDef.priority || 'medium' as TaskPriority,
-          subtasks: [],
-          comments: [],
-          workflowId: workflowDocRef.id, // Link to the new workflow
-          columnId: targetColumn.id,
-          creatorId: userId,
-          ownerId: userId, // Denormalized ownerId
-          isCompleted: false,
-          isBillable: false,
-          clientName: '',
-          deliverables: [],
-          isArchived: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          subtasks: [], comments: [], workflowId: workflowDocRef.id, 
+          columnId: targetColumn.id, creatorId: userId, ownerId: userId,
+          isCompleted: false, isBillable: false, clientName: '', deliverables: [],
+          isArchived: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         };
         batch.set(taskDocRef, taskDataForDb);
-        targetColumn.taskIds.push(taskDocRef.id); // Add new task ID to the column
+        targetColumn.taskIds.push(taskDocRef.id);
       }
     }
-    // Update newWorkflowData with columns that now include task IDs
     newWorkflowData.columns = columnsWithTaskIds;
   }
-
-  batch.set(workflowDocRef, newWorkflowData); // Add workflow creation to batch
+  batch.set(workflowDocRef, newWorkflowData);
 
   try {
     await batch.commit();
+    invalidateCache(undefined, `workflows_owner_${userId}`); // Invalidate list cache
     const now = new Date().toISOString();
     return {
-      id: workflowDocRef.id,
-      name: newWorkflowData.name,
-      ownerId: newWorkflowData.ownerId,
-      columns: newWorkflowData.columns, // These now include IDs of sample tasks if any
-      template: newWorkflowData.template,
-      createdAt: now, // Approximate client-side timestamp
-      updatedAt: now, // Approximate client-side timestamp
-    };
+      id: workflowDocRef.id, ...newWorkflowData,
+      createdAt: now, updatedAt: now,
+    } as unknown as Workflow; // Cast needed due to serverTimestamp
   } catch (error) {
     console.error("Error creating workflow with sample tasks:", error);
     throw error;
   }
 };
 
-/**
- * Fetches all workflows owned by a specific user.
- * @param userId The UID of the user.
- * @returns A promise that resolves to an array of Workflow objects.
- */
 export const getWorkflowsByOwner = async (userId: string): Promise<Workflow[]> => {
+  const cacheKey = `workflows_owner_${userId}`;
+  const cachedData = getCache<Workflow[]>(cacheKey);
+  if (cachedData) return cachedData;
+
   try {
     const q = query(collection(db, WORKFLOWS_COLLECTION), where('ownerId', '==', userId));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(docSnap => ({
-      id: docSnap.id,
-      ...docSnap.data(),
+    const workflows = querySnapshot.docs.map(docSnap => ({
+      id: docSnap.id, ...docSnap.data(),
       createdAt: mapTimestampToISO(docSnap.data().createdAt),
       updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
     } as Workflow));
+    setCache(cacheKey, workflows);
+    return workflows;
   } catch (error) {
     console.error("Error fetching workflows by owner:", error);
     throw error;
   }
 };
 
-/**
- * Fetches a single workflow by its ID.
- * @param workflowId The ID of the workflow to fetch.
- * @returns A promise that resolves to the Workflow object if found, otherwise null.
- */
 export const getWorkflowById = async (workflowId: string): Promise<Workflow | null> => {
+  const cacheKey = `workflow_${workflowId}`;
+  const cachedData = getCache<Workflow | null>(cacheKey);
+  if (cachedData !== undefined) return cachedData; // Check for undefined to handle null from cache
+
   try {
     const docRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return {
-        id: docSnap.id,
-        ...docSnap.data(),
+      const workflow = {
+        id: docSnap.id, ...docSnap.data(),
         createdAt: mapTimestampToISO(docSnap.data().createdAt),
         updatedAt: mapTimestampToISO(docSnap.data().updatedAt),
       } as Workflow;
+      setCache(cacheKey, workflow);
+      return workflow;
     }
+    setCache(cacheKey, null); // Cache null if not found
     return null;
   } catch (error) {
     console.error("Error fetching workflow by ID:", error);
@@ -238,47 +247,47 @@ export const getWorkflowById = async (workflowId: string): Promise<Workflow | nu
   }
 };
 
-/**
- * Updates an existing workflow in Firestore.
- * @param workflowId The ID of the workflow to update.
- * @param updates An object containing the fields to update.
- * @returns A promise that resolves when the update is complete.
- */
 export const updateWorkflow = async (workflowId: string, updates: Partial<Omit<Workflow, 'id' | 'createdAt'>>): Promise<void> => {
   try {
     const workflowDocRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
-    await updateDoc(workflowDocRef, {
-      ...updates,
-      updatedAt: serverTimestamp(),
-    });
+    await updateDoc(workflowDocRef, { ...updates, updatedAt: serverTimestamp() });
+    
+    // Invalidate caches
+    invalidateCache(`workflow_${workflowId}`);
+    if (updates.ownerId) { // If ownerId is part of updates, though unlikely to change
+        invalidateCache(undefined, `workflows_owner_${updates.ownerId}`);
+    } else {
+        // To be safe, if ownerId might change or we need to refresh lists, fetch the ownerId first
+        const currentWorkflow = await getWorkflowById(workflowId); // This will use cache if available
+        if (currentWorkflow) {
+            invalidateCache(undefined, `workflows_owner_${currentWorkflow.ownerId}`);
+        }
+    }
   } catch (error) {
     console.error("Error updating workflow:", error);
     throw error;
   }
 };
 
-/**
- * Deletes a workflow and all its associated tasks from Firestore.
- * @param workflowId The ID of the workflow to delete.
- * @returns A promise that resolves when the deletion is complete.
- */
-export const deleteWorkflow = async (workflowId: string): Promise<void> => {
+export const deleteWorkflow = async (workflowId: string, ownerId: string): Promise<void> => {
   const batch = writeBatch(db);
   try {
     const workflowDocRef = doc(db, WORKFLOWS_COLLECTION, workflowId);
     batch.delete(workflowDocRef);
-
-    // Query and delete all tasks associated with this workflow (using 'workflowId' field in tasks)
     const tasksQuery = query(collection(db, TASKS_COLLECTION), where('workflowId', '==', workflowId));
     const tasksSnapshot = await getDocs(tasksQuery);
-    tasksSnapshot.forEach(taskDoc => {
-      batch.delete(taskDoc.ref);
-    });
-
+    tasksSnapshot.forEach(taskDoc => batch.delete(taskDoc.ref));
     await batch.commit();
+
+    // Invalidate caches
+    invalidateCache(`workflow_${workflowId}`);
+    invalidateCache(undefined, `workflows_owner_${ownerId}`);
+    // Also invalidate task caches related to this workflow
+    // This is a simplification; task service should manage its own cache invalidation
+    // For now, this indicates that related task lists are stale.
+    // taskService.invalidateWorkflowTasksCache(workflowId, ownerId); 
   } catch (error) {
     console.error("Error deleting workflow and its tasks:", error);
     throw error;
   }
 };
-
