@@ -71,7 +71,7 @@ export function CalendarSidebar({
 
   if (isMinimizedOnDesktop && !isMobileView) { 
     return (
-      <div className={cn("h-full flex flex-col items-center justify-start pt-4 p-2 bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:rounded-lg md:shadow-lg", className)} style={style}>
+      <div className={cn("h-full flex flex-col items-center justify-start  border-t p-2 bg-sidebar text-sidebar-foreground border-r border-l border-sidebar-border md:rounded-lg md:shadow-lg", className)} style={style}>
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
