@@ -111,7 +111,7 @@ function DashboardContentInternal() {
       setAllUserTasks([]);
       setIsLoadingAllTasks(false);
     }
-  }, [user, authLoading, toast, currentWorkflowId]); // Added currentWorkflowId to re-fetch tasks if workflow changes
+  }, [user, authLoading, toast, currentWorkflowId]); 
 
 
   const handleSelectWorkflow = (workflowId: string) => {
@@ -195,9 +195,9 @@ function DashboardContentInternal() {
   };
 
   const tasksForCalendarFiltered = useMemo(() => {
-    if (!currentWorkflowId && !showBillableOnlyCalendar) return allUserTasks; // Show all if no specific workflow and not filtering billable
+    if (!currentWorkflowId) return allUserTasks.filter(task => showBillableOnlyCalendar ? task.isBillable : true);
     return allUserTasks.filter(task => {
-      const matchesWorkflow = currentWorkflowId ? task.workflowId === currentWorkflowId : true;
+      const matchesWorkflow = task.workflowId === currentWorkflowId;
       const matchesBillable = showBillableOnlyCalendar ? task.isBillable : true;
       return matchesWorkflow && matchesBillable;
     });
@@ -243,7 +243,7 @@ function DashboardContentInternal() {
   }, [handleResizeMouseMove]);
 
   useEffect(() => {
-    return () => { // Cleanup listeners if component unmounts while resizing
+    return () => { 
       if (isResizingRef.current) {
         handleResizeMouseUp();
       }
@@ -264,9 +264,9 @@ function DashboardContentInternal() {
 
   let mainContentMarginLeft = '0px';
   if (isDesktopSidebarExpanded) {
-    mainContentMarginLeft = `${sidebarWidth + RESIZE_HANDLE_WIDTH}px`;
+    mainContentMarginLeft = `${sidebarWidth}px`;
   } else if (isDesktopSidebarMinimized) {
-    mainContentMarginLeft = '4rem'; // 64px for w-16 minimized sidebar
+    mainContentMarginLeft = '4rem'; 
   }
   
 
@@ -295,7 +295,7 @@ function DashboardContentInternal() {
                 !isDesktop && isCalendarSidebarVisible && "w-full sm:w-4/5 opacity-100 translate-x-0",
                 !isDesktop && !isCalendarSidebarVisible && "opacity-0 -translate-x-full w-0"
               )}
-              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px` } : {}}
+              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, zIndex: 30 } : {}}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
               tasksByDate={tasksByDateForCalendar}
@@ -303,13 +303,13 @@ function DashboardContentInternal() {
               showBillableOnly={showBillableOnlyCalendar}
               onToggleBillable={setShowBillableOnlyCalendar}
               isMinimizedOnDesktop={isDesktopSidebarMinimized}
-              onExpandCalendar={toggleCalendarSidebar} // This toggles visibility state
+              onExpandCalendar={toggleCalendarSidebar} 
               isMobileView={!isDesktop}
             />
             {isDesktopSidebarExpanded && (
               <div
                 className="resize-handle hidden md:block"
-                style={{ left: `${sidebarWidth}px`, top: '4rem', height: 'calc(100vh - 4rem)' }}
+                style={{ left: `${sidebarWidth - (RESIZE_HANDLE_WIDTH / 2)}px`, top: '4rem', height: 'calc(100vh - 4rem)' }}
                 onMouseDown={handleResizeMouseDown}
                 onTouchStart={(e) => { /* TODO: Add touch support */ }}
               />
@@ -377,3 +377,4 @@ export default function DashboardPage() {
   );
 }
     
+
