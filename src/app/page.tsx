@@ -28,7 +28,7 @@ function DashboardContentInternal() {
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const { toast } = useToast();
 
-  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(false); // True for expanded, false for minimized (desktop) or hidden (mobile)
+  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(false); 
   const [allUserTasks, setAllUserTasks] = useState<Task[]>([]);
   const [isLoadingAllTasks, setIsLoadingAllTasks] = useState(false);
   const [selectedDateForCalendar, setSelectedDateForCalendar] = useState<Date | undefined>(new Date());
@@ -230,7 +230,7 @@ function DashboardContentInternal() {
                 // Mobile: overlay or hidden
                 "fixed md:static z-30 md:z-auto top-16 left-0 h-[calc(100vh-4rem-4rem)] md:h-full",
                 isCalendarSidebarVisible
-                  ? "w-full sm:w-4/5 md:w-[300px] lg:w-[350px] opacity-100 translate-x-0" // Expanded (mobile and desktop)
+                  ? "w-full sm:w-4/5 md:w-[280px] lg:w-[300px] opacity-100 translate-x-0" // Expanded (mobile and desktop)
                   : "opacity-0 -translate-x-full w-0 md:w-16 md:opacity-100 md:translate-x-0" // Hidden on mobile, Minimized on desktop (md:w-16)
               )}
               selectedDate={selectedDateForCalendar}
