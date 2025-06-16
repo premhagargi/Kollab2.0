@@ -20,6 +20,11 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 500;
+const DEFAULT_SIDEBAR_WIDTH = 280;
+const RESIZE_HANDLE_WIDTH = 8; // Width of the draggable handle in pixels
+
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -39,6 +44,12 @@ function DashboardContentInternal() {
   const provisionalNewTaskIdRef = useRef<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
 
+  // State for resizable sidebar
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const isResizingRef = useRef(false);
+  const initialMouseXRef = useRef(0);
+  const initialSidebarWidthRef = useRef(0);
+
 
   useEffect(() => {
     const checkDesktop = () => setIsDesktop(window.innerWidth >= 768); // md breakpoint
@@ -49,9 +60,9 @@ function DashboardContentInternal() {
 
   useEffect(() => {
     if (isDesktop) {
-      setIsCalendarSidebarVisible(true); // Default to expanded on desktop
+      setIsCalendarSidebarVisible(true); 
     } else {
-      setIsCalendarSidebarVisible(false); // Default to hidden on mobile
+      setIsCalendarSidebarVisible(false);
     }
   }, [isDesktop]);
 
@@ -100,7 +111,7 @@ function DashboardContentInternal() {
       setAllUserTasks([]);
       setIsLoadingAllTasks(false);
     }
-  }, [user, authLoading, toast]);
+  }, [user, authLoading, toast, currentWorkflowId]); // Added currentWorkflowId to re-fetch tasks if workflow changes
 
 
   const handleSelectWorkflow = (workflowId: string) => {
@@ -183,18 +194,18 @@ function DashboardContentInternal() {
     provisionalNewTaskIdRef.current = null;
   };
 
-  const tasksForCurrentWorkflowCalendar = useMemo(() => {
-    if (!currentWorkflowId) return [];
+  const tasksForCalendarFiltered = useMemo(() => {
+    if (!currentWorkflowId && !showBillableOnlyCalendar) return allUserTasks; // Show all if no specific workflow and not filtering billable
     return allUserTasks.filter(task => {
-      const baseFilter = task.workflowId === currentWorkflowId;
-      if (showBillableOnlyCalendar && !task.isBillable) return false;
-      return baseFilter;
+      const matchesWorkflow = currentWorkflowId ? task.workflowId === currentWorkflowId : true;
+      const matchesBillable = showBillableOnlyCalendar ? task.isBillable : true;
+      return matchesWorkflow && matchesBillable;
     });
   }, [allUserTasks, currentWorkflowId, showBillableOnlyCalendar]);
 
   const tasksByDateForCalendar = useMemo(() => {
     const map = new Map<string, Task[]>();
-    tasksForCurrentWorkflowCalendar.forEach(task => {
+    tasksForCalendarFiltered.forEach(task => {
       if (task.dueDate) {
         const dateKey = format(parseISO(task.dueDate), 'yyyy-MM-dd');
         if (!map.has(dateKey)) map.set(dateKey, []);
@@ -202,7 +213,43 @@ function DashboardContentInternal() {
       }
     });
     return map;
-  }, [tasksForCurrentWorkflowCalendar]);
+  }, [tasksForCalendarFiltered]);
+
+
+  // Resizing logic
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    initialMouseXRef.current = e.clientX;
+    initialSidebarWidthRef.current = sidebarWidth;
+    document.body.classList.add('resizing-sidebar');
+    window.addEventListener('mousemove', handleResizeMouseMove);
+    window.addEventListener('mouseup', handleResizeMouseUp);
+  };
+
+  const handleResizeMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizingRef.current) return;
+    const dx = e.clientX - initialMouseXRef.current;
+    let newWidth = initialSidebarWidthRef.current + dx;
+    newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, newWidth));
+    setSidebarWidth(newWidth);
+  }, []);
+
+  const handleResizeMouseUp = useCallback(() => {
+    isResizingRef.current = false;
+    document.body.classList.remove('resizing-sidebar');
+    window.removeEventListener('mousemove', handleResizeMouseMove);
+    window.removeEventListener('mouseup', handleResizeMouseUp);
+  }, [handleResizeMouseMove]);
+
+  useEffect(() => {
+    return () => { // Cleanup listeners if component unmounts while resizing
+      if (isResizingRef.current) {
+        handleResizeMouseUp();
+      }
+    };
+  }, [handleResizeMouseUp]);
+
 
   if (authLoading || (!user && !authLoading)) {
     return (
@@ -211,6 +258,17 @@ function DashboardContentInternal() {
       </div>
     );
   }
+
+  const isDesktopSidebarExpanded = isDesktop && isCalendarSidebarVisible;
+  const isDesktopSidebarMinimized = isDesktop && !isCalendarSidebarVisible;
+
+  let mainContentMarginLeft = '0px';
+  if (isDesktopSidebarExpanded) {
+    mainContentMarginLeft = `${sidebarWidth + RESIZE_HANDLE_WIDTH}px`;
+  } else if (isDesktopSidebarMinimized) {
+    mainContentMarginLeft = '4rem'; // 64px for w-16 minimized sidebar
+  }
+  
 
   return (
       <div className="flex flex-col h-screen overflow-hidden">
@@ -223,33 +281,48 @@ function DashboardContentInternal() {
         />
         <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-0 md:pt-0 md:p-2 lg:p-4">
           {user && (
+            <>
             <CalendarSidebar
               className={cn(
-                "transition-all duration-300 ease-in-out transform shadow-xl md:shadow-lg md:rounded-lg",
+                "transition-opacity duration-300 ease-in-out transform md:shadow-lg md:rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
                 // Mobile: overlay or hidden
-                "fixed md:static z-30 md:z-auto top-16 left-0 h-[calc(100vh-4rem-4rem)] md:h-full",
-                isCalendarSidebarVisible
-                  ? "w-full sm:w-4/5 md:w-[280px] lg:w-[300px] opacity-100 translate-x-0" // Expanded (mobile and desktop)
-                  : "opacity-0 -translate-x-full w-0 md:w-16 md:opacity-100 md:translate-x-0" // Hidden on mobile, Minimized on desktop (md:w-16)
+                "fixed md:static z-30 md:z-auto top-16 left-0 h-[calc(100vh-4rem-4rem)]", // Mobile height
+                // Desktop: fixed width or minimized
+                "md:top-16 md:h-[calc(100vh-4rem)]", // Desktop height (below header)
+                isDesktopSidebarExpanded && `md:fixed md:w-[${sidebarWidth}px] opacity-100 translate-x-0`,
+                isDesktopSidebarMinimized && "md:static md:w-16 opacity-100 translate-x-0",
+                !isDesktop && isCalendarSidebarVisible && "w-full sm:w-4/5 opacity-100 translate-x-0",
+                !isDesktop && !isCalendarSidebarVisible && "opacity-0 -translate-x-full w-0"
               )}
+              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px` } : {}}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
               tasksByDate={tasksByDateForCalendar}
               onTaskClick={handleTaskClickFromKanbanOrCalendar}
               showBillableOnly={showBillableOnlyCalendar}
               onToggleBillable={setShowBillableOnlyCalendar}
-              isMinimizedOnDesktop={isDesktop && !isCalendarSidebarVisible}
-              onExpandCalendar={toggleCalendarSidebar}
+              isMinimizedOnDesktop={isDesktopSidebarMinimized}
+              onExpandCalendar={toggleCalendarSidebar} // This toggles visibility state
               isMobileView={!isDesktop}
             />
+            {isDesktopSidebarExpanded && (
+              <div
+                className="resize-handle hidden md:block"
+                style={{ left: `${sidebarWidth}px`, top: '4rem', height: 'calc(100vh - 4rem)' }}
+                onMouseDown={handleResizeMouseDown}
+                onTouchStart={(e) => { /* TODO: Add touch support */ }}
+              />
+            )}
+            </>
           )}
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
             "md:rounded-xl md:shadow-lg",
-            "border-0 md:border",
-            user && isDesktop && "md:ml-4" // Static gap for desktop when sidebar is present
-          )}>
+            "border-0 md:border"
+           )}
+            style={{ marginLeft: isDesktop ? mainContentMarginLeft : '0px' }}
+           >
             {isLoadingWorkflows && user && !currentWorkflowId ? (
                 <div className="flex flex-1 items-center justify-center h-full">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -303,4 +376,4 @@ export default function DashboardPage() {
     </AuthProvider>
   );
 }
-
+    

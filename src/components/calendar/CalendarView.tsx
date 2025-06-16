@@ -24,6 +24,7 @@ interface CalendarSidebarProps {
   showBillableOnly: boolean;
   onToggleBillable: (checked: boolean) => void;
   className?: string;
+  style?: React.CSSProperties; // Added for dynamic width
   isMinimizedOnDesktop: boolean;
   onExpandCalendar: () => void;
   isMobileView: boolean;
@@ -37,6 +38,7 @@ export function CalendarSidebar({
   showBillableOnly,
   onToggleBillable,
   className,
+  style, // Destructure style
   isMinimizedOnDesktop,
   onExpandCalendar,
   isMobileView,
@@ -70,7 +72,7 @@ export function CalendarSidebar({
 
   if (isMinimizedOnDesktop && !isMobileView) { 
     return (
-      <div className={cn("h-full flex flex-col items-center justify-center p-2 bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:rounded-lg md:shadow-lg", className)}>
+      <div className={cn("h-full flex flex-col items-center justify-start pt-4 p-2 bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:rounded-lg md:shadow-lg", className)}>
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -94,7 +96,7 @@ export function CalendarSidebar({
   }
 
   return (
-    <Card className={cn("h-full flex flex-col shadow-lg flex-shrink-0 border-r bg-sidebar text-sidebar-foreground", className)}>
+    <Card className={cn("h-full flex flex-col shadow-lg flex-shrink-0 bg-sidebar text-sidebar-foreground", className)} style={style}>
       <CardHeader className="p-3 border-b border-sidebar-border flex-shrink-0">
         <div className="flex items-center justify-between">
             <CardDescription className="text-xs text-sidebar-accent-foreground">
@@ -202,11 +204,6 @@ export function CalendarSidebar({
   );
 }
 
-// Helper to get tasks for the current workflow from the calendar view
-// This helper needs currentWorkflowId passed to it if it's to filter by workflow.
-// For the "No tasks in this workflow" message, we need the workflowId context.
-// Let's adjust how we check this. The tasksByDate map already contains tasks from potentially multiple workflows.
-// The page.tsx filters what's passed to tasksByDate.
 const tasksForCurrentWorkflowCalendar = (tasksByDate: Map<string, Task[]>, currentWorkflowId: string | null): Task[] => {
     if (!currentWorkflowId) return [];
     let allTasks: Task[] = [];
@@ -215,6 +212,4 @@ const tasksForCurrentWorkflowCalendar = (tasksByDate: Map<string, Task[]>, curre
     });
     return allTasks;
 };
-
-
     

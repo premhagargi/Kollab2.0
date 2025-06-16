@@ -137,7 +137,7 @@ html {
   position: absolute;
   right: 0;
   width: 8px;
-  background-color: var(--accent); /* Use accent color from theme */
+  background-color: hsl(var(--accent)); /* Use accent color from theme */
   border-radius: 4px; /* Rounded corners */
   opacity: 0.7;
   transition: opacity 0.3s ease-in-out;
@@ -150,4 +150,29 @@ html {
 
 .custom-scrollbar-track.visible {
   opacity: 1;
+}
+
+/* Styles for Resizable Sidebar Handle */
+.resize-handle {
+  position: fixed; 
+  top: 4rem; /* Align below header */
+  height: calc(100vh - 4rem); /* Full height below header */
+  width: 8px;
+  cursor: col-resize;
+  background-color: hsl(var(--border));
+  z-index: 35; /* Above sidebar, below modals */
+  transition: background-color 0.2s ease-in-out;
+}
+.resize-handle:hover,
+body.resizing-sidebar .resize-handle { /* Ensure hover style persists during drag */
+  background-color: hsl(var(--primary));
+}
+
+/* Global cursor and selection prevention during resize */
+body.resizing-sidebar {
+  cursor: col-resize !important; /* Important to override other cursors */
+  user-select: none; /* Prevent text selection */
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* IE/Edge */
 }
