@@ -50,6 +50,7 @@ function DashboardContentInternal() {
   const isResizingRef = useRef(false);
   const initialMouseXRef = useRef(0);
   const initialSidebarWidthRef = useRef(0);
+  const [taskChangeTrigger, setTaskChangeTrigger] = useState(0);
 
 
   useEffect(() => {
@@ -132,6 +133,7 @@ function DashboardContentInternal() {
       if (templateName && templateName !== 'Blank Workflow') {
          getAllTasksByOwner(user.id).then(tasks => setAllUserTasks(tasks.filter(t => t.dueDate)));
       }
+      setTaskChangeTrigger(prev => prev + 1); // Trigger Kanban refresh for new template tasks
       return newWorkflow.id;
     } catch (error) {
       console.error("Error creating workflow from page:", error);
@@ -159,10 +161,10 @@ function DashboardContentInternal() {
       await updateTask(updatedTaskData.id, updatedTaskData);
       setAllUserTasks(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? updatedTaskData : t));
       
-      // No toast here, auto-save confirmation is handled in modal's onClose
       if (provisionalNewTaskIdRef.current === updatedTaskData.id) {
         provisionalNewTaskIdRef.current = null;
       }
+      setTaskChangeTrigger(prev => prev + 1); // Trigger refresh for Kanban
     } catch (error) {
       toast({ title: "Save Failed", description: "Unable to save task changes.", variant: "destructive" });
       console.error("Error updating task from modal:", error);
@@ -174,11 +176,10 @@ function DashboardContentInternal() {
     try {
       await archiveTaskService(taskToArchive.id);
       setAllUserTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
+      setTaskChangeTrigger(prev => prev + 1); // Trigger refresh for Kanban
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
       if (selectedTaskForModal?.id === taskToArchive.id) {
-        // setIsTaskModalOpen(false); // This will be handled by modal's internal close
-        // setSelectedTaskForModal(null);
-        handleCloseTaskModal(); // Ensure consistent close logic
+        handleCloseTaskModal(); 
       }
     } catch (error) {
       toast({ title: "Archive Failed", description: "Unable to archive task.", variant: "destructive" });
@@ -193,6 +194,7 @@ function DashboardContentInternal() {
       if (provisionalNewTaskIdRef.current) {
         if (user && currentWorkflowId) {
            getAllTasksByOwner(user.id).then(tasks => setAllUserTasks(tasks.filter(t => t.dueDate)));
+           setTaskChangeTrigger(prev => prev + 1); // Ensure Kanban also refreshes
         }
       }
       provisionalNewTaskIdRef.current = null;
@@ -257,9 +259,6 @@ function DashboardContentInternal() {
   }, [isCalendarSidebarVisible, handleResizeMouseUp, toggleCalendarSidebar]);
 
   useEffect(() => {
-    // This empty useEffect with dependencies on the memoized handlers
-    // might not be strictly necessary if they don't have external dependencies changing them.
-    // However, keeping it if there were plans for more complex logic here.
   }, [handleResizeMouseUp, handleResizeMouseMove]);
 
 
@@ -283,11 +282,11 @@ function DashboardContentInternal() {
   const isDesktopSidebarExpanded = isDesktop && isCalendarSidebarVisible;
   const isDesktopSidebarMinimized = isDesktop && !isCalendarSidebarVisible;
 
-  let mainContentMarginLeft = '0px'; // Default for mobile
+  let mainContentMarginLeft = '0px'; 
   let kanbanBoardMarginTop = '0px';
 
   if(isDesktop) {
-    kanbanBoardMarginTop = '1rem'; // mt-4 for desktop
+    kanbanBoardMarginTop = '1rem';
     if (isDesktopSidebarExpanded) {
       mainContentMarginLeft = `${SIDEBAR_MARGIN_LEFT_PX + sidebarWidth + RESIZE_HANDLE_WIDTH}px`;
     } else if (isDesktopSidebarMinimized) {
@@ -367,11 +366,12 @@ function DashboardContentInternal() {
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
             "md:rounded-xl md:shadow-lg", 
-            "border-0 md:border mb-0 md:mb-0" // Removed bottom margin for desktop to align with sidebar visually
+            "border-0 md:border md:mb-0"
            )}
             style={{ 
               marginLeft: isDesktop ? mainContentMarginLeft : '0px',
-              marginTop: kanbanBoardMarginTop, 
+              marginTop: kanbanBoardMarginTop,
+              marginRight: isDesktop ? '1rem' : '0px',
             }}
            >
             {isLoadingWorkflows && user && !currentWorkflowId ? (
@@ -380,6 +380,7 @@ function DashboardContentInternal() {
                 </div>
             ) : currentWorkflowId && user ? (
               <KanbanBoardView
+                key={taskChangeTrigger} // Force re-mount on task changes
                 workflowId={currentWorkflowId}
                 onTaskClick={handleTaskClickFromKanbanOrCalendar}
                 setProvisionalNewTaskId={handleSetProvisionalNewTaskId}
@@ -430,6 +431,7 @@ export default function DashboardPage() {
     
 
     
+
 
 
 

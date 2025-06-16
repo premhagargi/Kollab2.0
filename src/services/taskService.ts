@@ -66,7 +66,7 @@ export const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'upda
 };
 
 /**
- * Fetches all tasks for a specific workflow, ensuring the user owns them.
+ * Fetches all tasks for a specific workflow, ensuring the user owns them and they are not archived.
  * @param workflowId The ID of the workflow.
  * @param userId The ID of the authenticated user.
  * @returns A promise that resolves to an array of Task objects.
@@ -87,7 +87,8 @@ export const getTasksByWorkflow = async (workflowId: string, userId: string): Pr
     const q = query(
       collection(db, TASKS_COLLECTION), 
       where('workflowId', '==', workflowId),
-      where('ownerId', '==', userId) // Ensure tasks belong to the user
+      where('ownerId', '==', userId),
+      where('isArchived', '==', false) // Only fetch non-archived tasks
     );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(docSnap => ({
