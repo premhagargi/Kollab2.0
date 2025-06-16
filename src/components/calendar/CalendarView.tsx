@@ -1,5 +1,5 @@
+
 // src/components/calendar/CalendarSidebar.tsx
-// Renamed from CalendarView.tsx to reflect its new role
 "use client";
 import React, { useMemo } from 'react';
 import { Calendar } from "@/components/ui/calendar";
@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label';
 import { TaskPill } from './TaskPill';
 import type { Task } from '@/types';
 import { format, isSameDay, parseISO, isBefore, isToday } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Info, PanelLeftOpen } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 interface CalendarSidebarProps {
   selectedDate: Date | undefined;
@@ -22,6 +24,9 @@ interface CalendarSidebarProps {
   showBillableOnly: boolean;
   onToggleBillable: (checked: boolean) => void;
   className?: string;
+  isMinimizedOnDesktop: boolean;
+  onExpandCalendar: () => void;
+  isMobileView: boolean;
 }
 
 export function CalendarSidebar({
@@ -32,6 +37,9 @@ export function CalendarSidebar({
   showBillableOnly,
   onToggleBillable,
   className,
+  isMinimizedOnDesktop,
+  onExpandCalendar,
+  isMobileView,
 }: CalendarSidebarProps) {
   const [currentMonth, setCurrentMonth] = React.useState<Date>(selectedDate || new Date());
 
@@ -57,11 +65,36 @@ export function CalendarSidebar({
     selected: '!bg-primary !text-primary-foreground ring-2 ring-primary-foreground ring-offset-2 ring-offset-background',
     today: 'border-2 border-primary rounded-md !bg-primary/10',
   };
-  
+
   const tasksForSelectedDateInSidebar = selectedDate ? tasksByDate.get(format(selectedDate, 'yyyy-MM-dd')) || [] : [];
 
+  if (isMinimizedOnDesktop && !isMobileView) { // isMobileView check added
+    return (
+      <div className={cn("h-full flex flex-col items-center justify-center p-2 bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:rounded-lg md:shadow-lg", className)}>
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onExpandCalendar}
+                className="h-10 w-10 rounded-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                aria-label="Expand Calendar"
+              >
+                <PanelLeftOpen className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Expand Calendar</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    );
+  }
+
   return (
-    <Card className={cn("h-full flex flex-col shadow-lg w-[250px] flex-shrink-0 border-r bg-sidebar text-sidebar-foreground", className)}>
+    <Card className={cn("h-full flex flex-col shadow-lg flex-shrink-0 border-r bg-sidebar text-sidebar-foreground", className)}>
       <CardHeader className="p-3 border-b border-sidebar-border flex-shrink-0">
         <CardDescription className="text-xs text-sidebar-accent-foreground">
           Select a day to view tasks.
@@ -71,7 +104,6 @@ export function CalendarSidebar({
               id="billable-toggle-sidebar"
               checked={showBillableOnly}
               onCheckedChange={onToggleBillable}
-              // size="sm" // Switch does not have size prop by default in shadcn
             />
             <Label htmlFor="billable-toggle-sidebar" className="text-xs font-normal text-sidebar-accent-foreground">Show Billable Only</Label>
         </div>
@@ -85,7 +117,7 @@ export function CalendarSidebar({
           month={currentMonth}
           onMonthChange={setCurrentMonth}
           className="rounded-md p-0 w-full"
-          classNames={{ 
+          classNames={{
             caption_label: "text-sm font-medium text-sidebar-primary",
             head_cell: "w-full text-sidebar-accent-foreground text-[10px] uppercase tracking-wide",
             cell: "h-9 w-9 text-center text-xs p-0 relative first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
@@ -116,7 +148,7 @@ export function CalendarSidebar({
           }}
         />
       </CardContent>
-      
+
       <div className="flex-grow min-h-0 px-2 pt-1 pb-2 flex flex-col">
         <Label className="text-[10px] uppercase text-sidebar-accent-foreground font-semibold px-1 flex-shrink-0">
             Tasks for {selectedDate ? format(selectedDate, 'MMM d') : 'Selected Day'}
@@ -132,7 +164,8 @@ export function CalendarSidebar({
             <div className="flex flex-col items-center text-center text-sidebar-accent-foreground p-4">
                 <Info className="w-5 h-5 mb-2 text-sidebar-primary/40" />
                 <p className="text-[11px] font-medium">No tasks for this day.</p>
-                {showBillableOnly && <p className="text-[10px]">Try turning off 'Billable Only'.</p>}
+                {tasksForCurrentWorkflowCalendar.length === 0 && <p className="text-[10px]">No tasks in this workflow.</p> }
+                {showBillableOnly && tasksForCurrentWorkflowCalendar.length > 0 && <p className="text-[10px]">Try turning off 'Billable Only'.</p>}
             </div>
           ) : (
              <div className="flex flex-col items-center text-center text-sidebar-accent-foreground p-4">
@@ -146,3 +179,13 @@ export function CalendarSidebar({
     </Card>
   );
 }
+
+// Helper to get tasks for the current workflow from the calendar view
+const tasksForCurrentWorkflowCalendar = (tasksByDate: Map<string, Task[]>, currentWorkflowId: string | null): Task[] => {
+    if (!currentWorkflowId) return [];
+    let allTasks: Task[] = [];
+    tasksByDate.forEach(tasksOnDate => {
+        allTasks = allTasks.concat(tasksOnDate);
+    });
+    return allTasks.filter(task => task.workflowId === currentWorkflowId);
+};

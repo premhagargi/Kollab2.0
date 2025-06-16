@@ -18,7 +18,7 @@ import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
-import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar'; // New import
+import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -28,7 +28,7 @@ function DashboardContentInternal() {
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const { toast } = useToast();
 
-  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(false);
+  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(false); // True for expanded, false for minimized (desktop) or hidden (mobile)
   const [allUserTasks, setAllUserTasks] = useState<Task[]>([]);
   const [isLoadingAllTasks, setIsLoadingAllTasks] = useState(false);
   const [selectedDateForCalendar, setSelectedDateForCalendar] = useState<Date | undefined>(new Date());
@@ -37,13 +37,23 @@ function DashboardContentInternal() {
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const provisionalNewTaskIdRef = useRef<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  // Initialize calendar sidebar visibility based on screen size for desktop
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsCalendarSidebarVisible(window.innerWidth >= 768); // md breakpoint
-    }
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768); // md breakpoint
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
   }, []);
+
+  useEffect(() => {
+    if (isDesktop) {
+      setIsCalendarSidebarVisible(true); // Default to expanded on desktop
+    } else {
+      setIsCalendarSidebarVisible(false); // Default to hidden on mobile
+    }
+  }, [isDesktop]);
 
 
   useEffect(() => {
@@ -75,7 +85,7 @@ function DashboardContentInternal() {
       setIsLoadingAllTasks(true);
       getAllTasksByOwner(user.id)
         .then(tasks => {
-          setAllUserTasks(tasks.filter(task => task.dueDate)); 
+          setAllUserTasks(tasks.filter(task => task.dueDate));
         })
         .catch(err => {
           console.error("Error fetching all tasks for calendar:", err);
@@ -90,8 +100,7 @@ function DashboardContentInternal() {
       setAllUserTasks([]);
       setIsLoadingAllTasks(false);
     }
-  // Rerun if user changes or if currentWorkflowId becomes invalid due to workflows update
-  }, [user, authLoading, toast]); 
+  }, [user, authLoading, toast]);
 
 
   const handleSelectWorkflow = (workflowId: string) => {
@@ -127,7 +136,7 @@ function DashboardContentInternal() {
     setSelectedTaskForModal(task);
     setIsTaskModalOpen(true);
   };
-  
+
   const handleSetProvisionalNewTaskId = (taskId: string | null) => {
     provisionalNewTaskIdRef.current = taskId;
   };
@@ -137,10 +146,9 @@ function DashboardContentInternal() {
     try {
       await updateTask(updatedTaskData.id, updatedTaskData);
       setAllUserTasks(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? updatedTaskData : t));
-      // Also update workflowTasks in KanbanBoardView if needed, or rely on re-fetch/prop drill
       toast({ title: "Task Updated", description: "Changes saved successfully." });
       if (provisionalNewTaskIdRef.current === updatedTaskData.id) {
-        provisionalNewTaskIdRef.current = null; 
+        provisionalNewTaskIdRef.current = null;
       }
     } catch (error) {
       toast({ title: "Save Failed", description: "Unable to save task changes.", variant: "destructive" });
@@ -153,7 +161,6 @@ function DashboardContentInternal() {
     try {
       await archiveTaskService(taskToArchive.id);
       setAllUserTasks(prevTasks => prevTasks.filter(t => t.id !== taskToArchive.id));
-      // Also update workflowTasks in KanbanBoardView
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
       if (selectedTaskForModal?.id === taskToArchive.id) {
         setIsTaskModalOpen(false);
@@ -164,41 +171,38 @@ function DashboardContentInternal() {
       console.error("Error archiving task from modal:", error);
     }
   };
-  
+
   const handleCloseTaskModal = () => {
     setIsTaskModalOpen(false);
     setSelectedTaskForModal(null);
     if (provisionalNewTaskIdRef.current) {
-      // If a provisional new task was being edited and modal closed, refetch tasks for current workflow
-      // to ensure KanbanBoardView is up-to-date, as its internal state might not have the full new task.
       if (user && currentWorkflowId) {
-        // This might be redundant if KanbanBoardView also updates its own tasks on add,
-        // but ensures consistency if modal is closed prematurely.
          getAllTasksByOwner(user.id).then(tasks => setAllUserTasks(tasks.filter(t => t.dueDate)));
       }
     }
     provisionalNewTaskIdRef.current = null;
   };
 
-
-  const filteredTasksForCalendar = useMemo(() => {
+  const tasksForCurrentWorkflowCalendar = useMemo(() => {
+    if (!currentWorkflowId) return [];
     return allUserTasks.filter(task => {
+      const baseFilter = task.workflowId === currentWorkflowId;
       if (showBillableOnlyCalendar && !task.isBillable) return false;
-      return true; 
+      return baseFilter;
     });
-  }, [allUserTasks, showBillableOnlyCalendar]);
+  }, [allUserTasks, currentWorkflowId, showBillableOnlyCalendar]);
 
   const tasksByDateForCalendar = useMemo(() => {
     const map = new Map<string, Task[]>();
-    filteredTasksForCalendar.forEach(task => {
-      if (task.dueDate) { 
+    tasksForCurrentWorkflowCalendar.forEach(task => {
+      if (task.dueDate) {
         const dateKey = format(parseISO(task.dueDate), 'yyyy-MM-dd');
         if (!map.has(dateKey)) map.set(dateKey, []);
         map.get(dateKey)!.push(task);
       }
     });
     return map;
-  }, [filteredTasksForCalendar]);
+  }, [tasksForCurrentWorkflowCalendar]);
 
   if (authLoading || (!user && !authLoading)) {
     return (
@@ -207,27 +211,27 @@ function DashboardContentInternal() {
       </div>
     );
   }
-  
+
   return (
-      <div className="flex flex-col h-screen overflow-hidden"> {/* Ensure overflow is hidden here */}
-        <AppHeader 
+      <div className="flex flex-col h-screen overflow-hidden">
+        <AppHeader
             workflows={userWorkflows}
             currentWorkflowId={currentWorkflowId}
             onSelectWorkflow={handleSelectWorkflow}
             onWorkflowCreated={handleWorkflowCreated}
             isLoadingWorkflows={isLoadingWorkflows}
-            onToggleCalendarSidebar={toggleCalendarSidebar} // For desktop
-            isCalendarSidebarVisible={isCalendarSidebarVisible} // For desktop
         />
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-0 md:pt-0 md:p-2 lg:p-4"> {/* Adjusted padding */}
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0 pt-0 md:pt-0 md:p-2 lg:p-4">
           {user && (
             <CalendarSidebar
               className={cn(
-                "transition-all duration-300 ease-in-out transform fixed md:static z-30 md:z-auto top-16 md:top-auto left-0 shadow-xl md:shadow-lg md:rounded-lg",
-                "bg-sidebar-background border-r border-sidebar-border h-[calc(100vh-4rem-4rem)] md:h-full", // Adjust height for bottom nav
-                isCalendarSidebarVisible 
-                  ? "w-full sm:w-4/5 md:w-[300px] lg:w-[350px] opacity-100 translate-x-0 " 
-                  : "w-0 opacity-0 -translate-x-full md:-ml-[300px] lg:-ml-[350px]"
+                "transition-all duration-300 ease-in-out transform shadow-xl md:shadow-lg md:rounded-lg",
+                "bg-sidebar-background border-r border-sidebar-border",
+                // Mobile: overlay or hidden
+                "fixed md:static z-30 md:z-auto top-16 left-0 h-[calc(100vh-4rem-4rem)] md:h-full",
+                isCalendarSidebarVisible
+                  ? "w-full sm:w-4/5 md:w-[300px] lg:w-[350px] opacity-100 translate-x-0" // Expanded (mobile and desktop)
+                  : "opacity-0 -translate-x-full w-0 md:w-16 md:opacity-100 md:translate-x-0" // Hidden on mobile, Minimized on desktop (md:w-16)
               )}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
@@ -235,21 +239,24 @@ function DashboardContentInternal() {
               onTaskClick={handleTaskClickFromKanbanOrCalendar}
               showBillableOnly={showBillableOnlyCalendar}
               onToggleBillable={setShowBillableOnlyCalendar}
+              isMinimizedOnDesktop={isDesktop && !isCalendarSidebarVisible}
+              onExpandCalendar={toggleCalendarSidebar}
+              isMobileView={!isDesktop}
             />
           )}
            <Card className={cn(
-            "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out", 
-            "md:rounded-xl md:shadow-lg", // Desktop gets rounded corners and shadow
-            "border-0 md:border", // No border on mobile, border on desktop
-            isCalendarSidebarVisible && user && "md:ml-4" 
+            "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
+            "md:rounded-xl md:shadow-lg",
+            "border-0 md:border",
+            user && isDesktop && "md:ml-4" // Static gap for desktop when sidebar is present
           )}>
-            {isLoadingWorkflows && user && !currentWorkflowId ? ( // Show loader if workflows are loading and no workflow selected
+            {isLoadingWorkflows && user && !currentWorkflowId ? (
                 <div className="flex flex-1 items-center justify-center h-full">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
-            ) : currentWorkflowId && user ? ( 
-              <KanbanBoardView 
-                workflowId={currentWorkflowId} 
+            ) : currentWorkflowId && user ? (
+              <KanbanBoardView
+                workflowId={currentWorkflowId}
                 onTaskClick={handleTaskClickFromKanbanOrCalendar}
                 setProvisionalNewTaskId={handleSetProvisionalNewTaskId}
               />
@@ -271,8 +278,8 @@ function DashboardContentInternal() {
           </Card>
         </main>
         {user && (
-            <BottomNavigationBar 
-                onToggleCalendar={toggleCalendarSidebar} 
+            <BottomNavigationBar
+                onToggleCalendar={toggleCalendarSidebar}
                 isCalendarVisible={isCalendarSidebarVisible}
             />
         )}
