@@ -357,7 +357,7 @@ function DashboardContentInternal() {
 
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
-            "mt-4 md:mr-4 mb-4 md:rounded-xl md:shadow-lg", // These margins define the space for the Kanban board
+            "md:mr-4 mb-4 md:rounded-xl md:shadow-lg", // Removed mt-4
             "border-0 md:border"
            )}
             style={{ marginLeft: isDesktop ? mainContentMarginLeft : '0px' }}
@@ -418,4 +418,5 @@ export default function DashboardPage() {
     
 
     
+
 
