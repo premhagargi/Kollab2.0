@@ -50,15 +50,16 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   const { user } = useAuth();
   const [task, setTask] = useState<Task | null>(null);
   const initialTaskStateOnOpenRef = useRef<Task | null>(null);
-  const [isSaving, setIsSaving] = useState(false); // Still needed for async operations
+  const [isSaving, setIsSaving] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
   const [newDeliverable, setNewDeliverable] = useState('');
   const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
   const [aiSubtaskSuggestions, setAiSubtaskSuggestions] = useState<AISubtaskSuggestion[]>([]);
   const [time, setTime] = useState<string>('12:00');
-
   const { toast } = useToast();
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
 
   useEffect(() => {
     if (isOpen && initialTaskProp) {
@@ -73,19 +74,18 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
       if (initialTaskProp.dueDate) {
         setTime(format(parseISO(initialTaskProp.dueDate), 'HH:mm'));
       }
-      // Reset transient UI states on open
       setAiSummary(null);
       setAiSubtaskSuggestions([]);
       setNewComment('');
       setNewSubtask('');
       setNewDeliverable('');
-      setIsSaving(false); // Ensure saving state is reset
+      setIsSaving(false);
     }
   }, [initialTaskProp, isOpen]);
 
 
   const handleDialogCloseAttempt = async (openState: boolean) => {
-    if (!openState && !isSaving) { // If attempting to close AND not currently in a save operation
+    if (!openState && !isSaving) { 
       if (task && initialTaskStateOnOpenRef.current) {
         const hasChanges = JSON.stringify(task) !== JSON.stringify(initialTaskStateOnOpenRef.current);
         if (hasChanges) {
@@ -100,14 +100,11 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
           }
         }
       }
-      onClose(); // Proceed to call the original onClose prop
+      onClose(); 
     }
   };
 
-  // Ensure task is not null before proceeding with these handlers
   if (!task && isOpen) {
-    // This case should ideally be handled by the parent, 
-    // but if it occurs, close the modal to prevent errors.
     onClose();
     return null;
   }
@@ -236,8 +233,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     setIsSuggestingSubtasks(false);
   };
   
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
 
   const handleDateTimeSelect = (date?: Date) => {
     if (!date) {
@@ -249,7 +244,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     handleInputChange('dueDate', updatedDate.toISOString());
   };
 
-  const assignee = user; // Assuming current user is the assignee for simplicity. Adapt if multiple assignees.
+  const assignee = user; 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
@@ -274,7 +269,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
               onClick={() => {
                 if (task && !isSaving) {
                   onArchiveTask(task);
-                  // onClose will be called by parent if archive is successful
                 }
               }}
               disabled={isSaving || task.isArchived}
@@ -292,7 +286,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
         <div className="flex-grow min-h-0 overflow-y-auto px-4">
           <ScrollArea className="h-full">
             <div className="grid gap-6 py-4">
-              {/* Client & Billing Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="clientName" className="text-sm font-semibold flex items-center text-foreground">
@@ -323,7 +316,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 </div>
               </div>
 
-              {/* Description Section */}
               <div className="space-y-3">
                 <Label htmlFor="description" className="text-sm font-semibold flex items-center text-foreground">
                   <Edit3 className="mr-2 h-4 w-4 text-primary" /> Task Details
@@ -393,7 +385,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 )}
               </div>
 
-              {/* Deliverables Section */}
               <div className="space-y-3">
                 <Label htmlFor="deliverables" className="text-sm font-semibold flex items-center text-foreground">
                     <Target className="mr-2 h-4 w-4 text-primary" /> Deliverables
@@ -433,7 +424,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 </div>
               </div>
 
-              {/* Metadata Section (Due Date, Priority, Assignees) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="dueDate" className="text-sm font-semibold flex items-center text-foreground">
@@ -521,7 +511,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 </div>
               </div>
 
-              {/* Subtasks Section */}
               <div className="space-y-3">
                 <Label className="text-sm font-semibold flex items-center text-foreground">
                   <ListChecks className="mr-2 h-4 w-4 text-primary" /> Subtasks / Action Items
@@ -573,7 +562,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                 </div>
               </div>
 
-              {/* Attachments Section */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold flex items-center text-foreground">
                   <Paperclip className="mr-2 h-4 w-4 text-primary" /> Attachments
@@ -590,7 +578,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
 
               <Separator className="my-3 border-border/50" />
 
-              {/* Comments Section */}
               <div className="space-y-3">
                 <Label className="text-sm font-semibold flex items-center text-foreground">
                   <MessageSquare className="mr-2 h-4 w-4 text-primary" /> Comments / Notes
@@ -644,7 +631,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
             </div>
           </ScrollArea>
         </div>
-        {/* DialogFooter is removed, relying on Dialog 'X' for close, which triggers auto-save via onOpenChange */}
       </DialogContent>
     </Dialog>
   );
