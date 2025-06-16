@@ -119,7 +119,7 @@ function DashboardContentInternal() {
       setCreatorProfiles({}); 
       Promise.all([
         getWorkflowById(currentWorkflowId),
-        getTasksByWorkflow(currentWorkflowId, user.id)
+        getTasksByWorkflow(currentWorkflowId, user.id) 
       ]).then(async ([workflowData, tasksData]) => {
         if (workflowData && workflowData.ownerId === user.id) {
           setCurrentWorkflow(workflowData);
@@ -230,23 +230,24 @@ function DashboardContentInternal() {
   const handleUpdateTaskInModal = async (updatedTaskData: Task) => {
     if (!user) return;
 
-    // Optimistic UI update
+    // Optimistic UI update for both lists
     setAllUserTasks(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData } : t).filter(Boolean) as Task[]);
     if (currentWorkflow && updatedTaskData.workflowId === currentWorkflow.id) {
       setTasksForCurrentWorkflow(prevTasks => prevTasks.map(t => t.id === updatedTaskData.id ? { ...t, ...updatedTaskData } : t));
     }
+    
+    // If this was a provisionally new task, clear the provisional ID
     if (provisionalNewTaskIdRef.current === updatedTaskData.id) {
       provisionalNewTaskIdRef.current = null; 
     }
 
     try {
       await updateTaskService(updatedTaskData.id, updatedTaskData);
-      // Toast for success can be added here if desired, or rely on modal's auto-save message.
+      // Success toast if needed, e.g., "Task auto-saved"
     } catch (error) {
       toast({ title: "Save Failed", description: "Unable to save task changes to the server.", variant: "destructive" });
-      console.error("Error updating task from modal:", error);
-      // Optionally revert optimistic update here or inform user more strongly
-      setTaskChangeTrigger(prev => prev + 1); // Trigger a re-fetch to ensure consistency if save failed
+      console.error("Error updating task from modal (background save):", error);
+      setTaskChangeTrigger(prev => prev + 1); // Trigger a re-fetch on error to ensure consistency
     }
   };
 
@@ -263,7 +264,8 @@ function DashboardContentInternal() {
       }
       return col;
     });
-    setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
+    // Update currentWorkflow state optimistically
+    setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns, updatedAt: new Date().toISOString() } : null);
     
     // Close modal immediately
     if (selectedTaskForModal?.id === taskToArchive.id) {
@@ -275,12 +277,11 @@ function DashboardContentInternal() {
       // Persist column changes (taskIds) to workflow
       await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       toast({ title: "Task Archived", description: `"${taskToArchive.title}" has been archived.` });
-      // No taskChangeTrigger increment needed if local state is managed correctly
+      // No taskChangeTrigger increment needed as local state is managed, KanbanBoardView should re-render based on prop changes
     } catch (error) {
       toast({ title: "Archive Failed", description: "Unable to archive task on the server.", variant: "destructive" });
       console.error("Error archiving task from modal:", error);
-      // Revert optimistic UI updates or trigger a full refresh
-      setTaskChangeTrigger(prev => prev + 1);
+      setTaskChangeTrigger(prev => prev + 1); // Revert optimistic UI updates by triggering a full refresh
     }
   };
 
@@ -289,8 +290,6 @@ function DashboardContentInternal() {
       setIsTaskModalOpen(false);
       setSelectedTaskForModal(null);
       if (provisionalNewTaskIdRef.current) {
-        // If a new task was being edited, trigger a refresh to ensure it's fully loaded with server data
-        // (though optimistic updates should handle most of it)
         setTaskChangeTrigger(prev => prev + 1); 
       }
       provisionalNewTaskIdRef.current = null;
@@ -299,23 +298,36 @@ function DashboardContentInternal() {
   
   const handleAddTaskToWorkflow = async (columnId: string, taskTitle: string) => {
     if (!user || !currentWorkflow) return null;
-    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables'> = {
+    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'isCompleted' | 'isBillable' | 'clientName' | 'deliverables'> & { ownerId: string } = {
       title: taskTitle,
       description: '', priority: 'medium', subtasks: [], comments: [],
-      workflowId: currentWorkflow.id, columnId, creatorId: user.id, ownerId: user.id, isArchived: false,
+      workflowId: currentWorkflow.id, columnId, creatorId: user.id, ownerId: user.id,
+      isArchived: false,
     };
     try {
       const createdTask = await createTask(newTaskData);
+      
       setTasksForCurrentWorkflow(prev => [...prev, createdTask]);
       setAllUserTasks(prev => [...prev, createdTask]); 
       
       const updatedColumns = currentWorkflow.columns.map(col => 
         col.id === columnId ? { ...col, taskIds: [...col.taskIds, createdTask.id] } : col
       );
-      setCurrentWorkflow(prev => prev ? { ...prev, columns: updatedColumns } : null);
-      await updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
       
-      setProvisionalNewTaskId(createdTask.id);
+      setCurrentWorkflow(prevWorkflow => {
+        if (!prevWorkflow) {
+            console.error("setCurrentWorkflow called in handleAddTaskToWorkflow but prevWorkflow is null.");
+            // This case should ideally not happen if currentWorkflow is properly set before this function is called.
+            // Returning null or some default state might be necessary, or trigger a re-fetch of workflow.
+            return null; 
+        }
+        return { ...prevWorkflow, columns: updatedColumns, updatedAt: new Date().toISOString() };
+      });
+
+      // No need to await this, UI is optimistic
+      updateWorkflowService(currentWorkflow.id, { columns: updatedColumns });
+      
+      provisionalNewTaskIdRef.current = createdTask.id;
       handleTaskClickFromKanbanOrCalendar(createdTask); 
 
       if (createdTask.creatorId && !creatorProfiles[createdTask.creatorId]) {
@@ -327,7 +339,8 @@ function DashboardContentInternal() {
       }
       return createdTask;
     } catch (error) {
-      toast({ title: "Error Creating Task", variant: "destructive" });
+      console.error("Error in handleAddTaskToWorkflow:", error);
+      toast({ title: "Error Creating Task", description: "Failed to add the new task to the board.", variant: "destructive" });
       return null;
     }
   };
@@ -357,34 +370,31 @@ function DashboardContentInternal() {
     
     let destTaskIds = [...newWorkflowColumns[destColIndex].taskIds];
     const currentTaskIndexInDest = destTaskIds.indexOf(taskId); 
-    if (currentTaskIndexInDest > -1) destTaskIds.splice(currentTaskIndexInDest, 1); // Remove if already present (e.g., drag within same column)
+    if (currentTaskIndexInDest > -1) destTaskIds.splice(currentTaskIndexInDest, 1); 
     
     const targetIndexInDest = targetTaskId ? destTaskIds.indexOf(targetTaskId) : -1;
     if (targetIndexInDest !== -1) {
-      destTaskIds.splice(targetIndexInDest, 0, taskId); // Insert before target
+      destTaskIds.splice(targetIndexInDest, 0, taskId); 
     } else {
-      destTaskIds.push(taskId); // Add to end if no target or target not found
+      destTaskIds.push(taskId); 
     }
     newWorkflowColumns[destColIndex].taskIds = destTaskIds;
     setCurrentWorkflow(prev => prev ? { ...prev, columns: newWorkflowColumns, updatedAt: new Date().toISOString() } : null);
 
-    // Persist changes to backend
     try {
       if (sourceColumnId !== destinationColumnId) {
         await updateTaskService(taskId, { columnId: destinationColumnId });
       }
       await updateWorkflowService(currentWorkflow.id, { columns: newWorkflowColumns });
-      // Success toast optional, UI updated optimistically
     } catch (error) {
       toast({ title: "Error Moving Task", description: "Failed to save task movement.", variant: "destructive" });
-      // Revert optimistic changes or trigger a full refresh
       setTaskChangeTrigger(prev => prev + 1);
     }
   };
   
   const handleUpdateWorkflowColumnName = async (columnId: string, newName: string) => {
     if (!currentWorkflow || !user) return;
-    const originalColumns = JSON.parse(JSON.stringify(currentWorkflow.columns)); // Deep copy for potential revert
+    const originalColumns = JSON.parse(JSON.stringify(currentWorkflow.columns)); 
     const updatedColumns = currentWorkflow.columns.map(col => 
       col.id === columnId ? { ...col, name: newName } : col
     );
@@ -400,17 +410,14 @@ function DashboardContentInternal() {
 
   const handleToggleWorkflowTaskCompleted = async (taskId: string, isCompleted: boolean) => {
      if (!user) return;
-    // Optimistic UI update
     const newUpdatedAt = new Date().toISOString();
     setTasksForCurrentWorkflow(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted, updatedAt: newUpdatedAt } : t));
     setAllUserTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted, updatedAt: newUpdatedAt } : t));
     
     try {
       await updateTaskService(taskId, { isCompleted });
-      // Success toast optional
     } catch (error) {
-      // Revert optimistic update
-      setTasksForCurrentWorkflow(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !isCompleted, updatedAt: new Date().toISOString() } : t)); // Revert with a new timestamp or original
+      setTasksForCurrentWorkflow(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !isCompleted, updatedAt: new Date().toISOString() } : t)); 
       setAllUserTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !isCompleted, updatedAt: new Date().toISOString() } : t));
       toast({ title: "Error Updating Task", variant: "destructive" });
     }
@@ -541,11 +548,11 @@ function DashboardContentInternal() {
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform shadow-lg rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                "fixed h-[calc(100vh-6rem)]", 
+                "fixed", 
                 isDesktopSidebarExpanded && `opacity-100 translate-x-0 ml-4`,
                 isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0 ml-4`
               )}
-              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, top: HEADER_HEIGHT_PLUS_MARGIN_REM } : { top: HEADER_HEIGHT_PLUS_MARGIN_REM }}
+              style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`, top: HEADER_HEIGHT_PLUS_MARGIN_REM, height: VIEWPORT_HEIGHT_MINUS_HEADER_AND_MARGINS } : { top: HEADER_HEIGHT_PLUS_MARGIN_REM, height: VIEWPORT_HEIGHT_MINUS_HEADER_AND_MARGINS }}
               selectedDate={selectedDateForCalendar}
               onSelectDate={setSelectedDateForCalendar}
               tasksByDate={tasksByDateForCalendar}
@@ -595,7 +602,7 @@ function DashboardContentInternal() {
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
             "md:rounded-xl md:shadow-lg", 
-            "border-0 md:border md:mb-4 mt-4" 
+            "border-0 md:border md:mt-4 md:mb-4"  // Added md:mt-4
            )}
             style={{ 
               marginLeft: isDesktop ? mainContentMarginLeft : '0px',
@@ -666,6 +673,7 @@ export default function DashboardPage() {
     
 
     
+
 
 
 
