@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
+  // DialogFooter, // Footer removed
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ import type { TaskSummarizationInput } from '@/ai/flows/task-summarization';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch'; // Added Switch for isBillable
+import { Switch } from '@/components/ui/switch';
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -48,16 +48,14 @@ const priorityColors: Record<TaskPriority, string> = {
 
 export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpdateTask, onArchiveTask }: TaskDetailsModalProps) {
   const { user } = useAuth();
-  const [task, setTask] = useState<Task | null>(initialTaskProp);
+  const [task, setTask] = useState<Task | null>(null);
   const initialTaskStateOnOpenRef = useRef<Task | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Still needed for async operations
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
-  const [newDeliverable, setNewDeliverable] = useState(''); // For adding new deliverables
+  const [newDeliverable, setNewDeliverable] = useState('');
   const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
   const [aiSubtaskSuggestions, setAiSubtaskSuggestions] = useState<AISubtaskSuggestion[]>([]);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
   const [time, setTime] = useState<string>('12:00');
 
   const { toast } = useToast();
@@ -65,32 +63,56 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
   useEffect(() => {
     if (isOpen && initialTaskProp) {
       const deepClonedTask = JSON.parse(JSON.stringify(initialTaskProp)) as Task;
-      // Ensure new fields have defaults if not present
       deepClonedTask.clientName = deepClonedTask.clientName || '';
       deepClonedTask.isBillable = deepClonedTask.isBillable || false;
       deepClonedTask.deliverables = deepClonedTask.deliverables || [];
 
       setTask(deepClonedTask);
-      initialTaskStateOnOpenRef.current = deepClonedTask;
+      initialTaskStateOnOpenRef.current = JSON.parse(JSON.stringify(deepClonedTask)); 
+
       if (initialTaskProp.dueDate) {
         setTime(format(parseISO(initialTaskProp.dueDate), 'HH:mm'));
       }
-    } else if (!isOpen) {
-      setTask(null);
-      initialTaskStateOnOpenRef.current = null;
+      // Reset transient UI states on open
       setAiSummary(null);
       setAiSubtaskSuggestions([]);
-      setIsSaving(false);
-      setTime('12:00');
+      setNewComment('');
+      setNewSubtask('');
       setNewDeliverable('');
+      setIsSaving(false); // Ensure saving state is reset
     }
   }, [initialTaskProp, isOpen]);
 
+
+  const handleDialogCloseAttempt = async (openState: boolean) => {
+    if (!openState && !isSaving) { // If attempting to close AND not currently in a save operation
+      if (task && initialTaskStateOnOpenRef.current) {
+        const hasChanges = JSON.stringify(task) !== JSON.stringify(initialTaskStateOnOpenRef.current);
+        if (hasChanges) {
+          setIsSaving(true);
+          try {
+            await onUpdateTask(task);
+            toast({ title: "Task Updated", description: "Changes auto-saved." });
+          } catch (error) {
+            toast({ title: "Auto-save Failed", description: "Unable to save changes. Your latest edits might not be saved.", variant: "destructive" });
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }
+      onClose(); // Proceed to call the original onClose prop
+    }
+  };
+
+  // Ensure task is not null before proceeding with these handlers
   if (!task && isOpen) {
+    // This case should ideally be handled by the parent, 
+    // but if it occurs, close the modal to prevent errors.
     onClose();
     return null;
   }
   if (!task) return null;
+
 
   const handleInputChange = (field: keyof Task, value: any) => {
     setTask(prev => prev ? { ...prev, [field]: value, updatedAt: new Date().toISOString() } : null);
@@ -116,7 +138,7 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     };
     setTask(prev => prev ? { ...prev, subtasks: [...prev.subtasks, subtaskToAdd], updatedAt: new Date().toISOString() } : null);
     if (fromSuggestion) {
-      setAiSubtaskSuggestions(prev => prev.filter(s => s.text !== text));
+      setAiSubtaskSuggestions(prevSugg => prevSugg.filter(s => s.text !== text));
     } else {
       setNewSubtask('');
     }
@@ -135,7 +157,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     handleInputChange('deliverables', updatedDeliverables);
   };
 
-
   const handleAddComment = () => {
     if (!newComment.trim() || !user) {
       toast({ title: "Cannot Post", description: "Please write a comment and ensure you're logged in.", variant: "destructive" });
@@ -151,34 +172,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     };
     setTask(prev => prev ? { ...prev, comments: [...prev.comments, comment], updatedAt: new Date().toISOString() } : null);
     setNewComment('');
-  };
-
-  const handleSaveChanges = async () => {
-    if (task) {
-      setIsSaving(true);
-      try {
-        await onUpdateTask(task);
-        toast({ title: "Task Updated", description: "Changes saved successfully." });
-        onClose();
-      } catch (error) {
-        toast({ title: "Save Failed", description: "Unable to save changes.", variant: "destructive" });
-      } finally {
-        setIsSaving(false);
-      }
-    }
-  };
-
-  const handleCancel = () => {
-    if (initialTaskStateOnOpenRef.current) {
-      setTask(JSON.parse(JSON.stringify(initialTaskStateOnOpenRef.current)));
-    }
-    onClose();
-  };
-
-  const handleDialogCloseAttempt = (openState: boolean) => {
-    if (!openState) {
-      onClose();
-    }
   };
 
   const handleGenerateSummary = async () => {
@@ -242,6 +235,9 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     }
     setIsSuggestingSubtasks(false);
   };
+  
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isSuggestingSubtasks, setIsSuggestingSubtasks] = useState(false);
 
   const handleDateTimeSelect = (date?: Date) => {
     if (!date) {
@@ -253,24 +249,41 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
     handleInputChange('dueDate', updatedDate.toISOString());
   };
 
-  const assignee = user;
+  const assignee = user; // Assuming current user is the assignee for simplicity. Adapt if multiple assignees.
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogCloseAttempt}>
       <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col bg-gradient-to-br from-background to-background/95 rounded-xl shadow-2xl border border-border/50">
-        <DialogHeader className="flex-shrink-0 px-2 pt-2 pb-1 border-b border-border/50">
-          <DialogTitle>
-            <div className="group relative flex items-center">
-              <Input
-                id="title"
-                value={task.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto w-full placeholder:text-muted-foreground/60 hover:bg-muted/20 rounded-md px-2 py-1 transition-colors"
-                disabled={isSaving}
-                placeholder="Enter task title"
-              />
-            </div>
-          </DialogTitle>
+        <DialogHeader className="flex-shrink-0 px-4 pt-4 pb-2 border-b border-border/50">
+          <div className="flex justify-between items-start gap-2">
+            <DialogTitle className="flex-grow">
+              <div className="group relative flex items-center">
+                <Input
+                  id="title"
+                  value={task.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  className="text-2xl font-headline border-0 shadow-none focus-visible:ring-0 p-0 h-auto w-full placeholder:text-muted-foreground/60 hover:bg-muted/20 rounded-md px-2 py-1 transition-colors"
+                  disabled={isSaving}
+                  placeholder="Enter task title"
+                />
+              </div>
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if (task && !isSaving) {
+                  onArchiveTask(task);
+                  // onClose will be called by parent if archive is successful
+                }
+              }}
+              disabled={isSaving || task.isArchived}
+              className="ml-auto text-muted-foreground hover:text-destructive flex-shrink-0 mt-1"
+              title={task.isArchived ? 'Task Archived' : 'Archive Task'}
+            >
+              <Archive className="h-5 w-5" />
+            </Button>
+          </div>
           <DialogDescription className="text-xs text-muted-foreground/80 mt-1 flex items-center">
             <Clock className="h-3 w-3 mr-1" /> Last updated: {format(parseISO(task.updatedAt), 'MMM d, yyyy h:mm a')}
           </DialogDescription>
@@ -419,7 +432,6 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
                     </Button>
                 </div>
               </div>
-
 
               {/* Metadata Section (Due Date, Priority, Assignees) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -632,40 +644,9 @@ export function TaskDetailsModal({ task: initialTaskProp, isOpen, onClose, onUpd
             </div>
           </ScrollArea>
         </div>
-
-        <DialogFooter className="px-4 py-3 border-t border-border/50 flex-shrink-0 flex justify-between">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (task && !isSaving) {
-                onArchiveTask(task);
-              }
-            }}
-            className="border-border/50 hover:bg-muted/20"
-            disabled={isSaving || task.isArchived}
-          >
-            <Archive className="mr-2 h-4 w-4" /> {task.isArchived ? 'Archived' : 'Archive'}
-          </Button>
-          <div className="space-x-2">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSaving}
-              className="border-border/50 hover:bg-muted/20"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveChanges}
-              disabled={isSaving}
-              className="bg-primary/90 hover:bg-primary rounded-full"
-            >
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </div>
-        </DialogFooter>
+        {/* DialogFooter is removed, relying on Dialog 'X' for close, which triggers auto-save via onOpenChange */}
       </DialogContent>
     </Dialog>
   );
 }
+
