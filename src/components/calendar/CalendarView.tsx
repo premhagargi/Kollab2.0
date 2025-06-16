@@ -132,14 +132,14 @@ export function CalendarSidebar({
         </div>
       </CardHeader>
 
-      <CardContent className="px-4 pt-0 pb-0 border-b border-sidebar-border flex-shrink-0"> {/* Changed px-2 pt-2 to px-4 pt-0 */}
+      <CardContent className="px-4 pt-0 pb-0 border-b border-sidebar-border flex-shrink-0">
         <Calendar
           mode="single"
           selected={selectedDate}
           onSelect={onSelectDate}
           month={currentMonth}
           onMonthChange={setCurrentMonth}
-          className="rounded-md p-0 py-2 w-full" // Added py-2 for internal spacing
+          className="rounded-md p-0 py-2 w-full" 
           classNames={{
             caption_label: "text-sm font-medium text-sidebar-primary",
             head_cell: "w-full text-sidebar-accent-foreground text-[10px] uppercase tracking-wide",
@@ -172,7 +172,7 @@ export function CalendarSidebar({
         />
       </CardContent>
 
-      <div className="flex-grow min-h-0 px-4 pt-1 pb-2 flex flex-col"> {/* Changed px-2 to px-4 */}
+      <div className="flex-grow min-h-0 px-4 pt-1 pb-4 flex flex-col"> {/* Changed pb-2 to pb-4 */}
         <Label className="text-[10px] uppercase text-sidebar-accent-foreground font-semibold px-1 flex-shrink-0">
             Tasks for {selectedDate ? format(selectedDate, 'MMM d') : 'Selected Day'}
         </Label>

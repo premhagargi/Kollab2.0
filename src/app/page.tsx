@@ -20,12 +20,12 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { BottomNavigationBar } from '@/components/layout/BottomNavigationBar';
 
-const MIN_SIDEBAR_WIDTH = 240; 
-const MAX_SIDEBAR_WIDTH = 350; // Adjusted max width
+const MIN_SIDEBAR_WIDTH = 240;
+const MAX_SIDEBAR_WIDTH = 350;
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const RESIZE_HANDLE_WIDTH = 16; 
-const SIDEBAR_MARGIN_LEFT_PX = 16; 
-const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; 
+const RESIZE_HANDLE_WIDTH = 16; // This is the interactive width of the gap/handle
+const SIDEBAR_MARGIN_LEFT_PX = 16; // For ml-4 class
+const MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX = 64; // 4rem
 
 function DashboardContentInternal() {
   const { user, loading: authLoading } = useAuth();
@@ -35,7 +35,7 @@ function DashboardContentInternal() {
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const { toast } = useToast();
 
-  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true); 
+  const [isCalendarSidebarVisible, setIsCalendarSidebarVisible] = useState(true);
   const [allUserTasks, setAllUserTasks] = useState<Task[]>([]);
   const [isLoadingAllTasks, setIsLoadingAllTasks] = useState(false);
   const [selectedDateForCalendar, setSelectedDateForCalendar] = useState<Date | undefined>(new Date());
@@ -61,9 +61,9 @@ function DashboardContentInternal() {
 
   useEffect(() => {
     if (isDesktop) {
-      setIsCalendarSidebarVisible(true); 
+      setIsCalendarSidebarVisible(true);
     } else {
-      setIsCalendarSidebarVisible(false); 
+      setIsCalendarSidebarVisible(false);
     }
   }, [isDesktop]);
 
@@ -229,7 +229,7 @@ function DashboardContentInternal() {
   };
 
   const handleResizeMouseUp = useCallback(() => {
-    if (!isResizingRef.current) return; 
+    if (!isResizingRef.current) return;
     isResizingRef.current = false;
     document.body.classList.remove('resizing-sidebar');
     window.removeEventListener('mousemove', handleResizeMouseMove);
@@ -242,25 +242,28 @@ function DashboardContentInternal() {
     const dx = e.clientX - initialMouseXRef.current;
     let newWidth = initialSidebarWidthRef.current + dx;
     
-    if (newWidth <= MIN_SIDEBAR_WIDTH + 20 && isCalendarSidebarVisible) { 
-      toggleCalendarSidebar(); 
-      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); 
-      handleResizeMouseUp(); 
+    if (newWidth <= MIN_SIDEBAR_WIDTH + 20 && isCalendarSidebarVisible) {
+      toggleCalendarSidebar();
+      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); // Reset for next open
+      handleResizeMouseUp(); // Stop resizing
       return;
     }
 
     newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, newWidth));
     setSidebarWidth(newWidth);
-  }, [isCalendarSidebarVisible, handleResizeMouseUp]); 
+  }, [isCalendarSidebarVisible, handleResizeMouseUp, toggleCalendarSidebar]);
 
   useEffect(() => {
+    // This empty useEffect with dependencies on the memoized handlers
+    // might not be strictly necessary if they don't have external dependencies changing them.
+    // However, keeping it if there were plans for more complex logic here.
   }, [handleResizeMouseUp, handleResizeMouseMove]);
 
 
   useEffect(() => {
     return () => {
       if (isResizingRef.current) {
-        handleResizeMouseUp(); 
+        handleResizeMouseUp();
       }
     };
   }, [handleResizeMouseUp]);
@@ -277,7 +280,7 @@ function DashboardContentInternal() {
   const isDesktopSidebarExpanded = isDesktop && isCalendarSidebarVisible;
   const isDesktopSidebarMinimized = isDesktop && !isCalendarSidebarVisible;
 
-  let mainContentMarginLeft = '0px'; 
+  let mainContentMarginLeft = '0px';
   if (isDesktopSidebarExpanded) {
     mainContentMarginLeft = `${SIDEBAR_MARGIN_LEFT_PX + sidebarWidth + RESIZE_HANDLE_WIDTH}px`;
   } else if (isDesktopSidebarMinimized) {
@@ -294,16 +297,16 @@ function DashboardContentInternal() {
             isLoadingWorkflows={isLoadingWorkflows}
         />
         
-        <main className="flex-1 flex overflow-hidden bg-background min-h-0"> 
+        <main className="flex-1 flex overflow-hidden bg-background min-h-0">
           {user && isDesktop && (
             <>
             <CalendarSidebar
               className={cn(
                 "transition-opacity duration-300 ease-in-out transform shadow-lg rounded-lg",
                 "bg-sidebar-background border-r border-sidebar-border",
-                "fixed top-16 h-[calc(100vh-4rem)] ml-4", 
+                "fixed top-16 h-[calc(100vh-5rem)] ml-4", // Adjusted height for 1rem bottom effective margin
                 isDesktopSidebarExpanded && `opacity-100 translate-x-0`,
-                isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0` 
+                isDesktopSidebarMinimized && `w-16 opacity-100 translate-x-0`
               )}
               style={isDesktopSidebarExpanded ? { width: `${sidebarWidth}px`} : {}}
               selectedDate={selectedDateForCalendar}
@@ -313,40 +316,40 @@ function DashboardContentInternal() {
               showBillableOnly={showBillableOnlyCalendar}
               onToggleBillable={setShowBillableOnlyCalendar}
               isMinimizedOnDesktop={isDesktopSidebarMinimized}
-              onExpandCalendar={toggleCalendarSidebar} 
-              isMobileView={!isDesktop} 
+              onExpandCalendar={toggleCalendarSidebar}
+              isMobileView={!isDesktop}
             />
-            {isDesktop && ( 
+            {isDesktop && (
               <div
-                className="resize-handle hidden md:block" 
+                className="resize-handle hidden md:block"
                 style={{
                   left: `${SIDEBAR_MARGIN_LEFT_PX + (isDesktopSidebarExpanded ? sidebarWidth : MINIMIZED_DESKTOP_SIDEBAR_WIDTH_PX)}px`,
-                  top: '4rem', 
-                  height: 'calc(100vh - 4rem)', 
-                  width: `${RESIZE_HANDLE_WIDTH}px`, 
+                  top: '4rem',
+                  height: 'calc(100vh - 5rem)', // Adjusted height for 1rem bottom effective margin
+                  width: `${RESIZE_HANDLE_WIDTH}px`,
                 }}
-                onMouseDown={isDesktopSidebarExpanded ? handleResizeMouseDown : undefined} 
-                onClick={isDesktopSidebarMinimized ? toggleCalendarSidebar : undefined} 
+                onMouseDown={isDesktopSidebarExpanded ? handleResizeMouseDown : undefined}
+                onClick={isDesktopSidebarMinimized ? toggleCalendarSidebar : undefined}
               />
             )}
             </>
           )}
-          {user && !isDesktop && isCalendarSidebarVisible && ( 
+          {user && !isDesktop && isCalendarSidebarVisible && (
              <CalendarSidebar
                 className={cn(
                     "transition-opacity duration-300 ease-in-out transform shadow-xl md:shadow-lg md:rounded-lg",
                     "bg-sidebar-background border-r border-sidebar-border",
-                    "fixed z-30", 
-                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0" 
+                    "fixed z-30",
+                    "top-16 left-0 w-full sm:w-4/5 h-[calc(100vh-4rem-4rem)] opacity-100 translate-x-0"
                 )}
-                style={{}} 
+                style={{}}
                 selectedDate={selectedDateForCalendar}
                 onSelectDate={setSelectedDateForCalendar}
                 tasksByDate={tasksByDateForCalendar}
                 onTaskClick={handleTaskClickFromKanbanOrCalendar}
                 showBillableOnly={showBillableOnlyCalendar}
                 onToggleBillable={setShowBillableOnlyCalendar}
-                isMinimizedOnDesktop={false} 
+                isMinimizedOnDesktop={false}
                 onExpandCalendar={toggleCalendarSidebar}
                 isMobileView={!isDesktop}
             />
@@ -354,8 +357,8 @@ function DashboardContentInternal() {
 
            <Card className={cn(
             "flex-1 flex flex-col overflow-hidden min-h-0 transition-all duration-300 ease-in-out",
-            "mt-4 md:mr-4 mb-4 md:rounded-xl md:shadow-lg", 
-            "border-0 md:border" 
+            "mt-4 md:mr-4 mb-4 md:rounded-xl md:shadow-lg", // These margins define the space for the Kanban board
+            "border-0 md:border"
            )}
             style={{ marginLeft: isDesktop ? mainContentMarginLeft : '0px' }}
            >
@@ -389,7 +392,7 @@ function DashboardContentInternal() {
         {user && (
             <BottomNavigationBar
                 onToggleCalendar={toggleCalendarSidebar}
-                isCalendarVisible={isCalendarSidebarVisible && !isDesktop} 
+                isCalendarVisible={isCalendarSidebarVisible && !isDesktop}
             />
         )}
         {selectedTaskForModal && user && (
@@ -415,3 +418,4 @@ export default function DashboardPage() {
     
 
     
+
