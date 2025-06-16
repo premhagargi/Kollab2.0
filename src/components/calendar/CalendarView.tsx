@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { TaskPill } from './TaskPill';
 import type { Task } from '@/types';
 import { format, isSameDay, parseISO, isBefore, isToday } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarDays, Info, PanelLeftOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Info, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -68,7 +68,7 @@ export function CalendarSidebar({
 
   const tasksForSelectedDateInSidebar = selectedDate ? tasksByDate.get(format(selectedDate, 'yyyy-MM-dd')) || [] : [];
 
-  if (isMinimizedOnDesktop && !isMobileView) { // isMobileView check added
+  if (isMinimizedOnDesktop && !isMobileView) { 
     return (
       <div className={cn("h-full flex flex-col items-center justify-center p-2 bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:rounded-lg md:shadow-lg", className)}>
         <TooltipProvider delayDuration={100}>
@@ -96,9 +96,31 @@ export function CalendarSidebar({
   return (
     <Card className={cn("h-full flex flex-col shadow-lg flex-shrink-0 border-r bg-sidebar text-sidebar-foreground", className)}>
       <CardHeader className="p-3 border-b border-sidebar-border flex-shrink-0">
-        <CardDescription className="text-xs text-sidebar-accent-foreground">
-          Select a day to view tasks.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+            <CardDescription className="text-xs text-sidebar-accent-foreground">
+             Select a day to view tasks.
+            </CardDescription>
+            {!isMobileView && !isMinimizedOnDesktop && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onExpandCalendar} // This toggles the sidebar
+                      className="h-7 w-7 rounded-full text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      aria-label="Collapse Calendar"
+                    >
+                      <PanelLeftClose className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    <p>Collapse Calendar</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+        </div>
          <div className="flex items-center space-x-2 pt-1">
             <Switch
               id="billable-toggle-sidebar"
@@ -164,8 +186,8 @@ export function CalendarSidebar({
             <div className="flex flex-col items-center text-center text-sidebar-accent-foreground p-4">
                 <Info className="w-5 h-5 mb-2 text-sidebar-primary/40" />
                 <p className="text-[11px] font-medium">No tasks for this day.</p>
-                {tasksForCurrentWorkflowCalendar.length === 0 && <p className="text-[10px]">No tasks in this workflow.</p> }
-                {showBillableOnly && tasksForCurrentWorkflowCalendar.length > 0 && <p className="text-[10px]">Try turning off 'Billable Only'.</p>}
+                {tasksForCurrentWorkflowCalendar(tasksByDate, (selectedDate ? tasksByDate.get(format(selectedDate, 'yyyy-MM-dd'))?.[0]?.workflowId : null)).length === 0 && <p className="text-[10px]">No tasks in this workflow.</p> }
+                {showBillableOnly && tasksForCurrentWorkflowCalendar(tasksByDate, (selectedDate ? tasksByDate.get(format(selectedDate, 'yyyy-MM-dd'))?.[0]?.workflowId : null)).length > 0 && <p className="text-[10px]">Try turning off 'Billable Only'.</p>}
             </div>
           ) : (
              <div className="flex flex-col items-center text-center text-sidebar-accent-foreground p-4">
@@ -181,11 +203,18 @@ export function CalendarSidebar({
 }
 
 // Helper to get tasks for the current workflow from the calendar view
+// This helper needs currentWorkflowId passed to it if it's to filter by workflow.
+// For the "No tasks in this workflow" message, we need the workflowId context.
+// Let's adjust how we check this. The tasksByDate map already contains tasks from potentially multiple workflows.
+// The page.tsx filters what's passed to tasksByDate.
 const tasksForCurrentWorkflowCalendar = (tasksByDate: Map<string, Task[]>, currentWorkflowId: string | null): Task[] => {
     if (!currentWorkflowId) return [];
     let allTasks: Task[] = [];
     tasksByDate.forEach(tasksOnDate => {
-        allTasks = allTasks.concat(tasksOnDate);
+        allTasks = allTasks.concat(tasksOnDate.filter(task => task.workflowId === currentWorkflowId));
     });
-    return allTasks.filter(task => task.workflowId === currentWorkflowId);
+    return allTasks;
 };
+
+
+    
