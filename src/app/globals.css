@@ -45,12 +45,12 @@ body {
     --radius: 0.5rem; /* Consistent border radius */
 
     /* Sidebar specific colors - aligned with B&W theme */
-    --sidebar-background: 0 0% 96%; 
+    --sidebar-background: 0 0% 96%;
     --sidebar-foreground: 0 0% 10%;
     --sidebar-primary: 0 0% 20%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 88%; 
-    --sidebar-accent-foreground: 0 0% 15%; 
+    --sidebar-accent: 0 0% 88%;
+    --sidebar-accent-foreground: 0 0% 15%;
     --sidebar-border: 0 0% 80%;
     --sidebar-ring: 0 0% 50%;
   }
@@ -83,7 +83,7 @@ body {
     --border: 0 0% 30%; /* Dark Gray border */
     --input: 0 0% 25%; /* Darker Gray for input */
     --ring: 0 0% 50%; /* Mid Gray */
-    
+
     --chart-1: 0 0% 90%;
     --chart-2: 0 0% 75%;
     --chart-3: 0 0% 60%;
@@ -154,7 +154,7 @@ html {
 
 /* Styles for Resizable Sidebar Handle */
 .resize-handle {
-  position: fixed; 
+  position: fixed;
   /* top, left, width, height are set dynamically via inline styles in page.tsx */
   cursor: col-resize;
   background-color: transparent; /* Transparent by default */
@@ -163,7 +163,7 @@ html {
 }
 .resize-handle:hover,
 body.resizing-sidebar .resize-handle { /* Ensure hover style persists during drag */
-  background-color: hsl(var(--primary)); /* Visible on hover or during resize */
+  /* background-color: hsl(var(--primary)); -- Removed to keep it transparent on hover */
 }
 
 /* Global cursor and selection prevention during resize */
@@ -174,4 +174,3 @@ body.resizing-sidebar {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE/Edge */
 }
-
