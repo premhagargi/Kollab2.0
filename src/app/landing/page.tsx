@@ -427,7 +427,7 @@ function LandingPageContent() {
           <div ref={logoRef} className="flex items-center space-x-3">
             <Link href="/landing" className="flex items-center space-x-3">
               <div className="bg-white rounded-md p-1.5">
-                <NextImage src="https://placehold.co/30x30.png" alt="Kollab Logo" width={30} height={30} data-ai-hint="modern logo"/>
+                <NextImage src="/favicon.ico" alt="Kollab Logo" width={30} height={30} data-ai-hint="modern logo"/>
               </div>
               <span className="text-white text-xl font-bold">Kollab</span>
             </Link>
